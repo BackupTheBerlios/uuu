@@ -4,6 +4,8 @@
 #define _POSIX_SOURCE
 
 #include <stdlib.h>
+#include <stdio.h>
+
 #include "udbfs.h"
 #include "udbfslib.h"
 #include "private.h"
@@ -26,7 +28,11 @@ int		udbfslib_load_block(
     uint64_t			file_offset,
     UDBFSLIB_BLOCK		**block_hook) {
 
-  UDBFSLIB_BLOCK *block = udbfslib_allocate_memory_block(inode, block_hook);
+  UDBFSLIB_BLOCK *block;
+
+  printf("udblifsb: request to load block [%016llX] for inode [%016llX] offset [%016llX]\n", block_id, inode->id, file_offset); fflush(stdout);
+
+  block = udbfslib_allocate_memory_block(inode, block_hook);
 
   if( block == NULL ) {
     return(-1);

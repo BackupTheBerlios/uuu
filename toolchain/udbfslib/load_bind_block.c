@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.2 2003/10/12 15:26:01 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.3 2003/10/12 18:10:25 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -32,14 +32,19 @@ int		udbfslib_load_bind_block(
     uint64_t			offset_modifier,
     UDBFSLIB_BINDBLOCK		**linkpoint ) {
 
-  UDBFSLIB_BINDBLOCK *bind_block;
-  UDBFSLIB_BLOCK *tmp_block;
-  int i, ind_links = inode->mount->block_size>>3;
+  UDBFSLIB_BINDBLOCK *bind_block = NULL;
+  UDBFSLIB_BLOCK *tmp_block = NULL;
+
+  int i, ind_links;
 
   if( (inode == NULL) || (linkpoint == NULL) ) {
     fprintf(stderr,"udbfslib: cannot load bi-indiret block with a NULL inode or NULL linkpoint\n");
     return( -1 );
   }
+
+  printf("udbfslib: request to load BIND block [%016llX] for inode [%i] offset [%016llX]\n", block_id, inode->id, offset_modifier); fflush(stdout);
+
+  ind_links = inode->mount->block_size>>3;
 
   bind_block = (UDBFSLIB_BINDBLOCK *)malloc(
       sizeof(UDBFSLIB_BINDBLOCK) +
@@ -60,6 +65,8 @@ int		udbfslib_load_bind_block(
 
   bind_block->device_offset = block_id * inode->mount->block_size;
   bind_block->id = block_id;
+
+  printf("udbfslib: reading BIND block data from physical offset [%016llX]\n", bind_block->device_offset); fflush(stdout);
 
   if( (lseek( inode->mount->block_device, bind_block->device_offset, SEEK_SET ) != bind_block->device_offset) ||
       (read( inode->mount->block_device, tmp_block, inode->mount->block_size ) != inode->mount->block_size) ) {
