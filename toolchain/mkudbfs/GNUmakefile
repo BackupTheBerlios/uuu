@@ -1,10 +1,10 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkudbfs/GNUmakefile,v 1.6 2003/10/13 22:27:23 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkudbfs/GNUmakefile,v 1.7 2003/10/27 00:27:44 bitglue Exp $
 
 include ../Make.conf
 
 .PHONY: clean install
 
-mkudbfs: mkudbfs.c mkudbfs.h
+mkudbfs: mkudbfs.c
 	$(compiling) '$@'
 	$(CC) -o mkudbfs $(CPPFLAGS) $(CFLAGS) mkudbfs.c
 
@@ -14,3 +14,5 @@ clean:
 install: mkudbfs
 	$(installing) 'mkudbfs' in '$(BINDIR)'
 	cp mkudbfs '$(BINDIR)'
+
+-include mkudbfs.d

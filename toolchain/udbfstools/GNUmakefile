@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/GNUmakefile,v 1.4 2003/10/13 22:27:23 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/GNUmakefile,v 1.5 2003/10/27 00:27:44 bitglue Exp $
 
 include ../Make.conf
 
@@ -16,9 +16,11 @@ all: $(UTILS)
 
 .PHONY: clean
 clean:
-	rm -f $(UTILS)
+	rm -f $(UTILS) *.d
 
 .PHONY: install
 install: $(UTILS)
 	$(installing) '$(UTILS)' in '$(BINDIR)'
 	cp $(UTILS) '$(BINDIR)'
+
+-include udb-instboot.d
