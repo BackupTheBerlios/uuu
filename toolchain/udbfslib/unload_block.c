@@ -7,6 +7,8 @@
 #include "udbfslib.h"
 #include "private.h"
 
+#include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 
