@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_inode.c,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_inode.c,v 1.2 2003/10/12 15:24:47 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -37,14 +37,16 @@ UDBFSLIB_INODE *udbfs_open_inode(
     return(NULL);
   }
 
+  printf("udbfs inode [%i] block [%016llX][%016llX][%016llX][%016llX]", inode_id, udbfs_inode.block[0], udbfs_inode.block[1], udbfs_inode.block[2], udbfs_inode.block[3]);
+
   inode->size = udbfs_inode.size;
-  if( (udbfslib_load_block( inode, udbfs_inode.block[0], &inode->block[0] ) == 0) &&
-      (udbfslib_load_block( inode, udbfs_inode.block[1], &inode->block[1] ) == 0) &&
-      (udbfslib_load_block( inode, udbfs_inode.block[2], &inode->block[2] ) == 0) &&
-      (udbfslib_load_block( inode, udbfs_inode.block[3], &inode->block[3] ) == 0) &&
-      (udbfslib_load_ind_block( inode, udbfs_inode.ind_block, &inode->ind_block ) == 0 ) &&
-      (udbfslib_load_bind_block( inode, udbfs_inode.bind_block, &inode->bind_block ) == 0) ) {
-    udbfslib_load_tind_block( inode, udbfs_inode.tind_block, &inode->tind_block );
+  if( (udbfslib_load_block( inode, udbfs_inode.block[0], 0, &inode->block[0] ) == 0) &&
+      (udbfslib_load_block( inode, udbfs_inode.block[1], inode->mount->block_size, &inode->block[1] ) == 0) &&
+      (udbfslib_load_block( inode, udbfs_inode.block[2], inode->mount->block_size *2, &inode->block[2] ) == 0) &&
+      (udbfslib_load_block( inode, udbfs_inode.block[3], inode->mount->block_size *3, &inode->block[3] ) == 0) &&
+      (udbfslib_load_ind_block( inode, udbfs_inode.ind_block, inode->mount->dir_storage, &inode->ind_block ) == 0 ) &&
+      (udbfslib_load_bind_block( inode, udbfs_inode.bind_block, inode->mount->dir_storage + inode->mount->ind_storage, &inode->bind_block ) == 0) ) {
+    udbfslib_load_tind_block( inode, udbfs_inode.tind_block, inode->mount->dir_storage + inode->mount->ind_storage + inode->mount->bind_storage, &inode->tind_block );
   }
 
   printf("udbfslib: inode [%i] size [%lli] opened\n", inode->id, inode->size );
