@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.5 2003/10/23 03:39:25 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.6 2003/10/27 00:40:33 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -135,7 +135,7 @@ _entry:				; setup data and stack segments
   sub eax, udbfs_magic		; compare, and set EAX = 0 while we are at it
   jnz error			;
 
-  mov cl, -9			; CL = - log2( 512 )
+  mov cl, -2			; CL = - log2( 512 )
   add cl, [si + udbfs_superblock.block_size]
   mov [..@sect_size1], cl	; CL = log2( block size / 512 )
   inc ax			; AX = 1
