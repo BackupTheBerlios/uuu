@@ -1,5 +1,7 @@
 <?xml version="1.0" ?>
 
+<!-- $Header -->
+
 <xsl:stylesheet version="1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
@@ -17,6 +19,7 @@
 	    background: #333;
 	    color: black;
 	    padding: 4em;
+	    line-height: 1.4em;
 	  }
 	  div.proc {
 	    background: #eee;
@@ -33,8 +36,11 @@
 	    font-weight: bold;
 	  }
 	  td, th {
-	    padding-left: 0.5em;
-	    padding-right: 0.5em;
+	    padding-left: 0.7em;
+	    padding-right: 0.7em;
+	  }
+	  td {
+	    background: #ccc;
 	  }
 	/*]]>*/
 	</style>
@@ -57,7 +63,7 @@
 
       <h2>parameters</h2>
       <table>
-	<tr><th>brief</th><th>type</th><th>description</th></tr>
+	<tr><th>brief</th><th>reg</th><th>type</th><th>description</th></tr>
 	<xsl:apply-templates select="p"/>
       </table>
 
@@ -74,7 +80,7 @@
 
   <xsl:template match="ret">
     <tr>
-      <th><xsl:value-of select="@brief"/></th>
+      <td><xsl:value-of select="@brief"/></td>
       <td><xsl:apply-templates/></td>
     </tr>
   </xsl:template>
@@ -82,6 +88,7 @@
   <xsl:template match="p">
     <tr>
       <td><xsl:value-of select="@brief"/></td>
+      <td><xsl:value-of select="@reg"/></td>
       <td><xsl:value-of select="@type"/></td>
       <td><xsl:apply-templates/></td>
     </tr>
