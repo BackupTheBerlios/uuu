@@ -215,6 +215,8 @@
 %include "thread.asm"
 %include "ret_counts.asm"
 
+;%include "bochs.asm"
+
 
 extern ring_queue.link_ordered
 extern ring_queue.prepend
@@ -620,6 +622,118 @@ __internal_stack__:		resb 1024
 
 
 
+
+
+
+;                                    .---.
+;                                   /     \
+;                                   | - - |
+;                                  (| ' ' |)
+;                                   | (_) |   o
+;                                   `//=\\' o
+;                                   (((()))
+;                                    )))((
+;                                    (())))
+;                                     ))((
+;                                     (()
+;                                 jgs  ))
+;                                      (
+;
+;
+;                s c h e d u l e r   i n i t i a l i s a t i o n
+section .text
+
+global __scheduler_init
+__scheduler_init:
+;------------------------------------------------[ scheduler initialisation ]--
+						; Initialize Pre-Allocated
+						; Thread Pools
+						;------------------------------
+  mov esi, _THREAD_POOLS_			; number of thread pools
+  mov edi, pre_allocated_thread_pools		; memory location
+						;
+.initializing_thread_pools:			;
+  mov eax, edi					; node to link
+  mov ebx, thread_pools_ring			; ring to use
+						;
+%ifdef SANITY_CHECKS				;
+ mov [eax + _ring_queue_t.next], eax		;- loopback unlinked node
+ mov [eax + _ring_queue_t.previous], eax	;/
+%endif						;
+						;
+  ecall thread.add_pool, CONT, CONT		; link it up
+						;
+  add edi, _rt_thread_pool_t_size		; move to next pool space
+  dec esi					; # of pools pre-allocated
+  jnz short .initializing_thread_pools		; jump if some more left
+						;
+						; Acquire 'Init' Thread
+						;------------------------------
+  ecall thread.acquire, CONT, CONT, CONT	;
+  push eax					; save thread ID
+						;
+						; Initialize 'Init' Thread
+						;------------------------------
+%ifdef SANITY_CHECKS				;
+ lea ebx, [TIMER_START_RING(eax)]		;
+ lea ecx, [TIMER_END_RING(eax)]			;
+ mov [ebx + _ring_queue_t.next], ebx		;
+ mov [ebx + _ring_queue_t.previous], ebx	;
+ mov [ecx + _ring_queue_t.next], ecx		;
+ mov [ecx + _ring_queue_t.previous], ecx	;
+%endif						;
+  xor ebx, ebx					; set empty event handler
+  ecall thread.initialize, CONT, CONT		;
+						;
+						; Mark thread as Ready/Running
+						;------------------------------
+  pop eax					; restore thread ID (pointer)
+  mov [eax + _thread_t.execution_status], byte RT_SCHED_STATUS_RUNNING
+  mov [executing_thread], eax			;
+						;
+						; Activate its stack
+						;------------------------------
+  pop ebx					; get our return address
+  mov esp, [eax + _thread_t.top_of_stack]	; get new stack
+  push ebx					; push back the return address
+						;
+						; Link to Ready To Execute Ring
+						;------------------------------
+  mov ebx, ready_for_execution			;
+  lea eax,[TIMER_START_RING(eax)]		;
+  ecall ring_queue.prepend, CONT, CONT		;
+  
+
+  ; TODO: continue the init!
+  retn
+ 
+
+; DONE:
+;
+; - init the thread pools
+; - acquire one thread
+; - set as active thread
+; - setup scheduler initial state
+;
+; TODO:
+;
+; - program the PIT
+; - hack it up to scheduled state
+; - disable interrrupts
+; - hook up IRQ 0
+; - enable interrupt
+; - unmask IRQ 0
+; - return
+;------------------------------------------------[/scheduler initialisation ]--
+
+
+
+
+
+
+
+
+
 ;                                    .---.
 ;                                   /     \
 ;                                   | - - |
@@ -735,12 +849,17 @@ __set_timer:
 
 
 
+__empty_event_handler:
+  retn
+
 
 
 
 __thread_expired:
 __thread_ready:
 __re_evaluate_execution_priority:
+  mov eax, 0xDEADBEEF
+  jmp short __re_evaluate_execution_priority
 
 
 
@@ -775,6 +894,29 @@ section .text
 
 
 
+gproc thread.add_pool
+;---------------------------------------------------------[ thread add pool ]--
+;!<proc>
+;! <p reg="eax" type="pointer" brief="pointer to memory block big enough to hold a thread pool, see thread.get_pool_size"/>
+;! <ret fatal="0" brief="success"/>
+;! <ret brief="other"/>
+;!</proc>
+;------------------------------------------------------------------------------
+  push eax					;
+  ecall ring_queue.prepend, CONT, .unexpected	;
+  pop eax					;
+  mov [eax + _rt_thread_pool_t.bitmap], dword -1;
+  mov [eax + _rt_thread_pool_t.magic], dword RT_THREAD_POOL_MAGIC
+  return					;
+						;
+.unexpected:					;
+  pop ecx					;
+  ret_other					;
+;---------------------------------------------------------[/thread add pool ]--
+
+
+
+
 ;-------------------------------------------------[ realtime thread acquire ]--
 gproc thread.acquire
 ;!<proc>
@@ -782,6 +924,7 @@ gproc thread.acquire
 ;!  <r reg="eax" brief="pointer to allocated thread"/>
 ;! </ret>
 ;! <ret fatal="1" brief="allocation failed - out of thread"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
   mov	eax, thread_pools_ring			;
@@ -837,7 +980,7 @@ gproc thread.acquire
 ;
 						;} compute stack bottom address
 						;
-  lea	edx, [ebx + (_thread_t_size - _STACK_SIZE_ )]
+  lea	edx, [ebx + ecx + (_rt_thread_pool_t.threads - _STACK_SIZE_ )]
   mov	[eax + _thread_t.bottom_of_stack], edx
 						;
   mov	[eax + _thread_t.thread_pool], ebx	;
@@ -848,10 +991,14 @@ gproc thread.acquire
  add	ebx, (_STACK_SIZE_ * 32) + _rt_thread_pool_t_size - _thread_t_size
  cmp	eax, ebx				;
  ja	short .failed_sanity_check_thread_id	;
- mov	[TIMER_START_RING(eax) + _ring_queue_t.next], eax
- mov	[TIMER_START_RING(eax) + _ring_queue_t.previous], eax
- mov	[TIMER_END_RING(eax) + _ring_queue_t.next], eax
- mov	[TIMER_END_RING(eax) + _ring_queue_t.previous], eax
+						;
+ lea	ebx, [TIMER_START_RING(eax)]		;
+ lea	ecx, [TIMER_END_RING(eax)]		;
+ mov	[ebx + _ring_queue_t.next], ebx		;
+ mov	[ebx + _ring_queue_t.previous], ebx	;
+ mov	[ecx + _ring_queue_t.next], ecx		;
+ mov	[ecx + _ring_queue_t.previous], ecx	;
+						;
  mov	[eax + _thread_t.magic], dword RT_THREAD_MAGIC
 %endif						;
   mov	[eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
@@ -1026,7 +1173,7 @@ gproc thread.initialize
 ;! <p reg="ecx" type="pointer" brief="pointer to give as parameter to the thread"/>
 ;! <p reg="edx" type="pointer" brief="address at which to start thread execution"/>
 ;! <ret fatal="0" brief="initialization completed"/>
-;! <ret fatal="1" brief="initialization failed - thread is being used"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
 						; validate thread pointer
@@ -1038,7 +1185,7 @@ gproc thread.initialize
 						; not currently scheduled
 						;------------------------------
   cmp byte [eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED 
-  jz short .thread_in_use			;
+  jnz short .thread_in_use			;
 						; also verify it is unlinked
 %ifdef SANITY_CHECKS				;------------------------------
  add eax, byte (_thread_t.start_timer + _thread_timer_t.ring)
@@ -1051,6 +1198,10 @@ gproc thread.initialize
 %endif						;
 						; set event notification hndlr
 						;------------------------------
+  test ebx, ebx					;
+  jnz short .event_handler_provided		;
+  mov ebx, __empty_event_handler		;
+.event_handler_provided:			;
   mov [eax + _thread_t.event_notifier], ebx	;
 						;
 ; additional information:
@@ -1086,6 +1237,7 @@ gproc thread.initialize
   lea ecx, [eax + (_thread_t_size - _STACK_SIZE_)]
   mov [eax + _thread_t.top_of_stack], ebx	; top...
   mov [eax + _thread_t.bottom_of_stack], ecx	; bottom...done
+						;
 						;
 						; mark thread as initialized
 						;------------------------------
@@ -1127,6 +1279,7 @@ gproc thread.schedule
 ;! <p reg="ecx" type="pointer" brief="pointer to delay in microseconds until start time"/>
 ;! <p reg="edx" type="pointer" brief="pointer to delay microseconds until deadline"/>
 ;! <ret fatal="0" brief="success"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
 						; validate thread pointer
@@ -1237,8 +1390,8 @@ gproc thread.schedule
 						; error: linking failed
 						; must unregister end timer
 .failed_link_unreg_end_timer:			;------------------------------
-  push eax					;\
-  push ebx					;- save error code
+  push eax					;- save error code
+  push ebx					;/
   lea eax, [TIMER_END_RING(esi)]		;
   ecall ring_queue.unlink, CONT, CONT		;
   pop ebx					;- restore error code
@@ -1274,6 +1427,7 @@ gproc system_time.get_uuutime
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="destination where to store the 64bit uuu-time"/>
 ;! <ret fatal="0" brief="time returned successfully"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
   push eax					;
@@ -1308,6 +1462,7 @@ gproc system_time.correct_tick_drift
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="64bit signed tick drift correctional value"/>
 ;! <ret fatal="0" brief="tick drift correction recorded"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
 						; read 64bit drift correction
@@ -1339,6 +1494,7 @@ gproc system_time.set_tick_drift_correction_rate
 ;!  </para>
 ;! </p>
 ;! <ret fatal="0" brief="drift correction rate adjusted"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
   mov [tick_drift_correction], eax
@@ -1444,21 +1600,21 @@ __pit_interrupt_handler:
 						;
 						; compute new ticks count
 						;------------------------------
-  mov esi, [ticks_count]			;\
-  mov edi, [ticks_count + 4]			;- read current ticks count
+  mov esi, [ticks_count]			;- read current ticks count
+  mov edi, [ticks_count + 4]			;/
 						;
-  mov ebx, [tick_drift]				;\
-  mov ecx, [tick_drift + 4]			;- verify drift tick drifting
+  mov ebx, [tick_drift]				;- verify drift tick drifting
+  mov ecx, [tick_drift + 4]			;/
   mov eax, ebx					;
   or eax, ecx					;
   jnz short .correct_drift			;
 						;
 .drift_corrected:				;
-  add esi, [ticks_per_irq]			;\
-  adc edi, byte 0				;- add # of ticks per irq
+  add esi, [ticks_per_irq]			;- add # of ticks per irq
+  adc edi, byte 0				;/
 						;
-  mov [ticks_count], esi			;\
-  mov [ticks_count + 4], edi			;- store new ticks count
+  mov [ticks_count], esi			;- store new ticks count
+  mov [ticks_count + 4], edi			;/
 						;
 						; check for expiring timers
 						;------------------------------
