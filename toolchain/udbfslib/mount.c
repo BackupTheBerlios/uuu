@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.10 2003/10/13 22:12:54 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.11 2003/10/25 21:31:23 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -89,8 +89,8 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     mount->inode_count		= superblock->inode_count;
     mount->free_inode_count	= superblock->free_inode_count;
     mount->boot_loader_inode	= superblock->boot_loader_inode;
-    mount->block_size		= 1<<superblock->block_size;
-    mount->log_block_size	= superblock->block_size;
+    mount->log_block_size	= superblock->block_size + 7;
+    mount->block_size		= 1<<mount->log_block_size;
     mount->block_count		= superblock->block_count;
     mount->free_block_count	= superblock->free_block_count;
     mount->bitmaps_block	= superblock->bitmaps_block;
@@ -237,7 +237,7 @@ void		udbfs_unmount(
   superblock.max_mount_count = mount->max_mount_count;
   superblock.creator_os = mount->creator_os;
   superblock.superblock_version = mount->superblock_version;
-  superblock.block_size = mount->log_block_size;
+  superblock.block_size = mount->log_block_size - 7;
   superblock.inode_format = mount->inode_format;
   superblock.max_interval = mount->max_interval;
 
