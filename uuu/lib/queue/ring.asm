@@ -21,7 +21,7 @@
 %include "ring_queue.asm"
 %include "ret_counts.asm"
 
-
+%define SANITY_CHECKS
 
 gproc ring_queue.prepend
 ;--------------------------------------------------------[ prepend to queue ]--
