@@ -704,6 +704,9 @@ typedef void    *PM_MODULE;
 #elif   defined(__XFREE86__)
 typedef void    *PM_HWND;
 typedef void    *PM_MODULE;
+#elif   defined(__UUU__)
+typedef int     *PM_HWND;
+typedef void    *PM_MODULE;
 #else
 #error  PM library not ported to this platform yet!
 #endif
