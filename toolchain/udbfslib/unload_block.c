@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "extralib.h"
+#include "../conf.h"
 
 /* 14) udbfslib_unload_bind_block
  */

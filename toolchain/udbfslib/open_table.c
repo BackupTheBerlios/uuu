@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_table.c,v 1.3 2003/10/12 21:27:32 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_table.c,v 1.4 2003/10/13 22:12:54 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -9,7 +9,7 @@
 #include "udbfslib.h"
 
 #include <stdlib.h>
-#include "extralib.h"
+#include "../conf.h"
 
 
 

@@ -8,7 +8,7 @@
 
 #include <stdio.h>
 
-#include "extralib.h"
+#include "../conf.h"
 
 
 /* 3.) udbfslib_unlink

@@ -10,7 +10,7 @@
 #include "udbfslib.h"
 #include "private.h"
 
-#include "extralib.h"
+#include "../conf.h"
 
 /* 8.) udbfslib_load_block
 

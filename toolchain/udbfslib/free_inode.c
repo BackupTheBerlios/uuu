@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/free_inode.c,v 1.5 2003/10/13 20:43:23 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/free_inode.c,v 1.6 2003/10/13 22:12:54 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -10,7 +10,7 @@
 #include "private.h"
 
 #include <stdio.h>
-#include "extralib.h"
+#include "../conf.h"
 
 
 

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "extralib.h"
+#include "../conf.h"
 
 /* 6.) udbfslib_allocate_memory_block
 

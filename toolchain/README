@@ -1,4 +1,5 @@
 Unununium Development Toolchain
 
 mkudbfs	- Unununium Database File System generator tool
-
+udbfslib - library for manipulation of the Unununium Database File System
+udbfstools - small tools for UDBFS manipulation using udbfslib

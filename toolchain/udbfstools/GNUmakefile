@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/GNUmakefile,v 1.2 2003/10/13 21:27:20 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/GNUmakefile,v 1.3 2003/10/13 22:12:54 bitglue Exp $
 
 include ../Make.conf
 
@@ -11,6 +11,7 @@ LDFLAGS += $(addprefix -L,$(UDBFSLIB_LIBRARIES)) -ludbfs
 all: $(UTILS)
 
 %: %.c
+	$(compiling) '$@'
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 .PHONY: clean

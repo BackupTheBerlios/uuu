@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/select_active_inode_block.c,v 1.2 2003/10/12 21:27:32 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/select_active_inode_block.c,v 1.3 2003/10/13 22:12:54 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -10,7 +10,7 @@
 
 #include <stdio.h>
 
-#include "extralib.h"
+#include "../conf.h"
 
 
 /* 17) udbfslib_select_active_inode_block

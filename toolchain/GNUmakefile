@@ -1,11 +1,20 @@
 UTILS = udbfslib mkudbfs udbfstools
 
+include Make.conf
+
 .PHONY: all install clean
 
+# this is redefined because in the way we use $(making) here,
+# we don't need the '@'
+
+ifeq ($(VERBOSE),on)
+  echo=:
+endif
+
 all:
-	set -e
-	$(foreach util,$(UTILS),$(MAKE) -C $(util); )
+	@set -e
+	@$(foreach util,$(UTILS),$(making) $(util); $(MAKE) -C $(util); )
 
 install clean:
-	set -e
-	$(foreach util,$(UTILS),$(MAKE) -C $(util) "$@"; )
+	@set -e
+	@$(foreach util,$(UTILS),$(making) '$@' in $(util); $(MAKE) -C $(util) "$@"; )

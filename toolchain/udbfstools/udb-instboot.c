@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/udb-instboot.c,v 1.2 2003/10/13 21:27:20 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/udb-instboot.c,v 1.3 2003/10/13 22:12:54 bitglue Exp $
 
 /* udbfs-install-bootloader
  *
@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <string.h>
 #include <malloc.h>
+
+#include "../conf.h"
 
 #define BUFFER_SIZE 4096	// buffer size used to transfer data from source to target bootloader files
 

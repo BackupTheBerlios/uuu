@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "mkudbfs.h"
+#include "../conf.h"
 
 #define BLOCK_SIZE	(1<<superblock->block_size)
 

@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/allocate_memory_inode.c,v 1.2 2003/10/12 21:31:42 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/allocate_memory_inode.c,v 1.3 2003/10/13 22:12:54 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <malloc.h>
 
-#include "extralib.h"
+#include "../conf.h"
 
 
 /* 7.) udbfslib_allocate_memory_inode

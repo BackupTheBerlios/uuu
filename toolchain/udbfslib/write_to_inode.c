@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.7 2003/10/13 20:43:23 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.8 2003/10/13 22:12:54 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -13,7 +13,7 @@
 #include <malloc.h>
 #include <unistd.h>
 
-#include "extralib.h"
+#include "../conf.h"
 
 
 static UDBFSLIB_BLOCK	*udbfslib_extend_tindblock(

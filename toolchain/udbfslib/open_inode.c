@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_inode.c,v 1.5 2003/10/13 20:43:23 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_inode.c,v 1.6 2003/10/13 22:12:54 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "extralib.h"
+#include "../conf.h"
 
 
 UDBFSLIB_INODE *udbfs_open_inode(
