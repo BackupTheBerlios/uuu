@@ -205,9 +205,9 @@
 %include "bochs.asm"
 
 
-extern ring_queue.link_ordered
-extern ring_queue.prepend
-extern ring_queue.unlink
+extern ring_queue.link_ordered_64
+extern ring_queue.insert_after
+extern ring_queue.remove
 extern int.set_handler
 
 
@@ -694,7 +694,7 @@ __scheduler_init:
 						;------------------------------
   mov ebx, ready_for_execution			;
   lea eax,[TIMER_START_RING(eax)]		;
-  ecall ring_queue.prepend, CONT, CONT		;
+  ecall ring_queue.insert_after, CONT, CONT	;
 						;
 						; Program the PIT
 						;------------------------------
@@ -910,7 +910,7 @@ gproc thread.add_pool
 ;!</proc>
 ;------------------------------------------------------------------------------
   push eax					;
-  ecall ring_queue.prepend, CONT, .unexpected	;
+  ecall ring_queue.insert_after, CONT, .unexpected
   pop eax					;
   mov [eax + _rt_thread_pool_t.bitmap], dword -1;
   mov [eax + _rt_thread_pool_t.magic], dword RT_THREAD_POOL_MAGIC
@@ -1326,7 +1326,7 @@ gproc thread.schedule
   lea eax, [TIMER_END_RING(esi)]		;
   mov [TIMER_END_PROC(esi)], dword __thread_expired
   mov ebx, timer_ring				;
-  ecall ring_queue.link_ordered, CONT, .failed_link
+  ecall ring_queue.link_ordered_64, CONT, .failed_link
 						;
 						; compute delay until start
 						;------------------------------
@@ -1348,7 +1348,7 @@ gproc thread.schedule
   lea eax, [TIMER_START_RING(esi)]		;
   mov [TIMER_START_PROC(esi)], dword __thread_ready
   mov ebx, timer_ring				;
-  ecall ring_queue.link_ordered, .clean_and_exit, .failed_link_unreg_end_timer
+  ecall ring_queue.link_ordered_64, .clean_and_exit, .failed_link_unreg_end_timer
 						;
 						; set thread in ready queue
 .ready_immediately:				;------------------------------
@@ -1357,7 +1357,7 @@ gproc thread.schedule
   mov [TIMER_START_TIME(esi) + 4], edx		;- edx = 0
   lea eax, [TIMER_START_RING(esi)]		;
   mov ebx, ready_for_execution			;
-  ecall ring_queue.link_ordered, CONT, .failed_link_unreg_end_timer
+  ecall ring_queue.link_ordered_64, CONT, .failed_link_unreg_end_timer
   ;----------------------------------------------------------------------------
   ;
   ; Additional Information:
@@ -1391,7 +1391,7 @@ gproc thread.schedule
   push eax					;- save error code
   push ebx					;/
   lea eax, [TIMER_END_RING(esi)]		;
-  ecall ring_queue.unlink, CONT, CONT		;
+  ecall ring_queue.remove, CONT, CONT		;
   pop ebx					;- restore error code
   pop eax					;/
   pop esi					; restore original esi
@@ -1595,7 +1595,7 @@ gproc system_time.set_timer_resolution_ticks
   mov [TIMER_R_EXEC(eax)], ecx			;
   mov [TIMER_R_EXEC(eax)], edx			;
   add eax, byte _thread_timer_t.ring		;
-  ecall ring_queue.prepend, CONT, .unexpected	;
+  ecall ring_queue.insert_after, CONT, .unexpected
 						;
   return					;
 						;
@@ -1747,7 +1747,7 @@ __pit_interrupt_handler:
 						;
 						; execute timer
 .execute_timer:					;------------------------------
-  ecall ring_queue.unlink, CONT, .sanity_check_failed_timer
+  ecall ring_queue.remove, CONT, .sanity_check_failed_timer
   mov eax, ebp					;
   mov esp, __internal_stack__.top		; set internal stack
   call [ebp + _thread_timer_t.procedure]	; execute timer procedure

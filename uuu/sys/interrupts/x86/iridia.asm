@@ -37,8 +37,8 @@
 
 %include "bochs.asm"
 
-extern ring_queue.prepend
-extern ring_queue.unlink
+extern ring_queue.insert_after
+extern ring_queue.remove
 
 
 section .text
@@ -215,7 +215,7 @@ ENTER_CRITICAL_SECTION				;
   lea edx, [eax*8 + irq_clients]		;
   mov eax, ebx					;
   mov ebx, edx					;
-  ecall ring_queue.prepend, CONT, .unexpected	;
+  ecall ring_queue.insert_after, CONT, .unexpected
 						;
 						; set PIC port and irq mask
 						;------------------------------
@@ -274,7 +274,7 @@ gproc irq.disconnect
 						;------------------------------
   push eax					; save irq number
   mov eax, ebx					;
-  ecall ring_queue.unlink, CONT, .unexpected	;
+  ecall ring_queue.remove, CONT, .unexpected	;
 						; check irq ring for clients
 						;------------------------------
   pop ecx					; restore irq number
