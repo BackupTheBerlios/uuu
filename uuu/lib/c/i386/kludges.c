@@ -10,12 +10,16 @@ unsigned file_size = 4;
 unsigned screen_pos = 0;
 uint16_t *screen = (uint16_t *)0xb8000;
 
+unsigned screen_width = 80;
+unsigned screen_height = 25;
+
 
 
 int write(int fd, const void *buf, size_t count)
 {
   const char *string = buf;
   size_t remaining = count;
+  unsigned i;
 
   if( fd != 1 && fd != 2 ) {
     errno = EINVAL;
@@ -24,7 +28,26 @@ int write(int fd, const void *buf, size_t count)
 
   while( remaining )
   {
-    screen[screen_pos++] = *string + 0x0700;
+    if( screen_pos >= screen_width * screen_height )
+    {
+      memmove( screen, &screen[screen_width], screen_width * (screen_height-1) * sizeof(unsigned) );
+      for( i = screen_width * (screen_height-1) ; i < screen_width * screen_height ; ++i ) {
+	screen[i] = 0x0720;
+      }
+      screen_pos = screen_width * (screen_height-1);
+    }
+
+    switch( *string )
+    {
+      case '\n':
+	screen_pos += screen_width;
+	screen_pos -= screen_pos % screen_width;
+	break;
+
+      default:
+	screen[screen_pos++] = *string + 0x0700;
+    }
+
     ++string;
     --remaining;
   }
