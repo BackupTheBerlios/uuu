@@ -1,4 +1,4 @@
-;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/lib/hash/fasthash.asm,v 1.2 2004/01/01 02:16:48 bitglue Exp $
+;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/lib/hash/fasthash.asm,v 1.3 2004/01/07 15:55:32 bitglue Exp $
 ;;
 ;; Fasthash - a lib cell providing a fast hash function for hash table lookups
 ;; Copyright (C) 2001 by Phil Frost.
@@ -11,17 +11,16 @@
 ;;
 ;; This is a fast, very good hash function, but it is no good for cryptographic
 ;; purposes because the hash is easily reversed. Use it in your hash lookup
-;; tables and such and be happy :P
+;; tables and such and be happy.
 ;;
 ;; status:
 ;; -------
 ;; i'm 75% sure it is a propper implementation of the hash function. In any
-;; case you will get a value, I just don't know if it's the "propper" one yet
-;; :P
+;; case you will get a value, I just don't know if it's the "propper" one yet.
 
 
 
-global lib.string.fasthash
+global string.fasthash
 
 
 
@@ -96,7 +95,7 @@ global lib.string.fasthash
 
 
 ;-----------------------------------------------------------------------.
-						lib.hash.fasthash:	;
+							hash.fasthash:	;
 ;! <proc>
 ;!   Computes a fast, very nice hash sutiable for non cryptographic purposes.
 ;!   See http://burtleburtle.net/bob/hash/doobs.html for credits.
@@ -235,7 +234,7 @@ global lib.string.fasthash
 
 section .data
 jmp_table:
-dd lib.hash.fasthash.0, lib.hash.fasthash.1, lib.hash.fasthash.2
-dd lib.hash.fasthash.3, lib.hash.fasthash.4, lib.hash.fasthash.5
-dd lib.hash.fasthash.6, lib.hash.fasthash.7, lib.hash.fasthash.8
-dd lib.hash.fasthash.9, lib.hash.fasthash.10, lib.hash.fasthash.11
+dd hash.fasthash.0, hash.fasthash.1, hash.fasthash.2
+dd hash.fasthash.3, hash.fasthash.4, hash.fasthash.5
+dd hash.fasthash.6, hash.fasthash.7, hash.fasthash.8
+dd hash.fasthash.9, hash.fasthash.10, hash.fasthash.11
