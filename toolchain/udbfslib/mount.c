@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.11 2003/10/25 21:31:23 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.12 2003/10/27 00:34:23 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -295,8 +295,7 @@ static UDBFS_SUPERBLOCK	*udbfslib_validate_superblock(
     case 1:
 
       //...:  Version 1 allows only for block_size log of 8 < x < 21
-      if( (superblock->block_size < 9) ||
-	  (superblock->block_size > 20) ) {
+      if( (superblock->block_size > 20) ) {
 
 	fprintf(stderr,"udbfslib: invalid block_size log [%i]\n", superblock->block_size);
 	goto failed_validation;
