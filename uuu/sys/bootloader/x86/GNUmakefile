@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.9 2003/11/10 15:23:07 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.10 2003/11/12 15:51:16 bitglue Exp $
 
 UUUROOT=../../..
 
@@ -34,10 +34,7 @@ include $(UUUROOT)/Make.config
 display.d: font.inc
 
 # nasm doesn't generate deps for incbin
-display.o: logo-360x240.pcx logo-320x240.pcx
 boot.o: test2.bimage
-
-test.o: uuu-logov2.txt
 
 test2.o: test.o
 	ld -s -o test2.o -Ttext 0x300000 test.o
