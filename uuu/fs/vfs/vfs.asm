@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/fs/vfs/vfs.asm,v 1.1 2003/12/31 18:56:38 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/fs/vfs/vfs.asm,v 1.2 2003/12/31 20:16:55 bitglue Exp $
 
 %include "fs/fs.asm"
 
@@ -16,6 +16,7 @@ global vfs.instantiate
 
 struc vfs_descriptor
   .fs_descriptor:	resb fs_descriptor_size
+  .root_node:		resd 1	; root vfs_node
 endstruc
 
 
@@ -27,6 +28,7 @@ endstruc
 struc vfs_node
   .ref:		resd 1
 endstruc
+
 
 
 ;---------------===============\             /===============---------------

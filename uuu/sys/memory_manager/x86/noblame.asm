@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.4 2003/12/31 18:34:44 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.5 2003/12/31 20:16:55 bitglue Exp $
 ;
 ; minimalistic memory allocater, for tempoary and troubleshooting uses.
 
@@ -21,9 +21,11 @@ global mem.reallocate
 						mem.allocate:		;
 ;! <proc brief="allocates a block of memory">
 ;!   This differs from traditional allocation in that it assumes by default
-;!   the memory block uses some sort of reference counting. What this means is
-;!   that the first dword is set to 1 automatically. The size parameter
-;!   includes this first dword, so a size under 4 is an error.
+;!   the memory block uses some sort of reference counting and has a pointer
+;!   to a procedure to destroy the object.. What this means is that the first
+;!   dword is set to 1 automatically, and the 2nd is set to mem.deallocate.
+;!   The size parameter includes this first dword, so a size under 4 is an
+;!   error.
 ;!
 ;!   <p type="uinteger32" reg="eax" brief="bytes to allocate"/>
 ;!
@@ -40,7 +42,8 @@ global mem.reallocate
   jbe .other
 
   ecall mem.allocate_bare, CONT, .other, .no_mem
-  mov [eax], dword 1
+  mov [eax+ref_counted.ref], dword 1
+  mov [eax+ref_counted.destroy], dword mem.deallocate
   return
 
 .other:
