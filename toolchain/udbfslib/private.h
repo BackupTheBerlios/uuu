@@ -38,16 +38,19 @@ void		udbfslib_unlink(
     void			*node_to_remove );
 
 void		udbfslib_unload_tind_block(
-    UDBFSLIB_TINDBLOCK		**tindblock_hook );
+    UDBFSLIB_TINDBLOCK		**tindblock_hook,
+    UDBFSLIB_INODE		*inode );
 
 void		udbfslib_unload_ind_block(
-    UDBFSLIB_INDBLOCK		**indblock_hook );
+    UDBFSLIB_INDBLOCK		**indblock_hook,
+    UDBFSLIB_INODE		*inode );
 
 void		udbfslib_unload_block(
     UDBFSLIB_BLOCK		**block_hook );
 
 void		udbfslib_unload_bind_block(
-    UDBFSLIB_BINDBLOCK		**bindblock_hook );
+    UDBFSLIB_BINDBLOCK		**bindblock_hook,
+    UDBFSLIB_INODE		*inode );
 
 int		udbfslib_load_block(
     UDBFSLIB_INODE		*inode,
