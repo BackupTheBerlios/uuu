@@ -142,5 +142,273 @@
    A group of inodes is further created, keeping track of the location and size on disk of the various files
    and tables.
   </para>
+
+  <sect1 id="superblock"><title>Superblock</title>
+   <para>
+    Located at offset 1024 (in bytes) from the start of the disk/partition, this structure details the
+    properties of the file system.
+   </para><figure><title>superblock structure - version 01</title><programlisting>
+offset  size    description
+------- ------- -----------
+      0       8 <link linkend="s-boot-loader-inode">s_boot_loader_inode</>
+      8       8 <link linkend="s-inode-first-block">s_inode_first_block</>
+     16       8 <link linkend="s-unique-fs-signature">s_unique_fs_signature</>
+     24       8 <link linkend="s-block-count">s_block_count</>
+     32       8 <link linkend="s-inode-count">s_inode_count</>
+     40       8 <link linkend="s-free-block-count">s_free_block_count</>
+     48       8 <link linkend="s-free-inode-count">s_free_inode_count</>
+     56       8 <link linkend="s-bitmaps-block">s_bitmaps_block</>
+     64       8 <link linkend="s-journal-inode">s_journal_inode</>
+     72       8 <link linkend="s-bad-block-inode">s_bad_block_inode</>
+     80       8 <link linkend="s-magic-number">s_magic_number</>
+     88       8 <link linkend="s-last-check">s_last_check</>
+     96       8 <link linkend="s-max-interval">s_max_interval</>
+    104       8 <link linkend="s-last-mount">s_last_mount</>
+    112       1 <link linkend="s-mount-count">s_mount_count</>
+    113       1 <link linkend="s-max-mount-count">s_max_mount_count</>
+    114       1 <link linkend="s-creator-os">s_creator_os</>
+    115       1 <link linkend="s-superblock-version">s_superblock_version</>
+    116       1 <link linkend="s-log-block-size">s_log_block_size</>
+    117       1 <link linkend="s-inode-format">s_inode_format</>
+    118       2 <link linkend="s-extensions">s_extensions</>
+   </programlisting></figure>
+   <sect2 id="s-bad-block-inode"><title>Bad Block Inode</title>
+    <programlisting>
+label: s_bad_block_inode         offset: 72 (0x48)
+name : Bad Block Inode           size  : unsigned 64bit</programlisting>
+    <para>
+     Inode ID for the <link linkend="bad-block-file">Bad Block File</link>
+    </para>
+   </sect2>
+   <sect2 id="s-bitmaps-block"><title>Bitmaps Block</title>
+    <programlisting>
+label: s_bitmaps_block           offset: 56 (0x38)
+name : Bitmaps Block             size  : unsigned 64bit</programlisting>
+    <para>
+     Block ID where the <link linkend="block-allocation-bitmap">Block Allocation Bitmap</link> and
+     <link linkend="inode-allocation-bitmap">Inode Allocation Bitmap</link> are starting.  For example, if
+     those bitmaps are stored from block 43 to block 57, the Block ID would be set to 43.
+    </para>
+   </sect2>
+   <sect2 id="s-block-count"><title>Block Count</title>
+    <programlisting>
+label: s_block_count             offset: 24 (0x18)
+name : Block Count               size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Number of blocks contained in the file system.  This value combined with the <structfield>Log Block Size</>
+     can be used to compute the file system total storage capacity.
+    </para>
+   </sect2>
+   <sect2 id="s-boot-loader-inode"><title>Boot Loader Inode</title>
+    <programlisting>
+label: s_boot_loader_inode       offset: 00 (0x00)
+name : Boot Loader Inode         size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Inode ID for the operating system boot loader.  A value of 0 indicate no boot loader has been set.
+    </para>
+   </sect2>
+   <sect2 id="s-creator-os"><title>Creator OS</title>
+    <programlisting>
+label: s_creator_os              offset: 114 (0x72)
+name : Creator OS                size  : unsigned 8bit
+    </programlisting>
+    <para>
+     ID of the operating system used to create the file system.  Defined values are:
+    </para><table frame=none pgwide=1 id="udbfs-os"><title>UDBFS_OS values</title>
+     <tgroup cols=3 align=left>
+      <colspec colwidth="40*">
+      <colspec colwidth="20*">
+      <colspec colwidth="40*">
+      <tbody>
+       <row><entry>UDBFS_OS_LINUX</><entry>0</><entry>Linux</></>
+       <row><entry>UDBFS_OS_HURD</><entry>1</><entry>Hurd</></>
+       <row><entry>UDBFS_OS_MASIX</><entry>2</><entry>MASIX</></>
+       <row><entry>UDBFS_OS_FREEBSD</><entry>3</><entry>FreeBSD</></>
+       <row><entry>UDBFS_OS_LITES4</><entry>4</><entry>Lites</></>
+       <row><entry>UDBFS_OS_UNUNUNIUM</><entry>8</><entry>Unununium</></>
+      </tbody>
+     </tgroup>
+    </table>
+   </sect2>
+   <sect2 id="s-extensions"><title>Extensions</title>
+    <programlisting>
+label: s_extensions              offset: 118 (0x76)
+name : Extensions                size  : unsigned 8bit + unsigned 8bit</programlisting>
+    <para>
+     Extension ID followed by the Superblock Extension Size in bytes.  An extension defines
+     additional properties of the file system, or ways to handle it.  Each extension is
+     assigned an Extension ID and the required extension information structure size is
+     recorded as the Superblock Extension Size.
+    </para><para>
+     If no extension is defined, then the Extension ID and Superblock Extension Size will both
+     be set to 0.
+    </para>
+   </sect2>
+   <sect2 id="s-free-block-count"><title>Free Block Count</title>
+    <programlisting>
+label: s_free_block_count        offset: 40 (0x28)
+name : Free Block Count          size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Number of unallocated blocks.  This value should match the number of bits set to 1 in the
+     <link linkend="block-allocation-bitmap">Block Allocation Bitmap</link> and should always be
+     smaller than <link linkend="s-block-count">s_block_count</link>.
+    </para>
+   </sect2>
+   <sect2 id="s-free-inode-count"><title>Free Inode Count</title>
+    <programlisting>
+label: s_free_inode_count        offset: 48 (0x30)
+name : Free Inode Count          size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Number of unallocated inodes.  This value should match the number of bits set to 1 in the
+     <link linkend="inode-allocation-bitmap">Inode Allocation Bitmap</link> and should always be
+     smaller than <link linkend="s-inode-count">s_inode_count</link>.
+    </para>
+   </sect2>
+   <sect2 id="s-inode-count"><title>Inode Count</title>
+    <programlisting>
+label: s_inode_count             offset: 32 (0x20)
+name : Inode Count               size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Number of inodes contained in the file system.  This value dictates how many separate "files" can
+     be stored on the file system.
+    </para>
+   </sect2>
+   <sect2 id="s-inode-format"><title>Inode Format</title>
+    <programlisting>
+label: s_inode_format            offset: 117 (0x75)
+name : Inode Format              size  : unsigned 8bit
+    </programlisting>
+    <para>
+     Inode format version marker.
+    </para>
+   </sect2>
+   <sect2 id="s-inode-first-block"><title>Inode First Block</title>
+    <programlisting>
+label: s_inode_first_block       offset: 08 (0x08)
+name : Inode First Block         size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Block ID of the first inode description.  See <link linkend="inode-table">Inode Table</link> for more
+     information.
+    </para>
+   </sect2>
+   <sect2 id="s-journal-inode"><title>Journal Inode</title>
+    <programlisting>
+label: s_journal_inode           offset: 64 (0x40)
+name : Journal Inode             size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Inode ID of the <link linkend="journal-file">Journal File</link>.
+    </para>
+   </sect2>
+   <sect2 id="s-last-check"><title>Last Check</title>
+    <programlisting>
+label: s_last_check              offset: 88 (0x58)
+name : Last Check                size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Timestamp of the last file system check.  The timestamp is stored in <link linkend="uuu-time">UUU-Time</link>
+     format.
+    </para>
+   </sect2>
+   <sect2 id="s-last-mount"><title>Last Mount</title>
+    <programlisting>
+label: s_last_mount              offset: 104 (0x68)
+name : Last Mount                size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Timestamp of the last file system read/write mount operation. The timestamp is stored in <link linkend="uuu-time">UUU-Time</link>
+     format.
+    </para>
+   </sect2>
+   <sect2 id="s-log-block-size"><title>Log Block Size</title>
+    <programlisting>
+label: s_log_block_size          offset: 116 (0x74)
+name : Log Block Size            size  : unsigned 8bit
+    </programlisting>
+    <para>
+     Log base 2 of a block size in bytes.  This value is used to determine the block size used by the file system
+     using the formula: block_size = 2 ^ s_log_block_size
+    </para>
+   </sect2>
+   <sect2 id="s-magic-number"><title>Magic Number</title>
+    <programlisting>
+label: s_magic_number            offset: 80 (0x50)
+name : Magic Number              size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Magic number identifying the file system as UDBFS.  The current signature value is 0x293A5F5346424455 or "UDBFS_:)" in ASCII.
+    </para>
+   </sect2>
+   <sect2 id="s-max-interval"><title>Max Interval</title>
+    <programlisting>
+label: s_max_interval            offset: 96 (0x60)
+name : Max Interval              size  : unsigned 64bit
+    </programlisting>
+    <para>
+     Maximum time interval between file system checks.  The time interval is stored in <link linkend="uuu-time">UUU-Time</link> format.
+    </para>
+   </sect2>
+   <sect2 id="s-max-mount-count"><title>Max Mount Count</title>
+    <programlisting>
+label: s_max_mount_count         offset: 113 (0x71)
+name : Max Mount Count           size  : unsigned 8bit
+    </programlisting>
+    <para>
+     Maximum number of read/write mount operations before forcing a file system check.
+    </para>
+   </sect2>
+   <sect2 id="s-mount-count"><title>Mount Count</title>
+    <programlisting>
+label: s_mount_count             offset: 112 (0x70)
+name : Mount Count               size  : unsigned 8bit
+    </programlisting>
+    <para>
+     Number of read/write mount operations performed since the last file system check.
+    </para>
+   </sect2>
+   <sect2 id="s-superblock-version"><title>Superblock Version</title>
+    <programlisting>
+label: s_superblock_version      offset: 115 (0x73)
+name : Superblock Version        size  : unsigned 8bit
+    </programlisting>
+    <para>
+     Superblock version marker.
+    </para>
+   </sect2>
+   <sect2 id="s-unique-fs-signature"><title>Unique FS Signature</title>
+    <programlisting>
+label: s_unique_fs_signature     offset: 16 (0x10)
+name : Unique FS Signature       size  : unsigned 64bit
+    </programlisting>
+    <para>
+     (Hopefully) Unique signature created at format time.
+    </para>
+   </sect2>
+  </sect1>
+
+  <sect1 id="bad-block-file"><title>Bad Block File</title>
+   <para>todo</para>
+  </sect1>
+  <sect1 id="block-allocation-bitmap"><title>Block Allocation Bitmap</title>
+   <para>todo</para>
+  </sect1>
+  <sect1 id="inode-allocation-bitmap"><title>Inode Allocation Bitmap</title>
+   <para>todo</para>
+  </sect1>
+  <sect1 id="inode-table"><title>Inode Table</title>
+   <para>todo</para>
+  </sect1>
+  <sect1 id="journal-file"><title>Journal File</title>
+   <para>todo</para>
+  </sect1>
+  <sect1 id="uuu-time"><title>UUU-Time</title>
+   <para>todo</para>
+  </sect1>
  </chapter>
 </book>
