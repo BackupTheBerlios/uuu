@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.3 2003/10/13 01:14:55 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.4 2003/10/23 03:11:01 bitglue Exp $
 
 UUUROOT=../../..
 
@@ -21,6 +21,9 @@ font.inc: font.src
 	./mkfont.py < font.src > font.inc
 
 include $(UUUROOT)/Make.config
+
+ASFLAGS += -dBOOT_CONSOLE=$(BOOT_CONSOLE)
+
 -include stage1.d stage2.d
 
 # have to make font.inc before making the deps or nasm will puke

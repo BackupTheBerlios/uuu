@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/keyboard.asm,v 1.1 2003/09/23 03:46:22 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/keyboard.asm,v 1.2 2003/10/23 03:11:01 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; keyboard driver for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -69,6 +69,7 @@ endstruc
   push edi
 .wait:
 
+%ifidn BOOT_CONSOLE,graphical
   call wait_vtrace
 
   xor eax, eax
@@ -86,6 +87,7 @@ endstruc
   out dx, al
   inc al
   mov [cursor_intensity], al
+%endif ; %ifidn BOOT_CONSOLE,graphical
 
   in al, _KEYB_STATUS_PORT_
   test al, _KEYB_OUTPUT_BUFFER_

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.3 2003/10/13 01:14:55 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.4 2003/10/23 03:11:01 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -29,6 +29,10 @@ bits 16
 ; some more definitions for MultiBoot support
 %assign MBOOT_SIGNATURE	0x1BADB002
 %assign MBOOT_LOADED	0x2BADB002
+
+%ifnidn BOOT_CONSOLE,textual
+  %define BOOT_CONSOLE graphical
+%endif
 
 struc mboot
 .magic               resd 1
@@ -268,8 +272,10 @@ loading_object:			;--------------------------------------
 				;
 ;----------------------------------------------------------------------------
 				;
-  ;mov ax, 0x0003		; all loaded, set video mode back to 80x25
-  ;int BIOSVIDEO		;
+%ifidn BOOT_CONSOLE,textual
+  mov ax, 0x0003		; all loaded, set video mode back to 80x25
+  int BIOSVIDEO			;
+%endif
 				;
   cli				; disable interrutps, sensitive stuff coming
 				;

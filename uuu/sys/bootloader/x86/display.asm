@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.3 2003/10/14 22:21:49 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.4 2003/10/23 03:11:01 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -6,25 +6,34 @@
 ;
 ; 2003-09-22	Phil Frost	Initial version
 
-%assign FONT_HEIGHT	8
-%assign FONT_WIDTH	5
-%assign FONT_START	' ' ; first letter in the font
-%assign FONT_END	'~' ; last letter in the font
-%assign LETTER_PADDING	1   ; blank pixels between letters
-%assign LINE_PADDING	0   ; blank pixels between lines
+%ifidn BOOT_CONSOLE,graphical
+  %assign FONT_HEIGHT	8
+  %assign FONT_WIDTH	5
+  %assign FONT_START	' ' ; first letter in the font
+  %assign FONT_END	'~' ; last letter in the font
+  %assign LETTER_PADDING	1   ; blank pixels between letters
+  %assign LINE_PADDING	0   ; blank pixels between lines
 
-%assign CELL_WIDTH	(FONT_WIDTH + LETTER_PADDING)
-%assign CELL_HEIGHT	(FONT_HEIGHT + LINE_PADDING)
-%assign CHAR_PER_COL	(SCREEN_HEIGHT / CELL_HEIGHT)
-%assign CHAR_PER_ROW	(SCREEN_WIDTH / CELL_WIDTH)
+  %assign CELL_WIDTH	(FONT_WIDTH + LETTER_PADDING)
+  %assign CELL_HEIGHT	(FONT_HEIGHT + LINE_PADDING)
+  %assign CHAR_PER_COL	(SCREEN_HEIGHT / CELL_HEIGHT)
+  %assign CHAR_PER_ROW	(SCREEN_WIDTH / CELL_WIDTH)
 
-%assign CURSOR_HEIGHT	2
-%assign CURSOR_HEADROOM	(FONT_HEIGHT-CURSOR_HEIGHT)
-%assign CURSOR_COLOR	0xff
+  %assign CURSOR_HEIGHT	2
+  %assign CURSOR_HEADROOM	(FONT_HEIGHT-CURSOR_HEIGHT)
+  %assign CURSOR_COLOR	0xff
 
-%assign PLANE_SIZE	(SCREEN_HEIGHT * SCREEN_WIDTH / 4)	; bytes per plane
+  %assign PLANE_SIZE	(SCREEN_HEIGHT * SCREEN_WIDTH / 4)	; bytes per plane
+%elifidn BOOT_CONSOLE,textual
+  %assign CHAR_PER_COL	25
+  %assign CHAR_PER_ROW	80
+%endif
 
-%assign VIDEO_RAM	0xa0000
+%ifidn BOOT_CONSOLE,graphical
+  %assign VIDEO_RAM	0xa0000
+%elifidn BOOT_CONSOLE,textual
+  %assign VIDEO_RAM	0xb8000
+%endif
 
 %assign DEFAULT_SCROLL_SPEED	1
 
@@ -120,6 +129,12 @@
 ; eax = char to print
 ; bl = color
 
+
+
+;-----------------------------------------------------------------------.
+;						graphical version	;
+
+%ifidn BOOT_CONSOLE,graphical
   pushad
   mov edi, [screen_pos]				;
 .write:
@@ -317,44 +332,126 @@
   jnz .do_magic
   retn
 
+%else ; %ifidn BOOT_CONSOLE,graphical
+
+
+
+;-----------------------------------------------------------------------.
+;							textual version	;
+
+  pushad
+  mov edi, [screen_pos]				;
+.write:
+
+  cmp eax, byte 0x0a			; test for NL
+  jz .nl				;
+  cmp eax, byte 0x0d			; test for CR too
+  jz .nl				;
+  cmp eax, byte 0x08			; test for BS
+  jz .bs
+
+  mov ah, bl
+  mov [VIDEO_RAM + edi], ax
+  add edi, byte 2
+  jmp .done
+
+
+
+.nl:			;------------------------------------------------------
+  mov eax, edi
+  mov ebx, CHAR_PER_ROW * 2
+  cdq
+  div ebx		;
+  sub edi, edx		; move cursor to left edge
+  add edi, CHAR_PER_ROW * 2
+
+  jmp .done
+
+.bs:			;------------------------------------------------------
+  test edi, edi
+  jz .done		; backspace only works on the monitor!
+
+  sub edi, byte 2
+  mov al, ' '
+  mov ah, bl
+  mov [VIDEO_RAM + edi], ax
+  ; spill to .done
+
+
+.done:
+  cmp edi, CHAR_PER_COL * CHAR_PER_ROW * 2
+  jae .scroll
+.retn:
+  mov [screen_pos], edi
+
+  popad
+  retn
+
+
+
+						; scroll everything one line
+.scroll:					;-----------------------------
+
+  mov esi, VIDEO_RAM + CHAR_PER_ROW * 2
+  mov edi, VIDEO_RAM
+  mov ecx, CHAR_PER_ROW * (CHAR_PER_COL - 1) / 2
+  rep movsd
+
+  push edi
+
+  mov eax, 0x07200720
+  mov ecx, CHAR_PER_ROW / 2
+  rep stosd
+
+  pop edi
+  mov edi, CHAR_PER_ROW * (CHAR_PER_COL - 1) * 2
+  jmp .retn
+
+
+%endif ; %ifidn BOOT_CONSOLE,graphical
+
 
 
 
 ;-----------------------------------------------------------------------.
 						draw_cursor:		;
-  mov edi, [screen_pos]
-  cmp edi, SCREEN_WIDTH * SCREEN_HEIGHT - (SCREEN_WIDTH * (CELL_HEIGHT-1) + CELL_WIDTH)
-  jae .retn
-%if CURSOR_HEIGHT != 0
-%if CURSOR_HEADROOM != 0
-  add edi, CURSOR_HEADROOM * SCREEN_WIDTH
-%endif
+%ifidn BOOT_CONSOLE,graphical
 
-  mov ch, CURSOR_HEIGHT
-.draw_cursor:
-  mov cl, CELL_WIDTH
-.draw_cursor_line:
-  call calc_planar_offset
-  mov al, [edx+display_buffer]
-  cmp al, 0x10
-  jz .invert
-  cmp al, CURSOR_COLOR
-  jnz .skip
-.invert:
-  xor al, CURSOR_COLOR ^ 0x10
-  mov [edx+display_buffer], al
-.skip:
-  inc edi
+    mov edi, [screen_pos]
+    cmp edi, SCREEN_WIDTH * SCREEN_HEIGHT - (SCREEN_WIDTH * (CELL_HEIGHT-1) + CELL_WIDTH)
+    jae .retn
+  %if CURSOR_HEIGHT != 0
+  %if CURSOR_HEADROOM != 0
+    add edi, CURSOR_HEADROOM * SCREEN_WIDTH
+  %endif
 
-  dec cl
-  jnz .draw_cursor_line
+    mov ch, CURSOR_HEIGHT
+  .draw_cursor:
+    mov cl, CELL_WIDTH
+  .draw_cursor_line:
+    call calc_planar_offset
+    mov al, [edx+display_buffer]
+    cmp al, 0x10
+    jz .invert
+    cmp al, CURSOR_COLOR
+    jnz .skip
+  .invert:
+    xor al, CURSOR_COLOR ^ 0x10
+    mov [edx+display_buffer], al
+  .skip:
+    inc edi
 
-  add edi, SCREEN_WIDTH - CELL_WIDTH
-  dec ch
-  jnz .draw_cursor
+    dec cl
+    jnz .draw_cursor_line
 
-%endif
-.retn:
+    add edi, SCREEN_WIDTH - CELL_WIDTH
+    dec ch
+    jnz .draw_cursor
+
+  %endif CURSOR_HEIGHT != 0
+  .retn:
+
+%endif ; %ifidn BOOT_CONSOLE,graphical
   retn
 
 
@@ -399,6 +496,7 @@
 
 
 
+%ifidn BOOT_CONSOLE,graphical
 ;-----------------------------------------------------------------------.
 						set_pcx_palette:	;
 .set_up:
@@ -415,11 +513,15 @@
   loop .set_palette
   retn
 
+%endif ; %ifidn BOOT_CONSOLE,graphical
+
 
 
 ;-----------------------------------------------------------------------.
 						pcx_refresh:		;
 ; returns all unmodified
+
+%ifidn BOOT_CONSOLE,graphical
 
   pushad
 
@@ -469,7 +571,11 @@
 .done:
 
   popad
+
+%endif ; %ifidn BOOT_CONSOLE,graphical
+
   retn
+
 
 
 
@@ -492,6 +598,7 @@
 
 
 
+%ifidn BOOT_CONSOLE,graphical
 ;-----------------------------------------------------------------------.
 						set_video_mode:		;
 ;
@@ -575,11 +682,14 @@
 
   retn
   
+%endif ; BOOT_CONSOLE = graphical
+
 
 
 ;-----------------------------------------------------------------------.
 						redraw_display:		;
 
+%ifidn BOOT_CONSOLE,graphical
   pushad
 
   call pcx_refresh
@@ -619,10 +729,12 @@
   ; low address remains the same always
 
   popad
+%endif ; %ifidn BOOT_CONSOLE,graphical
   retn
 
 
 
+%ifidn BOOT_CONSOLE,graphical
 ;-----------------------------------------------------------------------.
 						calc_planar_offset:	;
 ; EDI = linear offset
@@ -641,12 +753,14 @@
 
   pop eax
   retn
+%endif ; %ifidn BOOT_CONSOLE,graphical
 
 
 
 ;-----------------------------------------------------------------------.
 						smooth_scroll_on:	;
 
+%ifidn BOOT_CONSOLE,graphical
   pushad
 
 
@@ -654,6 +768,7 @@
   mov [..@smooth_scroll_jmp], byte 0
 
   popad
+%endif ; %ifidn BOOT_CONSOLE,graphical
   retn
 
  
@@ -661,6 +776,7 @@
 ;-----------------------------------------------------------------------.
 						smooth_scroll_off:	;
 
+%ifidn BOOT_CONSOLE,graphical
   pushad
 
   mov [..@scroll_speed], byte 3
@@ -668,6 +784,7 @@
   mov eax, ..@post_smooth_scroll - ..@pre_smooth_scroll
 
   popad
+%endif ; %ifidn BOOT_CONSOLE,graphical
   retn
 
 
@@ -677,26 +794,31 @@
 ;---------------===============/             \===============---------------
 
 align 4
-last_page: dd VIDEO_RAM		; last page used; used for page switching
 
-font:
-%include "font.inc"
+%ifidn BOOT_CONSOLE,graphical
 
-pcx:
+  last_page: dd VIDEO_RAM		; last page used; used for page switching
 
-%if SCREEN_HEIGHT != 240
-  %error "no background image available for SCREEN_HEIGHT"
-%endif
+  font:
+  %include "font.inc"
 
-%if SCREEN_WIDTH = 360
-incbin "logo-360x240.pcx"
-%elif SCREEN_WIDTH = 320
-incbin "logo-320x240.pcx"
-%else
-  %error "no background image available for SCREEN_WIDTH"
-%endif
+  pcx:
 
-pcx_end:
+  %if SCREEN_HEIGHT != 240
+    %error "no background image available for SCREEN_HEIGHT"
+  %endif
+
+  %if SCREEN_WIDTH = 360
+    incbin "logo-360x240.pcx"
+  %elif SCREEN_WIDTH = 320
+    incbin "logo-320x240.pcx"
+  %else
+    %error "no background image available for SCREEN_WIDTH"
+  %endif
+
+  pcx_end:
+
+%endif ; %ifidn BOOT_CONSOLE,graphical
 
 
 
