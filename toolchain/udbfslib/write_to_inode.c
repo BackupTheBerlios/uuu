@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.4 2003/10/12 21:27:32 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.5 2003/10/12 23:55:06 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -70,7 +70,7 @@ int		udbfs_write_to_inode(
     partial_write_size = block->offset_end - inode->cursor;
     partial_write_size = partial_write_size > size ? size : partial_write_size;
 
-    physical_offset = block->device_offset + inode->cursor - block->offset_start;
+    physical_offset = block->device_offset + (inode->cursor - block->offset_start);
 
     printf("udbfslib: writing [%08X] bytes from file offset [%016llX] to disk physical offset [%016llX]\n", partial_write_size, inode->cursor, physical_offset); fflush(stdout);
  
@@ -247,7 +247,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_bindblock(
 
     }
 
-    modifier_offset += inode->mount->block_size;
+    modifier_offset += inode->mount->ind_storage;
   }
   return(NULL);
 }
@@ -397,7 +397,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_tindblock(
         return( block );
     }
 
-    modifier_offset += inode->mount->block_size;
+    modifier_offset += inode->mount->bind_storage;
   }
   return(NULL);
 }
