@@ -1,9 +1,9 @@
 ;; Hydro3d
-;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/Attic/test.asm,v 1.2 2003/11/12 15:51:16 bitglue Exp $
-;; copyright (c) 2001 Phil Frost
+;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/Attic/test.asm,v 1.3 2003/11/14 00:41:17 bitglue Exp $
+;; Written in 2001, constantly tinkered up to 2003 by Phil Frost
 
 
-;%define _RDTSC_
+;%define _RDTSC_	; This is bitrotten.
 
 ;---------------===============\         /===============---------------
 ;				constants
@@ -23,38 +23,70 @@
 %define YRES		480
 %define F_HALF_XRES	180.0	; half of the res. as a float
 %define F_HALF_YRES	240.0
+%define ASPECT_RATIO	0.5625	; the height of the _pixels_ divided by their
+				; width. Note this isn't the aspect ratio of
+				; the monitor, but of the pixels.
 
 %define VIDEO_RAM	0xa0000
-%assign MISC_OUTPUT         0x03c2    ; VGA misc. output register
-%assign SC_INDEX            0x03c4    ; VGA sequence controller
-%assign SC_DATA             0x03c5
-%assign PALETTE_INDEX       0x03c8    ; VGA digital-to-analog converter
-%assign PALETTE_DATA        0x03c9
-%assign CRTC_INDEX          0x03d4    ; VGA CRT controller
+%define MISC_OUTPUT	0x03c2	; VGA misc. output register
+%define SC_INDEX	0x03c4	; VGA sequence controller
+%define SC_DATA		0x03c5
+%define PALETTE_INDEX	0x03c8	; VGA digital-to-analog converter
+%define PALETTE_DATA	0x03c9
+%define GRAPHICS_INDEX	0x03ce
+%define CRTC_INDEX	0x03d4	; VGA CRT controller
+%define STATUS		0x03da
+%define FEATURE		0x03da
+%define ATTRIB		0x03c0
 
-%assign MAP_MASK            0x02      ; Sequence controller registers
-%assign MEMORY_MODE         0x04
+%define NUMSEQUENCER	0x05
+%define NUMCRTC		0x19
+%define NUMGRAPHICS	0x09
+%define NUMATTRIB	0x15
 
-%assign H_TOTAL			0x00      ; CRT controller registers
-%assign H_DISPLAY_END		0x01
-%assign H_BLANK_START		0x02
-%assign H_BLANK_END		0x03
-%assign H_RETRACE_START		0x04
-%assign H_RETRACE_END		0x05
-%assign V_TOTAL			0x06
-%assign OVERFLOW		0x07
-%assign MAX_SCAN_LINE		0x09
-%assign HIGH_ADDRESS		0x0C
-%assign LOW_ADDRESS		0x0D
-%assign V_RETRACE_START		0x10
-%assign V_RETRACE_END		0x11
-%assign V_DISPLAY_END		0x12
-%assign OFFSET			0x13
-%assign UNDERLINE_LOCATION	0x14
-%assign V_BLANK_START		0x15
-%assign V_BLANK_END		0x16
-%assign MODE_CONTROL		0x17
+%define MAP_MASK	0x02	; Sequence controller registers
+%define MEMORY_MODE	0x04
 
+%define H_TOTAL		0x00	; CRT controller registers
+%define H_DISPLAY_END	0x01
+%define H_BLANK_START	0x02
+%define H_BLANK_END	0x03
+%define H_RETRACE_START	0x04
+%define H_RETRACE_END	0x05
+%define V_TOTAL		0x06
+%define OVERFLOW	0x07
+%define MAX_SCAN_LINE	0x09
+%define HIGH_ADDRESS	0x0C
+%define LOW_ADDRESS	0x0D
+%define V_RETRACE_START	0x10
+%define V_RETRACE_END	0x11
+%define V_DISPLAY_END	0x12
+%define OFFSET		0x13
+%define UNDERLINE_LOCATION	0x14
+%define V_BLANK_START	0x15
+%define V_BLANK_END	0x16
+%define MODE_CONTROL	0x17
+
+%define ENABLEATTRIB	020h
+
+%define CURSORTOPDATA	17
+%define CURSORBOTTOMDATA	18
+
+%define BIOSMODE	049h
+%define COLUMNS		04ah
+%define CURSORTOP	061h
+%define CURSORBOTTOM	060h
+
+%define _KEYB_STATUS_PORT_	0x64
+%define _KEYB_DATA_PORT_	0x60
+%define _KEYB_OUTPUT_BUFFER_	0x01
+
+%define BIT_UP		( 1 << 0 )
+%define BIT_DOWN	( 1 << 1 )
+%define BIT_LEFT	( 1 << 2 )
+%define BIT_RIGHT	( 1 << 3 )
+%define BIT_PLUS	( 1 << 4 )
+%define BIT_MINUS	( 1 << 5 )
 
 ;; A note on the matricies:
 ;;
@@ -167,7 +199,6 @@ endstruc
 global _start
 _start:
 
-  call set_320x200x8bpp
 
 ;-----------------------------------------------------------------------.
 						set_video_mode:		;
@@ -181,6 +212,10 @@ _start:
   mov ax, (%2 << 8) + %1
   out dx, ax
 %endmacro
+
+  ; first, switch to the usual mode 0x13
+  mov esi, mcga_mode
+  call set_vga_regs
 
   mov dx, SC_INDEX
 
@@ -267,27 +302,6 @@ create_objects:
   call _create_object	;
   mov [data.object1], edi			;
 
-  ;fld dword[edi+object.omatrix+matrix44.tx]
-  ;fsub dword[data.object_back]
-  ;fstp dword[edi+object.omatrix+matrix44.tx]
-  
-;  mov esi, [esp]
-;  call _create_object	;
-;  mov [data.object2], edi			;
-;
-;;  call _scale_matrix
-;
-;  pop esi
-;  call _create_object	;
-;  mov [data.object3], edi			;
-;
-;  call _scale_matrix
-;
-;  fld dword[edi+object.omatrix+matrix44.tx]
-;  fadd dword[data.object_dis]
-;  fstp dword[edi+object.omatrix+matrix44.tx]
-  
-
 
 
 create_camera:
@@ -323,15 +337,6 @@ add_objects_to_scene:
   ;push edi
   mov esi, [data.object1]			;
   call _add_object_to_scene
-
-  ;mov edi, [esp]
-  ;mov esi, [data.object2]			;
-  ;call _add_object_to_scene
-
-  ;pop edi
-  ;mov esi, [data.object3]			;
-  ;call _add_object_to_scene
-
 
 
 
@@ -378,10 +383,6 @@ set_sane_floating_precision:
 frame:
 
 
-%assign _KEYB_STATUS_PORT_	0x64
-%assign _KEYB_DATA_PORT_	0x60
-%assign _KEYB_OUTPUT_BUFFER_	0x01
-
   in al, _KEYB_STATUS_PORT_
   test al, _KEYB_OUTPUT_BUFFER_
   jz .no_key
@@ -417,7 +418,7 @@ draw_scene_to_buffer:
 
 wait_for_retrace:
 ;-------------------------------------------------------------------------------
-  mov dx, 0x3da	;
+  mov dx, STATUS;
 .wait:		;
   in al, dx	;
   and al, 0x8	;
@@ -509,7 +510,7 @@ rotate_n_translate:
   fstp dword[data.Xrot_amount]	;
   					;
 .up:					;
-  test bx, 1b				;up arrow pressed?
+  test bx, BIT_UP			;up arrow pressed?
   jz .down				;
   fld dword[data.Xrot_amount]	;
   fld dword[data.rot_accel]		;
@@ -518,7 +519,7 @@ rotate_n_translate:
   fstp dword[data.Xrot_amount]	;
 					;
 .down:					;
-  test bx, 10b				;
+  test bx, BIT_DOWN			;
   jz .left				;
   fld dword[data.Xrot_amount]	;
   fld dword[data.rot_accel]		;
@@ -526,7 +527,7 @@ rotate_n_translate:
   fstp dword[data.Xrot_amount]	;
 					;
 .left:					;
-  test bx, 100b				;
+  test bx, BIT_LEFT			;
   jz .right				;
   fld dword[data.Yrot_amount]	;
   fld dword[data.rot_accel]		;
@@ -534,7 +535,7 @@ rotate_n_translate:
   fstp dword[data.Yrot_amount]	;
 					;
 .right:					;
-  test bx, 1000b			;
+  test bx, BIT_RIGHT			;
   ;zooming disabled temp.		;
   ;jz .plus				;
   jz .done				;
@@ -546,7 +547,7 @@ rotate_n_translate:
 					;
 ;.plus:					;
 ;  mov ecx, [data.state_ptr]	;
-;  test bx, 10000b			;
+;  test bx, BIT_PLUS			;
 ;  jz .minus				;
 ;  fld dword[ecx+client_state.cam_dis]	;
 ;  fld dword[data.zoom_speed]	;
@@ -554,7 +555,7 @@ rotate_n_translate:
 ;  fstp dword[ecx+client_state.cam_dis]	;
 ;					;
 ;.minus:				;
-;  test bx, 100000b			;
+;  test bx, BIT_MINUS			;
 ;  jz .done				;
 ;  fld dword[ecx+client_state.cam_dis]	;
 ;  fld dword[data.zoom_speed]	;
@@ -567,14 +568,6 @@ rotate:
   mov eax, [data.object1]			;
   call _rotate_object
 						;
-  mov eax, [data.object2]			;
-  call _rotate_object
-						;
-  mov eax, [data.object3]			;
-  call _rotate_object
-
-
-
   jmp frame	; go do another frame
 
 
@@ -640,55 +633,54 @@ _keyboard_client:
   retn
 
 .up_pressed:			;
-  or bx, 1b			;
+  or bx, BIT_UP			;
   jmp short .done
 				;
 .up_released:			;
-  and bx, 0xfffe		;
+  and bx, ~BIT_UP		;
   jmp short .done
 				;
 .down_pressed:			;
-  or bx, 10b			;
+  or bx, BIT_DOWN		;
   jmp short .done
 				;
 .down_released:			;
-  and bx, 0xfffd		;
+  and bx, ~BIT_DOWN		;
   jmp short .done
 				;
 .left_pressed:			;
-  or bx, 100b			;
+  or bx, BIT_LEFT		;
   jmp short .done
 				;
 .left_released:			;
-  and bx, 0xfffb		;
+  and bx, ~BIT_LEFT		;
   jmp short .done
 				;
 .right_pressed:			;
-  or bx, 1000b			;
+  or bx, BIT_RIGHT		;
   jmp short .done
 				;
 .right_released:		;
-  and bx, 0xfff7		;
+  and bx, ~BIT_RIGHT		;
   jmp short .done
 				;
 .plus_pressed:			;
-  or bx, 10000b			;
+  or bx, BIT_PLUS		;
   jmp short .done
 				;
 .plus_released:			;
-  and bx, 0xffef		;
+  and bx, ~BIT_PLUS		;
   jmp short .done
 				;
 .minus_pressed:			;
-  or bx, 100000b		;
+  or bx, BIT_MINUS		;
   jmp short .done
 				;
 .minus_released:		;
-  and bx, 0xffdf		;
+  and bx, ~BIT_MINUS		;
   jmp short .done
 				;________
 .q_pressed:				;
-  ;save this for later, when we add fading again.
   mov byte[data.fade_count], 255	;
   jmp short .done
 					;________
@@ -819,32 +811,28 @@ hex_conv:
 
 %endif		; _RDTSC_
 
-;                                           -----------------------------------
-;                                                                          data
-;==============================================================================
 
-section .data
+
+;---------------===============\             /===============---------------
+				section .data
+;---------------===============/             \===============---------------
 
 ; misc. data ---===---
 
 data:
   .scene:	dd 0		; pointer to scene
   .object1:	dd 0
-  .object2:	dd 0
-  .object3:	dd 0
-  .object_dis:	dd 3.0		; space between each "U"
-  .object_back:	dd 10.0		; how far back the Us are
   .Xrot_amount:	dd 0
   .Yrot_amount:	dd 0
   .Zrot_amount:	dd 0
   .rot_accel:	dd 0.0008
   .rot_decel:	dd 0.999
-  .keys:	dw 0		; flags of what keys are currently pressed
+  .keys:	dd 0		; flags of what keys are currently pressed
   .far_clip:	dd 10.0		; far clip plane
   .near_clip:	dd 1.0		; near clip plane
   .fov:		dd 0.6		; FOV, in radians
-  .aspect_ratio:dd 0.47		; aspect ratio - my calculations are somehow
-  .fade_count:	db 0		;   screwed, so this was made by trial & error
+  .aspect_ratio:dd ASPECT_RATIO	; aspect ratio (gee!)
+  .fade_count:	db 0		;
 
 
 
@@ -904,11 +892,10 @@ data:
 
   retn					;
 
-;                                           -----------------------------------
-;                                                         hydro3d.create_object
-;==============================================================================
 
-_create_object:
+
+;-----------------------------------------------------------------------.
+						_create_object:		;
 ;>
 ;;------------------------------------------------------------------------------
 ;; This creates a new object. However, the new object is not added to anything
@@ -968,11 +955,10 @@ _create_object:
 
   retn
 
-;                                           -----------------------------------
-;                                                           hydro3d.create_mesh
-;==============================================================================
 
-_create_mesh:
+
+;-----------------------------------------------------------------------.
+						_create_mesh:		;
 ;>
 ;; Creates a new mesh.
 ;; 
@@ -1017,11 +1003,10 @@ _create_mesh:
   
   retn
 
-;                                           -----------------------------------
-;                                                   hydro3d.add_object_to_scene
-;==============================================================================
 
-_add_object_to_scene:
+
+;-----------------------------------------------------------------------.
+						_add_object_to_scene:	;
 ;>
 ;; This adds the object pointed to by ESI to the scene pointed to by EDI. It's
 ;; the program's responsibility to make sure objects are not added twice.
@@ -1040,11 +1025,10 @@ _add_object_to_scene:
 
   retn
 
-;                                           -----------------------------------
-;                                                         hydro3d.create_camera
-;==============================================================================
 
-_create_camera:
+
+;-----------------------------------------------------------------------.
+						_create_camera:		;
 ;>
 ;; Creates a new camera; imagine that! The camera matrix is initialized to
 ;; identity, but the program must initialise the projection to something sane,
@@ -1082,16 +1066,19 @@ _create_camera:
 
   retn
 
-;                                           -----------------------------------
-;                                                  hydro3d.create_camera_matrix
-;==============================================================================
 
-_create_camera_matrix:
+
+;-----------------------------------------------------------------------.
+						_create_camera_matrix:	;
 ;>
 ;; This is a function usefull for creating a camera projection matrix from usual
 ;; human parameters like FOV and near/far clipping planes. This function only
 ;; makes the matrix, one must still create a camera if he is to make much use of
 ;; it :)
+;;
+;; I think I may have the vertical and horizontal axies switched, because
+;; changing the aspect ratio scales the image horizontally. This should not be,
+;; because the (horizontal) FOV should remain constant.
 ;;
 ;; The parameters on the stack will be popped off.
 ;;
@@ -2320,157 +2307,124 @@ __SECT__
 ;-----------------------------------------------------------------------.
 ;						vga stuff		;
 
-MISC 		equ 		03c2h
-SEQUENCER 	equ 		03c4h
-CRTC 		equ 		03d4h
-GRAPHICS 	equ	 	03ceh
-FEATURE 	equ		03dah
-ATTRIB 		equ		 03c0h
-PELADDRESSWRITE	equ		03c8h
-PELDATAREG	equ		03c9h
-STATUS		equ		03dah
-
-GRREGWRMODE	equ		5
-GRREGMISC	equ		6
-SQREGMAPMASK	equ		2
-SQREGMEMORY	equ		4
-
-BYTESPERFONT	equ		16
-PALETTELEN	equ		256
-NUMSEQUENCER	equ		5
-NUMCRTC		equ		19h
-NUMGRAPHICS	equ		9
-NUMATTRIB	equ		15h
-
-VREND		equ		011h
-NOPROT		equ		07fh
-
-ENABLEATTRIB	equ		020h
-
-CURSORTOPDATA	equ		17
-CURSORBOTTOMDATA	equ	18
-
-BIOSMODE	equ		049h
-COLUMNS		equ		04ah
-CURSORTOP	equ		061h
-CURSORBOTTOM	equ		060h
-PAGESIZE	equ		04ch
-PAGEOFFSET	equ		04eh
-PAGENUM		equ		062h
-MODESELVAL	equ		065h
-
 %macro IODELAY 0
   times 8 nop
 %endmacro
 
 
-OutRegs:                                 ;Output CL registers to port DX
- xor al,al                              ;start at reg 0
-.loop1:                                   ;
- mov ah,[esi]                            ;load data
- inc si                                 ;update source
- out dx,ax                              ;output data
-IODELAY
- inc al                                 ;increase register number
- dec cl                                 ;decrease count
- jnz .loop1                 	        ;loop whilst still OK
- retn                                   ;and exit
+set_vga_register_set:
+  xor eax, eax
+.loop1:
+  mov ah, [esi]
+  inc esi
+  out dx, ax
+  IODELAY
+  inc al
+  dec cl
+  jnz .loop1
+  retn
 
-SetModeRegs:	                        ;set VGA registers for mode data
-                                        ;pointed to by SI
- mov dx,STATUS                          ;get retrace reg
-.l1:                                      ;
- in al,dx                               ;get value
- IODELAY                                ;delay
- test al,8                              ;check for vertical retrace bit
- jnz .l1                                ;loop until clear
-.l2:                                      ;
- in al,dx                               ;get value
-IODELAY                                 ;delay
- test al,8                              ;check for retrace again
- jz .l2                                   ;loop until it's set this time
-                                        ;so we get start of ret. to set mode
- xor ah,ah                              ;zero AH
- mov al,[esi]                            ;load BIOS mode number
- mov [BIOSMODE],al                ;store mode number
- inc si                                 ;update SI
- mov al,[esi]                            ;load number of columns
- mov [COLUMNS],al                 ;store number of columns
- inc si                                 ;update SI
- mov di,[esi]                            ;load Screen Seg
- add si,2                               ;update SI
- mov al,[esi+CURSORTOPDATA]              ;get cursor top data
- mov [CURSORTOP],al               ;store it
- mov al,[esi+CURSORBOTTOMDATA]           ;get cursor bottom data
- mov [CURSORBOTTOM],al            ;store it
- mov dx,MISC                            ;get VGA MISC reg num
- mov al,[esi]                            ;load AL
- inc si                                 ;update source
- out dx,al                              ;output to port
-IODELAY
- mov dx,FEATURE                         ;get Feature controller number
- mov al,[esi]                            ;load data
- inc si                                 ;update source
- out dx,al                              ;output register data
-IODELAY
- mov dx,SEQUENCER                       ;get sequencer port number
- mov cl,NUMSEQUENCER                    ;get number of regs to set
- call OutRegs                           ;do them
- mov ah,[esi+VREND]                      ;load CRTC VREND byte
- mov al,VREND                           ;load reg number
- and ah,NOPROT                          ;clear protection bit
- mov dx,CRTC                            ;CRTC port number
- out dx,ax                              ;no protection
- IODELAY
- mov cl,NUMCRTC                         ;number of CRTC regs
- call OutRegs                           ;output to port
- mov dx,GRAPHICS                        ;get graphics port number
- mov cl,NUMGRAPHICS                     ;get number of regs
- call OutRegs                           ;do it
- mov dx,FEATURE                         ;load feature controller port
- in al,dx                               ;reset attrib flip flop by reading
-IODELAY
- mov dx,ATTRIB                          ;attribute controller port
- mov cl,NUMATTRIB                       ;number of regs
- xor al,al                              ;clear AL
-.loop:                                 ;
- mov ah,[esi]                            ;load AH
- out dx,al                              ;output to port
-IODELAY                                ;delay before register write
- xchg al,ah                             ;swap data/reg num
- out dx,al                              ;output to port
- xchg ah,al                             ;swap back
- inc al                                 ;next reg
- inc si                                 ;increase source
- cmp al,cl                              ;done yet?
- jb .loop                              ;loop until done
- mov al,ENABLEATTRIB                    ;enable attribute register reads
- out dx,al                              ;do it
-IODELAY
- retn                                    ;and exit
+set_vga_regs:
+
+  ; -=# wait for vertical retrace #=-
+  ;
+  ; I don't see why this is logically needed...but it was here, and one never
+  ; knows the deep mysteries of VGA :)
+
+  mov dx, STATUS;
+.wait:		;
+  in al, dx	;
+  and al, 0x8	;
+  jnz .wait	;
+.waitmore:	;
+  in al, dx	;
+  and al, 0x8	;
+  jz .waitmore	;
 
 
-set_320x200x8bpp:                                ;
-;;Check 320x200x256
- pushad
- call clear_screen
- mov esi, MCGAMode                 ;get mode offset
- call SetModeRegs                       ;set registers
- popad
- retn
+  ; -=# Not sure what this does, and if it's required if one does not use the bios #=-
 
-clear_screen:
- push edi
- push ecx
- push eax
- mov edi, 0xA0000
- mov ecx, 64000/4
- xor eax, eax
- rep stosd
- pop eax
- pop ecx
- pop edi
- retn
+  xor ah, ah
+  mov al, [esi]
+  mov [BIOSMODE], al
+  inc esi
+  mov al, [esi]
+  mov [COLUMNS], al
+  inc esi
+  mov di, [esi]
+  add esi, 2
+  mov al, [esi+CURSORTOPDATA]
+  mov [CURSORTOP], al
+  mov al, [esi+CURSORBOTTOMDATA]
+  mov [CURSORBOTTOM], al
+
+
+  ; -=# Set the misc. output and feature registers #=-
+
+  mov dx, MISC_OUTPUT
+  mov al, [esi]
+  inc esi
+  out dx, al
+  IODELAY
+
+  mov dx, FEATURE
+  mov al, [esi]
+  inc esi
+  out dx, al
+  IODELAY
+
+
+  ; -=# set sequencer registers #=-
+
+  mov dx, SC_INDEX
+  mov cl, NUMSEQUENCER
+  call set_vga_register_set
+
+
+  ; -=# set the CRTC registers #=-
+
+  mov ah, [esi+V_RETRACE_END]
+  mov al, V_RETRACE_END
+  and ah, 0x7f
+  mov dx, CRTC_INDEX
+  out dx, ax
+  IODELAY
+
+  mov cl, NUMCRTC
+  call set_vga_register_set
+
+
+  ; -=# set the graphics registers #=-
+
+  mov dx, GRAPHICS_INDEX
+  mov cl, NUMGRAPHICS
+  call set_vga_register_set
+
+
+  ; -=# set the attribute registers #=-
+
+  mov dx, FEATURE
+  in al, dx		; reset the attrib data/address flipflop
+  IODELAY
+  mov dx, ATTRIB
+  mov cl, NUMATTRIB
+  xor al, al
+.loop:
+  mov ah, [esi]
+  out dx, al
+  IODELAY
+  xchg al, ah
+  out dx, al
+  xchg ah, al
+  inc al
+  inc esi
+  cmp al, cl
+  jb .loop
+  mov al, ENABLEATTRIB
+  out dx, al
+  IODELAY
+
+  retn
 
 
 
@@ -2478,16 +2432,85 @@ clear_screen:
 				section .data
 ;---------------===============/             \===============---------------
 
-MCGAMode db 013h,40                     ;BIOS mode num, and num columns
- dw 0a000h
- db 063h,000h
- db 003h,001h,00fh,000h,00eh
- db 05fh,04fh,050h,082h,054h,080h,0bfh,01fh,000h,041h,000h,000h,000h,000h
- db 000h,000h,09ch,00eh,08fh,028h,040h,096h,0b9h,0a3h,0ffh
- db 000h,000h,000h,000h,000h,050h,007h,00fh,0ffh
- db 000h,001h,002h,003h,004h,005h,006h,007h,008h,009h,00ah,00bh,00ch,00dh
- db 00eh,00fh
- db 041h,000h,00fh,000h,000h
+mcga_mode: db 013h, 40		;BIOS mode num, and num columns
+  dw 0a000h
+
+  ; misc output, feature control
+  db 063h,000h
+
+  ; -=# sequencer registers #=-
+
+  db 003h,001h,00fh,000h,00eh
+  ;  |    |    |    |    `---------------- 0x04 sequencer memory mode
+  ;  |    |    |    `--------------------- 0x03 character map select
+  ;  |    |    `-------------------------- 0x02 map mask
+  ;  |    `------------------------------- 0x01 clocking mode
+  ;  `------------------------------------ 0x00 reset
+
+  ; -=# CRTC registers #=-
+
+  db 05fh,04fh,050h,082h,054h,080h,0bfh,01fh
+  ;  |    |    |    |    |    |    |    `- 0x07 overflow
+  ;  |    |    |    |    |    |    `------ 0x06 vertical total
+  ;  |    |    |    |    |    `----------- 0x05 end horiz retrace
+  ;  |    |    |    |    `---------------- 0x04 start horiz retrace
+  ;  |    |    |    `--------------------- 0x03 end horiz blanking
+  ;  |    |    `-------------------------- 0x02 start horiz blanking
+  ;  |    `------------------------------- 0x01 end horiz display
+  ;  `------------------------------------ 0x00 horiz total
+
+  db 000h,041h,000h,000h,000h,000h,000h,000h
+  ;  |    |    |    |    |    |    |    `- 0x0F cursor location low
+  ;  |    |    |    |    |    |    `------ 0x0E cursor location high
+  ;  |    |    |    |    |    `----------- 0x0D start address low
+  ;  |    |    |    |    `---------------- 0x0C start address high
+  ;  |    |    |    `--------------------- 0x0B cursor end
+  ;  |    |    `-------------------------- 0x0A cursor start
+  ;  |    `------------------------------- 0x09 maximum scan line
+  ;  `------------------------------------ 0x08 preset row scan
+
+  db 09ch,00eh,08fh,028h,040h,096h,0b9h,0a3h
+  ;  |    |    |    |    |    |    |    `- 0x17 crtc mode control
+  ;  |    |    |    |    |    |    `------ 0x16 end vertical blanking
+  ;  |    |    |    |    |    `----------- 0x15 start vertical blanking
+  ;  |    |    |    |    `---------------- 0x14 underline location
+  ;  |    |    |    `--------------------- 0x13 offset
+  ;  |    |    `-------------------------- 0x12 vert display end
+  ;  |    `------------------------------- 0x11 vert retrace end
+  ;  `------------------------------------ 0x10 vert retrace start
+
+  db 0xff
+  ;  `------------------------------------ 0x18 line compare register
+
+  ; -=# graphics registers #=-
+
+  db 000h,000h,000h,000h,000h,050h,007h,00fh
+  ;  |    |    |    |    |    |    |    `- 0x07 color don't care
+  ;  |    |    |    |    |    |    `------ 0x06 misc. graphics
+  ;  |    |    |    |    |    `----------- 0x05 graphics mode
+  ;  |    |    |    |    `---------------- 0x04 read map select
+  ;  |    |    |    `--------------------- 0x03 data rotate
+  ;  |    |    `-------------------------- 0x02 color compare
+  ;  |    `------------------------------- 0x01 enable set/reset
+  ;  `------------------------------------ 0x00 set/reset
+
+  db 0xff
+  ;  `------------------------------------ 0x08 bit mask
+
+  ; -=# attribute registers #=-
+ 
+  db 000h,001h,002h,003h,004h,005h,006h,007h
+  ;  `----`----`----`----`----`----`----`- 0x00 - 0x07 palette
+
+  db 008h,009h,00ah,00bh,00ch,00dh,00eh,00fh
+  ;  `----`----`----`----`----`----`----`- 0x08 - 0x0F palette
+
+  db 041h,000h,00fh,000h,000h
+  ;  |    |    |    |    `---------------- 0x14 color select
+  ;  |    |    |    `--------------------- 0x13 horiz pixel panning
+  ;  |    |    `-------------------------- 0x12 color plane enable 
+  ;  |    `------------------------------- 0x11 overscan color
+  ;  `------------------------------------ 0x10 attribute mode control
 
 memory_frame:	dd memory_pool
 
@@ -2497,7 +2520,7 @@ memory_frame:	dd memory_pool
 				section .bss
 ;---------------===============/            \===============---------------
 
-memory_pool:	resb 0x10000
+memory_pool:	resb 0x20000
 .end:
 
 
@@ -2506,2314 +2529,593 @@ memory_pool:	resb 0x10000
 				section .data
 ;---------------===============/             \===============---------------
 
-test_verts:
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038102, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038101, 0.197130
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.738858, 1.038101, 0.197129
-dd -0.823888, 1.164486, 0.091314
-dd -0.858255, 1.108221, 0.095998
-dd -0.879501, 1.053632, 0.101126
-dd -0.890063, 1.012707, 0.105449
-dd -0.894985, 0.984304, 0.109032
-dd -0.897475, 0.963663, 0.112560
-dd -0.896556, 0.946284, 0.116992
-dd -0.888690, 0.931548, 0.122966
-dd -0.870246, 0.923169, 0.129885
-dd -0.844715, 0.925079, 0.135226
-dd -0.821837, 0.932483, 0.137709
-dd -0.804577, 0.939872, 0.138053
-dd -0.790951, 0.944776, 0.137068
-dd -0.777320, 0.946689, 0.134834
-dd -0.759703, 0.948253, 0.130378
-dd -0.735417, 0.953453, 0.122350
-dd -0.706715, 0.966819, 0.110660
-dd -0.683765, 0.987550, 0.098916
-dd -0.671441, 1.007506, 0.090566
-dd -0.666410, 1.023470, 0.085346
-dd -0.664463, 1.036806, 0.081667
-dd -0.663092, 1.050856, 0.078096
-dd -0.662892, 1.069867, 0.074411
-dd -0.666029, 1.097058, 0.071516
-dd -0.675073, 1.130308, 0.071588
-dd -0.688983, 1.158202, 0.075908
-dd -0.702560, 1.174832, 0.081458
-dd -0.713986, 1.183897, 0.085875
-dd -0.724516, 1.190725, 0.088470
-dd -0.737148, 1.198737, 0.089233
-dd -0.756188, 1.204049, 0.089079
-dd -0.785581, 1.196993, 0.089215
-dd -0.914443, 1.284865, 0.001834
-dd -0.985028, 1.165509, 0.013561
-dd -1.028959, 1.051495, 0.025414
-dd -1.050848, 0.967322, 0.034887
-dd -1.060822, 0.910349, 0.042356
-dd -1.065257, 0.871014, 0.049324
-dd -1.062031, 0.840526, 0.057612
-dd -1.043821, 0.817825, 0.068248
-dd -1.003578, 0.809002, 0.079967
-dd -0.949514, 0.818444, 0.088371
-dd -0.901913, 0.835556, 0.091688
-dd -0.866469, 0.850608, 0.091422
-dd -0.838759, 0.859857, 0.088976
-dd -0.811175, 0.862816, 0.084341
-dd -0.775650, 0.864410, 0.075554
-dd -0.726821, 0.871997, 0.060011
-dd -0.669269, 0.894422, 0.037573
-dd -0.623409, 0.931321, 0.015157
-dd -0.598891, 0.968072, -0.000772
-dd -0.588930, 0.998463, -0.010826
-dd -0.585054, 1.024904, -0.018125
-dd -0.582236, 1.053970, -0.025526
-dd -0.581844, 1.094286, -0.033514
-dd -0.588541, 1.152472, -0.040344
-dd -0.607857, 1.223664, -0.041501
-dd -0.637583, 1.283072, -0.033887
-dd -0.666486, 1.318054, -0.023272
-dd -0.690575, 1.336580, -0.014512
-dd -0.712413, 1.349941, -0.009134
-dd -0.738156, 1.365172, -0.007169
-dd -0.776724, 1.373955, -0.006593
-dd -0.836351, 1.356053, -0.004714
-dd -1.008514, 1.394867, -0.066547
-dd -1.116318, 1.206614, -0.045331
-dd -1.183877, 1.029503, -0.025154
-dd -1.217617, 0.900761, -0.009753
-dd -1.232636, 0.815887, 0.001826
-dd -1.238344, 0.760611, 0.012034
-dd -1.231314, 0.722222, 0.023412
-dd -1.200277, 0.699424, 0.037090
-dd -1.135106, 0.699120, 0.051075
-dd -1.049981, 0.722207, 0.059886
-dd -0.976317, 0.751332, 0.062152
-dd -0.922192, 0.774124, 0.060217
-dd -0.880302, 0.786959, 0.055818
-dd -0.838821, 0.789956, 0.048666
-dd -0.785599, 0.789846, 0.035819
-dd -0.712670, 0.796580, 0.013564
-dd -0.626965, 0.822938, -0.018235
-dd -0.558929, 0.870375, -0.049798
-dd -0.522726, 0.919853, -0.072209
-dd -0.508099, 0.962508, -0.086516
-dd -0.502371, 1.001401, -0.097260
-dd -0.498062, 1.046121, -0.108667
-dd -0.497495, 1.109692, -0.121530
-dd -0.508122, 1.202232, -0.133346
-dd -0.538788, 1.315518, -0.137163
-dd -0.586003, 1.409578, -0.127511
-dd -0.631746, 1.464305, -0.112530
-dd -0.669514, 1.492455, -0.099639
-dd -0.703195, 1.511819, -0.091350
-dd -0.742196, 1.533159, -0.087725
-dd -0.800258, 1.543231, -0.085443
-dd -0.890162, 1.510538, -0.080062
-dd -1.103568, 1.490087, -0.109633
-dd -1.248551, 1.228663, -0.076527
-dd -1.340051, 0.986352, -0.046525
-dd -1.385855, 0.812954, -0.024522
-dd -1.405756, 0.701771, -0.008712
-dd -1.411961, 0.634070, 0.004417
-dd -1.399596, 0.593747, 0.017948
-dd -1.353395, 0.579509, 0.032795
-dd -1.260621, 0.597317, 0.046191
-dd -1.142603, 0.640352, 0.052473
-dd -1.042203, 0.683657, 0.051646
-dd -0.969423, 0.714038, 0.046932
-dd -0.913684, 0.729515, 0.040098
-dd -0.858793, 0.731438, 0.030379
-dd -0.788646, 0.727773, 0.013894
-dd -0.692844, 0.730117, -0.013984
-dd -0.580616, 0.754649, -0.053334
-dd -0.491890, 0.806111, -0.092085
-dd -0.444922, 0.863452, -0.119573
-dd -0.426061, 0.915617, -0.137364
-dd -0.418622, 0.965864, -0.151256
-dd -0.412820, 1.026459, -0.166740
-dd -0.412101, 1.114715, -0.184954
-dd -0.426945, 1.244249, -0.202763
-dd -0.469797, 1.402905, -0.210731
-dd -0.535807, 1.534006, -0.200484
-dd -0.599536, 1.609402, -0.182040
-dd -0.651682, 1.647062, -0.165378
-dd -0.697432, 1.671663, -0.154125
-dd -0.749447, 1.697704, -0.148388
-dd -0.826368, 1.706628, -0.143379
-dd -0.945668, 1.655257, -0.132670
-dd -1.196722, 1.566536, -0.124320
-dd -1.377688, 1.229643, -0.077125
-dd -1.492719, 0.921906, -0.035995
-dd -1.550440, 0.705143, -0.006873
-dd -1.574900, 0.570169, 0.013164
-dd -1.580753, 0.494191, 0.028783
-dd -1.561584, 0.458381, 0.043397
-dd -1.498187, 0.461698, 0.057370
-dd -1.375804, 0.507317, 0.067144
-dd -1.223959, 0.576424, 0.067835
-dd -1.096930, 0.635789, 0.061827
-dd -1.006104, 0.673361, 0.053230
-dd -0.937298, 0.690387, 0.043522
-dd -0.869934, 0.690082, 0.031261
-dd -0.784214, 0.680989, 0.011703
-dd -0.667562, 0.675294, -0.020457
-dd -0.531379, 0.691898, -0.065187
-dd -0.424194, 0.740291, -0.108807
-dd -0.367780, 0.800051, -0.139712
-dd -0.345278, 0.858483, -0.160056
-dd -0.336333, 0.918554, -0.176680
-dd -0.329083, 0.994769, -0.196191
-dd -0.328241, 1.108474, -0.220101
-dd -0.347477, 1.276679, -0.244792
-dd -0.403031, 1.482800, -0.258376
-dd -0.488649, 1.652349, -0.249098
-dd -0.571033, 1.748762, -0.228263
-dd -0.637857, 1.795511, -0.208334
-dd -0.695545, 1.824368, -0.194153
-dd -0.759908, 1.853457, -0.185884
-dd -0.854423, 1.858662, -0.177141
-dd -1.001263, 1.785036, -0.159317
-dd -1.285003, 1.621105, -0.109046
-dd -1.499588, 1.208702, -0.045915
-dd -1.636994, 0.837340, 0.007349
-dd -1.706108, 0.579906, 0.043904
-dd -1.734646, 0.424498, 0.068036
-dd -1.739278, 0.344809, 0.085616
-dd -1.711991, 0.320068, 0.100170
-dd -1.629824, 0.349738, 0.111176
-dd -1.476669, 0.432381, 0.114285
-dd -1.291076, 0.533112, 0.106380
-dd -1.138361, 0.609988, 0.093184
-dd -1.030681, 0.654115, 0.079679
-dd -0.950030, 0.671506, 0.066729
-dd -0.871555, 0.667841, 0.052032
-dd -0.772151, 0.651546, 0.030082
-dd -0.637400, 0.634273, -0.004835
-dd -0.480673, 0.636853, -0.052521
-dd -0.357924, 0.674905, -0.098451
-dd -0.293725, 0.731348, -0.130940
-dd -0.268313, 0.792484, -0.152790
-dd -0.258121, 0.860485, -0.171629
-dd -0.249515, 0.951569, -0.194990
-dd -0.248583, 1.090725, -0.224776
-dd -0.272259, 1.298138, -0.257058
-dd -0.340655, 1.552425, -0.277607
-dd -0.446116, 1.760683, -0.270892
-dd -0.547270, 1.877821, -0.248855
-dd -0.628625, 1.932944, -0.226282
-dd -0.697743, 1.964903, -0.209303
-dd -0.773379, 1.995228, -0.198146
-dd -0.883625, 1.994159, -0.184738
-dd -1.055220, 1.895253, -0.158162
-dd -1.365647, 1.651939, -0.064049
-dd -1.610430, 1.166317, 0.016384
-dd -1.768355, 0.735112, 0.082423
-dd -1.847982, 0.440976, 0.126498
-dd -1.879990, 0.269148, 0.154463
-dd -1.882563, 0.190466, 0.173412
-dd -1.846080, 0.183057, 0.186755
-dd -1.744138, 0.247134, 0.192777
-dd -1.559989, 0.374941, 0.186361
-dd -1.341773, 0.511913, 0.167095
-dd -1.165115, 0.607221, 0.144910
-dd -1.042302, 0.657058, 0.125616
-dd -0.951401, 0.673611, 0.109154
-dd -0.863532, 0.665552, 0.092203
-dd -0.752771, 0.640487, 0.068623
-dd -0.603250, 0.608426, 0.032571
-dd -0.430054, 0.591274, -0.015537
-dd -0.295136, 0.611974, -0.061125
-dd -0.225070, 0.659426, -0.093305
-dd -0.197573, 0.719590, -0.115560
-dd -0.186435, 0.793369, -0.136024
-dd -0.176605, 0.898104, -0.162937
-dd -0.175622, 1.061926, -0.198599
-dd -0.203646, 1.307881, -0.238953
-dd -0.284630, 1.609550, -0.267611
-dd -0.409557, 1.855589, -0.264985
-dd -0.529016, 1.992517, -0.242982
-dd -0.624309, 2.055029, -0.218476
-dd -0.703991, 2.088835, -0.198915
-dd -0.789466, 2.118532, -0.184600
-dd -0.913082, 2.108805, -0.165733
-dd -1.105862, 1.982353, -0.129026
-dd -1.436381, 1.658643, 0.008626
-dd -1.707105, 1.104264, 0.107176
-dd -1.883110, 0.618725, 0.186225
-dd -1.972071, 0.292880, 0.237679
-dd -2.006849, 0.109054, 0.269104
-dd -2.006606, 0.035956, 0.288803
-dd -1.960157, 0.051476, 0.299847
-dd -1.838055, 0.156785, 0.299062
-dd -1.623638, 0.336340, 0.280618
-dd -1.374884, 0.512965, 0.247635
-dd -1.176712, 0.627048, 0.214973
-dd -1.040910, 0.681597, 0.189204
-dd -0.941629, 0.696161, 0.169073
-dd -0.846327, 0.682828, 0.150114
-dd -0.726828, 0.647730, 0.125697
-dd -0.566241, 0.598192, 0.090131
-dd -0.381055, 0.556330, 0.044088
-dd -0.237658, 0.553353, 0.001423
-dd -0.163775, 0.586539, -0.028605
-dd -0.135063, 0.642171, -0.050177
-dd -0.123299, 0.719447, -0.071640
-dd -0.112415, 0.836231, -0.101706
-dd -0.111418, 1.023204, -0.143066
-dd -0.143569, 1.305876, -0.191717
-dd -0.236512, 1.652727, -0.229357
-dd -0.379944, 1.934492, -0.232188
-dd -0.516700, 2.089695, -0.211425
-dd -0.624926, 2.158414, -0.185738
-dd -0.714006, 2.192779, -0.163884
-dd -0.807623, 2.220047, -0.146244
-dd -0.941894, 2.199598, -0.121309
-dd -1.151726, 2.044221, -0.073431
-dd -1.495628, 1.642265, 0.105407
-dd -1.787489, 1.025389, 0.222307
-dd -1.978729, 0.492346, 0.314209
-dd -2.075633, 0.140462, 0.372687
-dd -2.112433, -0.050816, 0.407119
-dd -2.108740, -0.114151, 0.426958
-dd -2.051886, -0.071072, 0.434739
-dd -1.909857, 0.080725, 0.425622
-dd -1.666751, 0.316745, 0.393129
-dd -1.390341, 0.535089, 0.344597
-dd -1.173594, 0.667718, 0.300358
-dd -1.027218, 0.725892, 0.267654
-dd -0.921577, 0.737434, 0.243814
-dd -0.820923, 0.718150, 0.223139
-dd -0.695426, 0.672115, 0.198662
-dd -0.527611, 0.603067, 0.165103
-dd -0.335038, 0.532501, 0.123425
-dd -0.186910, 0.500549, 0.086045
-dd -0.111267, 0.514890, 0.059852
-dd -0.082202, 0.562745, 0.039975
-dd -0.070137, 0.641253, 0.018135
-dd -0.058388, 0.768209, -0.014612
-dd -0.057414, 0.976213, -0.061334
-dd -0.093361, 1.292791, -0.118251
-dd -0.197311, 1.681402, -0.165433
-dd -0.357795, 1.995887, -0.174857
-dd -0.510379, 2.167392, -0.156442
-dd -0.630204, 2.241011, -0.130323
-dd -0.727297, 2.274702, -0.106519
-dd -0.827205, 2.297902, -0.085492
-dd -0.969243, 2.265089, -0.054089
-dd -1.191705, 2.080332, 0.005617
-dd -1.542602, 1.605079, 0.221650
-dd -1.850569, 0.933255, 0.356595
-dd -2.053989, 0.360355, 0.460837
-dd -2.157324, -0.011599, 0.525815
-dd -2.195403, -0.205926, 0.562748
-dd -2.187772, -0.255926, 0.582162
-dd -2.120407, -0.181806, 0.585883
-dd -1.959230, 0.020000, 0.567265
-dd -1.689709, 0.315226, 0.519261
-dd -1.389086, 0.576006, 0.453937
-dd -1.157001, 0.726439, 0.397435
-dd -1.002578, 0.787135, 0.357570
-dd -0.892622, 0.794789, 0.330088
-dd -0.788684, 0.769099, 0.308017
-dd -0.659887, 0.711605, 0.284198
-dd -0.488588, 0.621729, 0.253992
-dd -0.293081, 0.519596, 0.218673
-dd -0.143811, 0.454610, 0.188602
-dd -0.068356, 0.446420, 0.167688
-dd -0.039741, 0.483730, 0.150391
-dd -0.027681, 0.561347, 0.128758
-dd -0.015267, 0.696457, 0.093841
-dd -0.014349, 0.922939, 0.042220
-dd -0.053680, 1.269866, -0.022697
-dd -0.167445, 1.695893, -0.079668
-dd -0.343154, 2.039400, -0.096546
-dd -0.509763, 2.224920, -0.081431
-dd -0.639627, 2.302096, -0.055583
-dd -0.743231, 2.333995, -0.030200
-dd -0.847545, 2.351733, -0.005826
-dd -0.994466, 2.305395, 0.032228
-dd -1.225123, 2.091675, 0.104030
-dd -1.577277, 1.550223, 0.352201
-dd -1.896396, 0.831726, 0.504425
-dd -2.108919, 0.226920, 0.620212
-dd -2.217154, -0.159199, 0.691041
-dd -2.255809, -0.352538, 0.729953
-dd -2.243909, -0.386359, 0.748445
-dd -2.166224, -0.278916, 0.747502
-dd -1.987121, -0.025301, 0.718592
-dd -1.693946, 0.329977, 0.654186
-dd -1.372860, 0.632680, 0.571411
-dd -1.128762, 0.799770, 0.502364
-dd -0.968780, 0.861928, 0.455332
-dd -0.856462, 0.865022, 0.424368
-dd -0.751188, 0.832691, 0.401224
-dd -0.621601, 0.763583, 0.378690
-dd -0.450275, 0.652262, 0.352953
-dd -0.255912, 0.516851, 0.325612
-dd -0.108753, 0.416086, 0.304471
-dd -0.035228, 0.382670, 0.289985
-dd -0.007772, 0.407237, 0.275992
-dd 0.004007, 0.482081, 0.255087
-dd 0.016887, 0.623311, 0.218516
-dd 0.017721, 0.865475, 0.162547
-dd -0.024529, 1.238729, 0.090083
-dd -0.146776, 1.697255, 0.023370
-dd -0.335653, 2.065671, -0.001529
-dd -0.514286, 2.262774, 0.009517
-dd -0.652515, 2.342205, 0.034472
-dd -0.761103, 2.371354, 0.061057
-dd -0.868010, 2.382528, 0.088651
-dd -1.017092, 2.321990, 0.133340
-dd -1.251738, 2.080472, 0.217150
-dd -1.558387, 1.571767, 0.471185
-dd -1.872384, 0.867977, 0.627608
-dd -2.080925, 0.278203, 0.745492
-dd -2.186667, -0.096653, 0.817029
-dd -2.223908, -0.282761, 0.856069
-dd -2.211246, -0.312719, 0.874529
-dd -2.133165, -0.204527, 0.873149
-dd -1.953919, 0.045619, 0.842825
-dd -1.660771, 0.392078, 0.775509
-dd -1.339759, 0.683006, 0.688910
-dd -1.095722, 0.840198, 0.616648
-dd -0.935780, 0.895779, 0.567480
-dd -0.823486, 0.894970, 0.535249
-dd -0.718076, 0.860413, 0.511482
-dd -0.587316, 0.789470, 0.489143
-dd -0.412281, 0.675459, 0.465018
-dd -0.210304, 0.535427, 0.441278
-dd -0.053277, 0.428668, 0.424904
-dd 0.027838, 0.390072, 0.414448
-dd 0.058940, 0.410916, 0.403177
-dd 0.070369, 0.483043, 0.383968
-dd 0.078440, 0.621983, 0.348371
-dd 0.069528, 0.862419, 0.292387
-dd 0.012507, 1.235525, 0.218042
-dd -0.126170, 1.697154, 0.146635
-dd -0.325557, 2.071877, 0.115207
-dd -0.507548, 2.275032, 0.120778
-dd -0.645330, 2.358319, 0.142380
-dd -0.752391, 2.388746, 0.167602
-dd -0.857955, 2.398684, 0.195684
-dd -1.005404, 2.336142, 0.242688
-dd -1.237284, 2.094926, 0.330744
-dd -1.486089, 1.674247, 0.573896
-dd -1.779457, 1.044341, 0.720810
-dd -1.971525, 0.514283, 0.831029
-dd -2.067756, 0.174429, 0.898027
-dd -2.101807, 0.000714, 0.935322
-dd -2.092001, -0.038274, 0.954647
-dd -2.023510, 0.037978, 0.957121
-dd -1.861924, 0.229897, 0.934475
-dd -1.592482, 0.499987, 0.878174
-dd -1.292066, 0.727206, 0.801951
-dd -1.060156, 0.849429, 0.736287
-dd -0.905848, 0.891382, 0.690335
-dd -0.795961, 0.887909, 0.659240
-dd -0.691634, 0.855874, 0.635394
-dd -0.559492, 0.793151, 0.612130
-dd -0.377625, 0.695607, 0.586520
-dd -0.160415, 0.580303, 0.561465
-dd 0.016981, 0.498233, 0.544981
-dd 0.114070, 0.475279, 0.535551
-dd 0.153077, 0.501977, 0.526013
-dd 0.164139, 0.571850, 0.509215
-dd 0.162846, 0.700434, 0.477071
-dd 0.135984, 0.921990, 0.425410
-dd 0.054554, 1.268496, 0.355128
-dd -0.106042, 1.703368, 0.284779
-dd -0.311704, 2.064852, 0.249295
-dd -0.487885, 2.267619, 0.248803
-dd -0.616474, 2.355788, 0.265096
-dd -0.715726, 2.391330, 0.286595
-dd -0.816212, 2.405542, 0.312360
-dd -0.958478, 2.353491, 0.357010
-dd -1.181252, 2.140633, 0.440914
-dd -1.402647, 1.764600, 0.678210
-dd -1.671802, 1.212921, 0.813726
-dd -1.845386, 0.746513, 0.914924
-dd -1.931241, 0.444555, 0.976544
-dd -1.961776, 0.285336, 1.011539
-dd -1.954701, 0.239128, 1.031240
-dd -1.896094, 0.285523, 1.037081
-dd -1.753430, 0.421941, 1.021699
-dd -1.510446, 0.618867, 0.976303
-dd -1.234359, 0.785013, 0.910818
-dd -1.017882, 0.873764, 0.852329
-dd -0.871686, 0.902786, 0.810157
-dd -0.766153, 0.897023, 0.780697
-dd -0.664892, 0.867869, 0.757262
-dd -0.534194, 0.813700, 0.733649
-dd -0.349942, 0.732728, 0.707239
-dd -0.123613, 0.641676, 0.681525
-dd 0.068260, 0.583153, 0.665276
-dd 0.177551, 0.574530, 0.656946
-dd 0.222778, 0.605880, 0.649136
-dd 0.233291, 0.672344, 0.634816
-dd 0.223723, 0.789148, 0.606382
-dd 0.181488, 0.989492, 0.559597
-dd 0.080062, 1.305416, 0.494338
-dd -0.096725, 1.707783, 0.426347
-dd -0.303797, 2.050230, 0.387984
-dd -0.471269, 2.248557, 0.382126
-dd -0.589111, 2.339273, 0.393383
-dd -0.679435, 2.378633, 0.411146
-dd -0.773389, 2.396348, 0.434336
-dd -0.908187, 2.354649, 0.475999
-dd -1.118388, 2.171232, 0.554527
-dd -1.309327, 1.838705, 0.781144
-dd -1.551009, 1.367717, 0.903504
-dd -1.704430, 0.967409, 0.994444
-dd -1.779261, 0.705421, 1.049915
-dd -1.806024, 0.562599, 1.082062
-dd -1.801456, 0.511409, 1.101584
-dd -1.752764, 0.531170, 1.110147
-dd -1.629850, 0.616809, 1.101350
-dd -1.415589, 0.746361, 1.066401
-dd -1.167248, 0.856220, 1.011734
-dd -0.969422, 0.914183, 0.960846
-dd -0.833851, 0.931444, 0.922966
-dd -0.734706, 0.923874, 0.895648
-dd -0.638629, 0.897917, 0.873158
-dd -0.512477, 0.852415, 0.849846
-dd -0.330866, 0.787625, 0.823423
-dd -0.102504, 0.719561, 0.797799
-dd 0.096845, 0.682598, 0.782163
-dd 0.213766, 0.686412, 0.774983
-dd 0.263150, 0.720932, 0.768845
-dd 0.272928, 0.782804, 0.756999
-dd 0.256546, 0.886603, 0.732451
-dd 0.202277, 1.063778, 0.691010
-dd 0.086376, 1.345613, 0.631689
-dd -0.099730, 1.710059, 0.567433
-dd -0.302751, 2.027588, 0.527587
-dd -0.458550, 2.217100, 0.517304
-dd -0.564240, 2.307687, 0.523982
-dd -0.644660, 2.349302, 0.538109
-dd -0.730663, 2.369555, 0.558516
-dd -0.855674, 2.337739, 0.596574
-dd -1.049823, 2.184077, 0.668527
-dd -1.208170, 1.892895, 0.879402
-dd -1.419693, 1.502778, 0.987106
-dd -1.551753, 1.169184, 1.066762
-dd -1.615196, 0.948182, 1.115439
-dd -1.638026, 0.823316, 1.144230
-dd -1.635645, 0.769723, 1.162976
-dd -1.596593, 0.767172, 1.173477
-dd -1.493721, 0.808721, 1.170322
-dd -1.309752, 0.879260, 1.145004
-dd -1.092007, 0.939768, 1.100905
-dd -0.915746, 0.970803, 1.057846
-dd -0.793198, 0.977935, 1.024682
-dd -0.702453, 0.969139, 0.999988
-dd -0.613696, 0.946622, 0.978994
-dd -0.495316, 0.909643, 0.956679
-dd -0.321717, 0.860113, 0.931099
-dd -0.099073, 0.812953, 0.906375
-dd 0.099925, 0.794730, 0.891743
-dd 0.219281, 0.808543, 0.885730
-dd 0.270453, 0.844529, 0.881151
-dd 0.279319, 0.900666, 0.871702
-dd 0.257920, 0.990529, 0.851107
-dd 0.195609, 1.143130, 0.815354
-dd 0.071669, 1.388126, 0.762780
-dd -0.116013, 1.709947, 0.703638
-dd -0.309184, 1.996946, 0.663873
-dd -0.450453, 2.173166, 0.650319
-dd -0.542841, 2.260723, 0.653055
-dd -0.612606, 2.302830, 0.663768
-dd -0.689360, 2.324495, 0.681250
-dd -0.802371, 2.301750, 0.715147
-dd -0.977190, 2.177262, 0.779426
-dd -1.101900, 1.924397, 0.969671
-dd -1.281368, 1.612824, 1.061592
-dd -1.391468, 1.344518, 1.129233
-dd -1.443495, 1.164296, 1.170646
-dd -1.462342, 1.058469, 1.195651
-dd -1.461745, 1.005269, 1.213016
-dd -1.431745, 0.985656, 1.224570
-dd -1.348597, 0.991542, 1.225888
-dd -1.195631, 1.013724, 1.209040
-dd -1.010536, 1.033727, 1.174917
-dd -0.858241, 1.042744, 1.139682
-dd -0.750839, 1.041785, 1.111535
-dd -0.670353, 1.032413, 1.089893
-dd -0.590942, 1.013485, 1.070927
-dd -0.483493, 0.984610, 1.050313
-dd -0.323320, 0.948894, 1.026452
-dd -0.114388, 0.919792, 1.003456
-dd 0.076015, 0.916750, 0.990208
-dd 0.192252, 0.937678, 0.985344
-dd 0.242660, 0.973288, 0.982156
-dd 0.250452, 1.022663, 0.974946
-dd 0.226089, 1.098046, 0.958256
-dd 0.160197, 1.225355, 0.928373
-dd 0.035255, 1.431756, 0.883190
-dd -0.145789, 1.707318, 0.830458
-dd -0.323301, 1.958822, 0.792417
-dd -0.447481, 2.117443, 0.776915
-dd -0.525769, 2.199007, 0.776503
-dd -0.584418, 2.239732, 0.784140
-dd -0.650846, 2.261576, 0.798641
-dd -0.749896, 2.246762, 0.827918
-dd -0.902528, 2.149929, 0.883604
-dd -0.993694, 1.931704, 1.048962
-dd -1.140166, 1.693857, 1.124439
-dd -1.228374, 1.487351, 1.179691
-dd -1.269310, 1.346434, 1.213585
-dd -1.284251, 1.260164, 1.234480
-dd -1.284966, 1.210205, 1.249887
-dd -1.263134, 1.179434, 1.261554
-dd -1.198772, 1.159387, 1.266011
-dd -1.076575, 1.145615, 1.256181
-dd -0.925219, 1.135423, 1.231118
-dd -0.798603, 1.128130, 1.203462
-dd -0.708050, 1.121415, 1.180482
-dd -0.639407, 1.112151, 1.162235
-dd -0.571123, 1.096852, 1.145781
-dd -0.477500, 1.075402, 1.127535
-dd -0.335877, 1.051592, 1.106235
-dd -0.148412, 1.037074, 1.085758
-dd 0.025229, 1.045101, 1.074241
-dd 0.132761, 1.069974, 1.070473
-dd 0.179817, 1.103331, 1.068461
-dd 0.186404, 1.145106, 1.063260
-dd 0.161268, 1.205898, 1.050301
-dd 0.096469, 1.307966, 1.026296
-dd -0.022242, 1.475176, 0.988932
-dd -0.188449, 1.702196, 0.943735
-dd -0.344843, 1.914224, 0.909049
-dd -0.449845, 2.051386, 0.893010
-dd -0.513656, 2.124110, 0.890361
-dd -0.561060, 2.161577, 0.895365
-dd -0.616379, 2.182334, 0.906919
-dd -0.699896, 2.174039, 0.931250
-dd -0.828108, 2.102449, 0.977668
-dd -0.886886, 1.914779, 1.114929
-dd -1.000435, 1.743616, 1.173808
-dd -1.067490, 1.593556, 1.216680
-dd -1.097999, 1.489275, 1.243032
-dd -1.109226, 1.422474, 1.259622
-dd -1.110749, 1.378485, 1.272560
-dd -1.095957, 1.342754, 1.283405
-dd -1.048876, 1.307225, 1.289579
-dd -0.956272, 1.270910, 1.285111
-dd -0.838701, 1.241680, 1.267924
-dd -0.738676, 1.224241, 1.247369
-dd -0.666146, 1.214263, 1.229547
-dd -0.610554, 1.205783, 1.214932
-dd -0.554824, 1.194043, 1.201392
-dd -0.477476, 1.179116, 1.186103
-dd -0.358918, 1.164951, 1.168122
-dd -0.199958, 1.161123, 1.150873
-dd -0.050670, 1.175799, 1.141377
-dd 0.042880, 1.201349, 1.138619
-dd 0.084116, 1.230664, 1.137533
-dd 0.089407, 1.264237, 1.134051
-dd 0.065696, 1.310778, 1.124538
-dd 0.006597, 1.388429, 1.106237
-dd -0.098897, 1.517057, 1.076879
-dd -0.242586, 1.694756, 1.040103
-dd -0.373093, 1.864569, 1.010286
-dd -0.457434, 1.977099, 0.995127
-dd -0.506834, 2.038429, 0.991214
-dd -0.543212, 2.070876, 0.994104
-dd -0.586985, 2.089325, 1.002836
-dd -0.653884, 2.085946, 1.022049
-dd -0.756209, 2.036432, 1.058815
-dd -0.784623, 1.875036, 1.166096
-dd -0.866308, 1.761780, 1.208726
-dd -0.913556, 1.661320, 1.239595
-dd -0.934587, 1.590008, 1.258610
-dd -0.942398, 1.542013, 1.270838
-dd -0.944217, 1.506438, 1.280887
-dd -0.935169, 1.471864, 1.290033
-dd -0.903402, 1.431375, 1.296506
-dd -0.838372, 1.386101, 1.295647
-dd -0.753618, 1.349143, 1.284957
-dd -0.680266, 1.327795, 1.270831
-dd -0.626348, 1.317053, 1.258005
-dd -0.584581, 1.309982, 1.247141
-dd -0.542403, 1.301626, 1.236814
-dd -0.483197, 1.292160, 1.224961
-dd -0.391360, 1.285177, 1.210929
-dd -0.266826, 1.287970, 1.197493
-dd -0.148469, 1.304842, 1.190239
-dd -0.073561, 1.327904, 1.188376
-dd -0.040342, 1.351573, 1.187949
-dd -0.036399, 1.376613, 1.185855
-dd -0.056612, 1.409654, 1.179409
-dd -0.105748, 1.464414, 1.166474
-dd -0.191696, 1.556200, 1.145061
-dd -0.306148, 1.685310, 1.117308
-dd -0.406953, 1.811535, 1.093671
-dd -0.469822, 1.897117, 1.080731
-dd -0.505310, 1.944934, 1.076526
-dd -0.531203, 1.970818, 1.077868
-dd -0.563356, 1.985850, 1.083980
-dd -0.613090, 1.985699, 1.098065
-dd -0.688890, 1.954548, 1.125097
-dd -0.689575, 1.815118, 1.201942
-dd -0.741310, 1.749886, 1.229123
-dd -0.770583, 1.691189, 1.248693
-dd -0.783301, 1.648462, 1.260773
-dd -0.788074, 1.618103, 1.268711
-dd -0.789701, 1.592986, 1.275564
-dd -0.785019, 1.565251, 1.282241
-dd -0.766282, 1.529783, 1.287677
-dd -0.726141, 1.488507, 1.288683
-dd -0.672345, 1.454615, 1.283014
-dd -0.624969, 1.435302, 1.274502
-dd -0.589674, 1.426153, 1.266376
-dd -0.562053, 1.421036, 1.259264
-dd -0.533966, 1.415803, 1.252338
-dd -0.494123, 1.410644, 1.244269
-dd -0.431648, 1.408332, 1.234659
-dd -0.346074, 1.413751, 1.225474
-dd -0.263899, 1.428592, 1.220601
-dd -0.211448, 1.446279, 1.219500
-dd -0.188070, 1.462968, 1.219463
-dd -0.185483, 1.479411, 1.218407
-dd -0.200361, 1.500050, 1.214586
-dd -0.235839, 1.534007, 1.206546
-dd -0.296892, 1.591649, 1.192791
-dd -0.376675, 1.674261, 1.174359
-dd -0.445075, 1.756881, 1.157950
-dd -0.486339, 1.814131, 1.148415
-dd -0.508782, 1.846850, 1.144838
-dd -0.524999, 1.864916, 1.145201
-dd -0.545800, 1.875595, 1.148962
-dd -0.578358, 1.877000, 1.158055
-dd -0.627806, 1.860211, 1.175560
-dd -0.603738, 1.738523, 1.222858
-dd -0.628099, 1.710988, 1.235745
-dd -0.641565, 1.685762, 1.244970
-dd -0.647258, 1.666836, 1.250677
-dd -0.649420, 1.652560, 1.254509
-dd -0.650419, 1.639466, 1.257975
-dd -0.648728, 1.623548, 1.261552
-dd -0.640582, 1.602036, 1.264766
-dd -0.622192, 1.576429, 1.265999
-dd -0.596803, 1.555338, 1.263869
-dd -0.574045, 1.543407, 1.260073
-dd -0.556864, 1.537951, 1.256245
-dd -0.543285, 1.535229, 1.252784
-dd -0.529387, 1.532793, 1.249333
-dd -0.509478, 1.530773, 1.245258
-dd -0.477949, 1.530718, 1.240380
-dd -0.434373, 1.535057, 1.235724
-dd -0.392145, 1.544080, 1.233292
-dd -0.364995, 1.553917, 1.232813
-dd -0.352842, 1.562607, 1.232910
-dd -0.351579, 1.570636, 1.232545
-dd -0.359602, 1.580213, 1.230874
-dd -0.378441, 1.595848, 1.227162
-dd -0.410431, 1.622751, 1.220591
-dd -0.451572, 1.662063, 1.211493
-dd -0.486010, 1.702278, 1.203062
-dd -0.506148, 1.730728, 1.197917
-dd -0.516700, 1.747326, 1.195784
-dd -0.524247, 1.756652, 1.195717
-dd -0.534256, 1.762248, 1.197434
-dd -0.550106, 1.763644, 1.201801
-dd -0.574096, 1.757178, 1.210231
-dd -0.528352, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649169, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649169, 1.229972
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649169, 1.229972
-dd -0.528353, 1.649169, 1.229972
-dd -0.528353, 1.649169, 1.229972
-dd -0.528353, 1.649169, 1.229972
-dd -0.528353, 1.649170, 1.229972
-dd -0.528353, 1.649169, 1.229972
-dd -0.528353, 1.649169, 1.229972
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528353, 1.649170, 1.229973
-dd -0.528352, 1.649170, 1.229973
-dd -0.528352, 1.649169, 1.229973
-dd -0.528352, 1.649170, 1.229973
-dd -0.528352, 1.649170, 1.229973
-dd -0.528352, 1.649170, 1.229973
-dd -1.147479, 0.248323, 0.435546
-dd -1.153552, 0.247975, 0.438222
-dd -1.159075, 0.243510, 0.438132
-dd -1.162248, 0.231235, 0.432793
-dd -1.162662, 0.206751, 0.419848
-dd -1.159658, 0.162401, 0.395071
-dd -1.151665, 0.095681, 0.356692
-dd -1.136404, 0.012758, 0.307402
-dd -1.114033, -0.056615, 0.263357
-dd -1.092685, -0.070848, 0.249201
-dd -1.082492, -0.045250, 0.258619
-dd -1.085726, -0.010164, 0.275066
-dd -1.103319, 0.018657, 0.289205
-dd -1.139898, 0.036090, 0.297399
-dd -1.197633, 0.045684, 0.300155
-dd -1.272416, 0.049478, 0.296648
-dd -1.339765, 0.048384, 0.285848
-dd -1.362903, 0.044108, 0.271080
-dd -1.354507, 0.036553, 0.257987
-dd -1.342322, 0.024722, 0.247982
-dd -1.344352, 0.005896, 0.239714
-dd -1.371716, -0.024023, 0.231804
-dd -1.417597, -0.059862, 0.227460
-dd -1.463179, -0.085318, 0.234741
-dd -1.469535, -0.069208, 0.264341
-dd -1.408067, 0.003689, 0.313638
-dd -1.321978, 0.090076, 0.360042
-dd -1.248164, 0.159336, 0.393164
-dd -1.196916, 0.205292, 0.413658
-dd -1.167188, 0.230662, 0.424731
-dd -1.151157, 0.243386, 0.430472
-dd -1.145208, 0.248007, 0.433350
-dd -1.118360, 0.203462, 0.357319
-dd -1.096590, 0.202166, 0.370976
-dd -1.081800, 0.191515, 0.382100
-dd -1.072184, 0.172548, 0.386541
-dd -1.063919, 0.142965, 0.382892
-dd -1.053230, 0.095384, 0.369526
-dd -1.038214, 0.025168, 0.348637
-dd -1.018881, -0.064346, 0.326657
-dd -1.000125, -0.145875, 0.318545
-dd -0.991679, -0.175483, 0.337557
-dd -0.995783, -0.160922, 0.370960
-dd -1.009427, -0.129499, 0.406265
-dd -1.032252, -0.096282, 0.441491
-dd -1.069072, -0.064903, 0.480715
-dd -1.125446, -0.032892, 0.524155
-dd -1.202542, -0.002792, 0.561899
-dd -1.283012, 0.013073, 0.568757
-dd -1.331046, 0.002300, 0.526714
-dd -1.347846, -0.023904, 0.465753
-dd -1.355158, -0.052932, 0.411372
-dd -1.371238, -0.081331, 0.370182
-dd -1.409371, -0.110656, 0.340130
-dd -1.464676, -0.137753, 0.315885
-dd -1.518104, -0.149506, 0.297329
-dd -1.527954, -0.122314, 0.290377
-dd -1.463147, -0.050018, 0.299405
-dd -1.370113, 0.028913, 0.315197
-dd -1.289004, 0.090949, 0.329318
-dd -1.231008, 0.133541, 0.338730
-dd -1.194099, 0.161240, 0.343124
-dd -1.167207, 0.181079, 0.345333
-dd -1.142936, 0.195608, 0.348765
-dd -1.092995, 0.140239, 0.274622
-dd -1.041466, 0.137487, 0.297666
-dd -1.005145, 0.121624, 0.317924
-dd -0.982097, 0.097278, 0.330446
-dd -0.964803, 0.063663, 0.335019
-dd -0.946169, 0.013460, 0.332621
-dd -0.923925, -0.060052, 0.329241
-dd -0.900455, -0.156427, 0.334952
-dd -0.885535, -0.250927, 0.363312
-dd -0.890516, -0.297081, 0.415796
-dd -0.909499, -0.294926, 0.473077
-dd -0.934045, -0.268842, 0.526742
-dd -0.962519, -0.233603, 0.582114
-dd -1.000002, -0.191973, 0.650797
-dd -1.055522, -0.142421, 0.732763
-dd -1.135555, -0.090908, 0.809456
-dd -1.229776, -0.060003, 0.832767
-dd -1.303073, -0.073657, 0.764537
-dd -1.345167, -0.112464, 0.657929
-dd -1.371951, -0.153204, 0.561276
-dd -1.402052, -0.187227, 0.488697
-dd -1.451009, -0.213535, 0.437418
-dd -1.515978, -0.230225, 0.393845
-dd -1.577841, -0.226785, 0.349882
-dd -1.592225, -0.186847, 0.306802
-dd -1.525296, -0.113461, 0.276021
-dd -1.426220, -0.040920, 0.261652
-dd -1.338279, 0.014157, 0.257252
-dd -1.273605, 0.052860, 0.256213
-dd -1.229193, 0.081437, 0.254879
-dd -1.190605, 0.106012, 0.254734
-dd -1.146502, 0.127409, 0.259729
-dd -1.072621, 0.058208, 0.189364
-dd -0.990066, 0.053474, 0.219715
-dd -0.931486, 0.033651, 0.246488
-dd -0.894682, 0.005569, 0.264937
-dd -0.868235, -0.030754, 0.276274
-dd -0.841599, -0.082815, 0.284013
-dd -0.812117, -0.159298, 0.297641
-dd -0.784560, -0.262634, 0.330643
-dd -0.773608, -0.370635, 0.394991
-dd -0.792207, -0.434158, 0.480289
-dd -0.826276, -0.445581, 0.560609
-dd -0.861957, -0.426566, 0.631518
-dd -0.896383, -0.392044, 0.705376
-dd -0.934978, -0.344634, 0.800865
-dd -0.990243, -0.283564, 0.917770
-dd -1.073833, -0.216796, 1.029650
-dd -1.182099, -0.173462, 1.067563
-dd -1.280318, -0.185834, 0.975158
-dd -1.347055, -0.230052, 0.826772
-dd -1.392704, -0.275967, 0.691486
-dd -1.436375, -0.310994, 0.590187
-dd -1.495891, -0.331648, 0.519348
-dd -1.570505, -0.336364, 0.457670
-dd -1.641211, -0.316509, 0.389547
-dd -1.661167, -0.262327, 0.311899
-dd -1.593553, -0.185978, 0.243022
-dd -1.489633, -0.118434, 0.199903
-dd -1.395585, -0.069809, 0.178076
-dd -1.324516, -0.035473, 0.167612
-dd -1.272460, -0.007676, 0.161792
-dd -1.221585, 0.018811, 0.160693
-dd -1.156541, 0.043442, 0.168343
-dd -1.058360, -0.041989, 0.103902
-dd -0.944335, -0.049225, 0.139052
-dd -0.863377, -0.071507, 0.169260
-dd -0.812884, -0.101403, 0.191081
-dd -0.777429, -0.138899, 0.207375
-dd -0.742975, -0.191919, 0.224028
-dd -0.706462, -0.270927, 0.253591
-dd -0.674999, -0.381119, 0.312607
-dd -0.668041, -0.502789, 0.411305
-dd -0.700050, -0.584056, 0.527687
-dd -0.748972, -0.609929, 0.629421
-dd -0.795700, -0.599669, 0.715821
-dd -0.836227, -0.568851, 0.805770
-dd -0.876399, -0.520757, 0.924326
-dd -0.932072, -0.455144, 1.071155
-dd -1.019790, -0.380359, 1.213005
-dd -1.141998, -0.327851, 1.263038
-dd -1.263996, -0.334403, 1.149410
-dd -1.353910, -0.375956, 0.964783
-dd -1.417173, -0.419700, 0.796051
-dd -1.473503, -0.450621, 0.669844
-dd -1.542964, -0.462890, 0.581877
-dd -1.626906, -0.454280, 0.503996
-dd -1.706634, -0.417166, 0.413826
-dd -1.733132, -0.347532, 0.304384
-dd -1.666434, -0.266250, 0.200461
-dd -1.559135, -0.202020, 0.131026
-dd -1.459966, -0.159092, 0.093512
-dd -1.383008, -0.129512, 0.075038
-dd -1.323386, -0.104297, 0.066234
-dd -1.259953, -0.079062, 0.065749
-dd -1.173390, -0.055291, 0.077173
-dd -1.051081, -0.158510, 0.020876
-dd -0.906089, -0.168726, 0.057991
-dd -0.803322, -0.191787, 0.088233
-dd -0.739637, -0.221386, 0.110590
-dd -0.695608, -0.258372, 0.129751
-dd -0.653774, -0.311361, 0.153732
-dd -0.610671, -0.392337, 0.197588
-dd -0.575617, -0.509060, 0.280445
-dd -0.572554, -0.644157, 0.410677
-dd -0.617334, -0.743016, 0.555327
-dd -0.680400, -0.783824, 0.676068
-dd -0.737739, -0.783848, 0.775602
-dd -0.784338, -0.759820, 0.878581
-dd -0.826533, -0.716512, 1.015487
-dd -0.883312, -0.653959, 1.185947
-dd -0.975641, -0.579152, 1.351257
-dd -1.111246, -0.521234, 1.410378
-dd -1.255063, -0.517292, 1.279345
-dd -1.365863, -0.547624, 1.065524
-dd -1.444859, -0.581405, 0.869932
-dd -1.512480, -0.602880, 0.723671
-dd -1.590919, -0.604107, 0.621711
-dd -1.683561, -0.581133, 0.530163
-dd -1.772224, -0.526395, 0.420888
-dd -1.806097, -0.440497, 0.283609
-dd -1.741999, -0.352328, 0.148991
-dd -1.632995, -0.289506, 0.056661
-dd -1.529918, -0.251290, 0.005806
-dd -1.447795, -0.226735, -0.018913
-dd -1.380926, -0.205949, -0.028999
-dd -1.305035, -0.185312, -0.027213
-dd -1.197004, -0.166755, -0.010936
-dd -1.051282, -0.288364, -0.057035
-dd -0.876810, -0.301964, -0.020961
-dd -0.753503, -0.324034, 0.005779
-dd -0.677551, -0.351150, 0.025712
-dd -0.625667, -0.385896, 0.045478
-dd -0.577139, -0.437826, 0.074913
-dd -0.528110, -0.520129, 0.130910
-dd -0.489903, -0.642844, 0.234607
-dd -0.490513, -0.790697, 0.392465
-dd -0.547003, -0.906442, 0.561579
-dd -0.623033, -0.962224, 0.698235
-dd -0.690199, -0.973804, 0.808047
-dd -0.742651, -0.959555, 0.920470
-dd -0.787270, -0.926571, 1.070256
-dd -0.845848, -0.874882, 1.257071
-dd -0.943145, -0.808356, 1.438346
-dd -1.091163, -0.749110, 1.503121
-dd -1.254087, -0.730144, 1.359192
-dd -1.382743, -0.740716, 1.124408
-dd -1.475025, -0.756749, 0.909636
-dd -1.552164, -0.763523, 0.748989
-dd -1.638299, -0.751288, 0.636725
-dd -1.738716, -0.713324, 0.534572
-dd -1.835944, -0.641130, 0.409846
-dd -1.877830, -0.538628, 0.249706
-dd -1.818000, -0.441758, 0.089869
-dd -1.709083, -0.378321, -0.021090
-dd -1.603480, -0.343647, -0.082433
-dd -1.517105, -0.324241, -0.111370
-dd -1.443548, -0.309665, -0.120932
-dd -1.355687, -0.296958, -0.115222
-dd -1.226909, -0.287977, -0.093120
-dd -1.059016, -0.427644, -0.127386
-dd -0.857472, -0.444928, -0.095349
-dd -0.715538, -0.464254, -0.075564
-dd -0.628631, -0.486764, -0.060967
-dd -0.569858, -0.517594, -0.042891
-dd -0.515533, -0.567462, -0.010061
-dd -0.461430, -0.650408, 0.055535
-dd -0.420609, -0.778384, 0.176405
-dd -0.424554, -0.937922, 0.357097
-dd -0.491324, -1.069322, 0.546084
-dd -0.578730, -1.139654, 0.695050
-dd -0.654631, -1.163714, 0.811943
-dd -0.712534, -1.161957, 0.929906
-dd -0.759906, -1.144555, 1.086659
-dd -0.820922, -1.111261, 1.281994
-dd -0.923395, -1.061129, 1.471189
-dd -1.082454, -1.004708, 1.537984
-dd -1.261158, -0.966617, 1.386100
-dd -1.404064, -0.949431, 1.139294
-dd -1.506759, -0.940421, 0.913673
-dd -1.591335, -0.927654, 0.744793
-dd -1.683635, -0.899935, 0.626266
-dd -1.790656, -0.846810, 0.516919
-dd -1.895814, -0.757869, 0.380899
-dd -1.946107, -0.638936, 0.203619
-dd -1.892094, -0.531804, 0.024860
-dd -1.785066, -0.465732, -0.099854
-dd -1.678408, -0.433311, -0.168484
-dd -1.588831, -0.419020, -0.199466
-dd -1.509355, -0.412258, -0.206699
-dd -1.410390, -0.410594, -0.195522
-dd -1.262230, -0.415288, -0.166798
-dd -1.073876, -0.571908, -0.188214
-dd -0.848435, -0.593061, -0.163019
-dd -0.690308, -0.608013, -0.153355
-dd -0.594061, -0.623979, -0.146776
-dd -0.529553, -0.649375, -0.132582
-dd -0.470484, -0.696264, -0.098472
-dd -0.412293, -0.779162, -0.026053
-dd -0.369465, -0.911528, 0.107885
-dd -0.376314, -1.081350, 0.306036
-dd -0.451653, -1.226727, 0.509807
-dd -0.548538, -1.310754, 0.667187
-dd -0.631840, -1.347818, 0.787820
-dd -0.694636, -1.360824, 0.907339
-dd -0.744999, -1.363672, 1.065072
-dd -0.809007, -1.355570, 1.261011
-dd -0.916702, -1.329264, 1.450024
-dd -1.085122, -1.279642, 1.515225
-dd -1.275878, -1.218998, 1.360457
-dd -1.429081, -1.167084, 1.110732
-dd -1.539062, -1.126660, 0.882731
-dd -1.628817, -1.090215, 0.711884
-dd -1.725598, -1.045506, 0.591229
-dd -1.837880, -0.977512, 0.478241
-dd -1.950102, -0.873026, 0.335334
-dd -2.008933, -0.738328, 0.147025
-dd -1.962075, -0.619719, -0.043929
-dd -1.858642, -0.549119, -0.177216
-dd -1.752398, -0.517624, -0.249786
-dd -1.660744, -0.508259, -0.280629
-dd -1.576278, -0.510639, -0.283839
-dd -1.467389, -0.522727, -0.265852
-dd -1.301774, -0.544687, -0.229926
-dd -1.095055, -0.716642, -0.238215
-dd -0.849434, -0.741724, -0.222321
-dd -0.677901, -0.750885, -0.225480
-dd -0.574121, -0.758663, -0.229226
-dd -0.505140, -0.777347, -0.220879
-dd -0.442466, -0.820473, -0.187532
-dd -0.381244, -0.902671, -0.111124
-dd -0.337042, -1.038469, 0.031604
-dd -0.346300, -1.216944, 0.241601
-dd -0.428334, -1.374292, 0.454894
-dd -0.532619, -1.470800, 0.616741
-dd -0.621838, -1.520980, 0.737839
-dd -0.688855, -1.550468, 0.855089
-dd -0.742347, -1.577394, 1.008095
-dd -0.809781, -1.600189, 1.197112
-dd -0.922587, -1.604054, 1.378264
-dd -1.098502, -1.564797, 1.438492
-dd -1.297418, -1.479017, 1.285734
-dd -1.456863, -1.386788, 1.041808
-dd -1.570951, -1.309834, 0.819532
-dd -1.663589, -1.246486, 0.652715
-dd -1.763125, -1.183860, 0.533918
-dd -1.879235, -1.101717, 0.420767
-dd -1.997496, -0.983283, 0.275355
-dd -2.064736, -0.833917, 0.082136
-dd -2.026092, -0.703019, -0.114271
-dd -1.927763, -0.626229, -0.250965
-dd -1.823314, -0.594374, -0.324184
-dd -1.730711, -0.589610, -0.352819
-dd -1.642286, -0.602124, -0.350521
-dd -1.524886, -0.630125, -0.324651
-dd -1.344153, -0.672246, -0.281187
-dd -1.121456, -0.857687, -0.276815
-dd -0.859655, -0.886642, -0.272223
-dd -0.677667, -0.888871, -0.290330
-dd -0.568233, -0.887180, -0.306235
-dd -0.496071, -0.898163, -0.305379
-dd -0.430945, -0.936912, -0.274655
-dd -0.367750, -1.017828, -0.196985
-dd -0.322799, -1.156079, -0.049661
-dd -0.333941, -1.341457, 0.166671
-dd -0.420751, -1.508589, 0.384366
-dd -0.530309, -1.616101, 0.546918
-dd -0.623912, -1.679127, 0.665446
-dd -0.694406, -1.726213, 0.776967
-dd -0.751065, -1.780060, 0.920119
-dd -0.822230, -1.838131, 1.095476
-dd -0.939899, -1.877155, 1.261913
-dd -1.121374, -1.851256, 1.314196
-dd -1.324631, -1.738672, 1.167900
-dd -1.486403, -1.602127, 0.937646
-dd -1.601552, -1.484971, 0.728399
-dd -1.694875, -1.392513, 0.571028
-dd -1.795493, -1.311626, 0.457709
-dd -1.914005, -1.216395, 0.347603
-dd -2.037185, -1.085884, 0.203796
-dd -2.112478, -0.923279, 0.011449
-dd -2.082788, -0.779694, -0.184044
-dd -1.990810, -0.695357, -0.319286
-dd -1.889377, -0.661967, -0.390102
-dd -1.796891, -0.661375, -0.414684
-dd -1.705570, -0.684647, -0.405663
-dd -1.581204, -0.730101, -0.371148
-dd -1.387941, -0.794479, -0.320050
-dd -1.151825, -0.991580, -0.304125
-dd -0.877876, -1.024250, -0.312325
-dd -0.688367, -1.018712, -0.346881
-dd -0.575122, -1.006658, -0.376258
-dd -0.501025, -1.009263, -0.384167
-dd -0.434547, -1.043204, -0.357667
-dd -0.370384, -1.122351, -0.281215
-dd -0.325265, -1.262107, -0.133185
-dd -0.337769, -1.452629, 0.084361
-dd -0.427501, -1.627313, 0.301739
-dd -0.540282, -1.744204, 0.461597
-dd -0.636768, -1.819486, 0.574903
-dd -0.709982, -1.884691, 0.677745
-dd -0.769755, -1.967278, 0.806708
-dd -0.844822, -2.063596, 0.962727
-dd -0.966999, -2.141299, 1.108697
-dd -1.152146, -2.131082, 1.150580
-dd -1.356197, -1.990929, 1.014570
-dd -1.516716, -1.807682, 0.804681
-dd -1.630161, -1.648119, 0.614669
-dd -1.722179, -1.525363, 0.471347
-dd -1.822350, -1.426404, 0.366608
-dd -1.941915, -1.319399, 0.262346
-dd -2.068876, -1.178817, 0.123790
-dd -2.151681, -1.004617, -0.062517
-dd -2.131366, -0.848331, -0.251404
-dd -2.046686, -0.755437, -0.380872
-dd -1.949285, -0.719498, -0.446609
-dd -1.857870, -0.722577, -0.465595
-dd -1.764684, -0.756875, -0.448945
-dd -1.634928, -0.820690, -0.405333
-dd -1.431800, -0.908599, -0.346722
-dd -1.063770, -1.079451, -0.400046
-dd -0.743738, -1.124029, -0.412417
-dd -0.525938, -1.127236, -0.446912
-dd -0.401466, -1.120043, -0.474380
-dd -0.328608, -1.124506, -0.480054
-dd -0.274493, -1.157950, -0.451523
-dd -0.235759, -1.234604, -0.373019
-dd -0.231287, -1.370159, -0.222891
-dd -0.293236, -1.556116, -0.003756
-dd -0.421018, -1.728630, 0.213741
-dd -0.552803, -1.846989, 0.371925
-dd -0.656076, -1.927122, 0.481877
-dd -0.731463, -2.001027, 0.579250
-dd -0.793504, -2.097935, 0.699454
-dd -0.871589, -2.213614, 0.843763
-dd -0.996837, -2.311375, 0.977758
-dd -1.183278, -2.310319, 1.014466
-dd -1.385241, -2.157957, 0.886326
-dd -1.542149, -1.952621, 0.690211
-dd -1.652282, -1.772686, 0.512798
-dd -1.741900, -1.635323, 0.378485
-dd -1.840674, -1.527727, 0.279084
-dd -1.959911, -1.415151, 0.178312
-dd -2.088168, -1.269710, 0.042883
-dd -2.174525, -1.089601, -0.139551
-dd -2.158977, -0.926416, -0.323980
-dd -2.077296, -0.828071, -0.450296
-dd -1.979703, -0.788881, -0.514900
-dd -1.884160, -0.790555, -0.534842
-dd -1.780856, -0.825121, -0.521620
-dd -1.630926, -0.891548, -0.484129
-dd -1.392683, -0.985789, -0.434078
-dd -0.874374, -1.136932, -0.564230
-dd -0.481153, -1.199825, -0.571561
-dd -0.218460, -1.226920, -0.589493
-dd -0.076985, -1.238928, -0.599886
-dd -0.008350, -1.254895, -0.592497
-dd 0.021502, -1.291666, -0.555671
-dd 0.012116, -1.364629, -0.471664
-dd -0.058978, -1.489851, -0.317734
-dd -0.211331, -1.661338, -0.096315
-dd -0.406863, -1.822106, 0.121900
-dd -0.570719, -1.934125, 0.279559
-dd -0.683622, -2.011424, 0.388319
-dd -0.760090, -2.083675, 0.484076
-dd -0.822746, -2.178557, 0.602156
-dd -0.901781, -2.291936, 0.744102
-dd -1.027252, -2.388175, 0.876453
-dd -1.211559, -2.388375, 0.914122
-dd -1.408574, -2.240940, 0.790448
-dd -1.560156, -2.041337, 0.599617
-dd -1.666022, -1.865970, 0.426408
-dd -1.752479, -1.731637, 0.294819
-dd -1.848768, -1.625755, 0.196816
-dd -1.965760, -1.514190, 0.096710
-dd -2.092055, -1.369505, -0.038279
-dd -2.177390, -1.190262, -0.219958
-dd -2.162069, -1.027938, -0.403373
-dd -2.079735, -0.929166, -0.530225
-dd -1.978692, -0.887390, -0.598228
-dd -1.875089, -0.883375, -0.625797
-dd -1.755309, -0.907733, -0.626688
-dd -1.573646, -0.960794, -0.609690
-dd -1.280373, -1.043279, -0.583026
-dd -0.718162, -1.205705, -0.711900
-dd -0.267991, -1.283564, -0.714614
-dd 0.029200, -1.331293, -0.717500
-dd 0.182892, -1.360081, -0.712544
-dd 0.246398, -1.385927, -0.693722
-dd 0.254135, -1.424904, -0.650286
-dd 0.202276, -1.493121, -0.563097
-dd 0.065618, -1.606653, -0.408904
-dd -0.163813, -1.761848, -0.189931
-dd -0.415462, -1.908954, 0.024513
-dd -0.604445, -2.013091, 0.178523
-dd -0.723604, -2.086315, 0.284030
-dd -0.799486, -2.155642, 0.376419
-dd -0.861423, -2.246812, 0.490233
-dd -0.939705, -2.355861, 0.627218
-dd -1.062840, -2.448807, 0.755438
-dd -1.241533, -2.450116, 0.793198
-dd -1.430181, -2.310028, 0.675981
-dd -1.573982, -2.119538, 0.493688
-dd -1.673925, -1.951762, 0.327705
-dd -1.755834, -1.822830, 0.201188
-dd -1.847975, -1.720605, 0.106403
-dd -1.960614, -1.612190, 0.008910
-dd -2.082619, -1.471097, -0.122962
-dd -2.165325, -1.296241, -0.300304
-dd -2.150515, -1.137959, -0.479116
-dd -2.069264, -1.040803, -0.603879
-dd -1.967203, -0.997577, -0.673525
-dd -1.858546, -0.988599, -0.707299
-dd -1.726577, -1.003414, -0.720684
-dd -1.520448, -1.043554, -0.722199
-dd -1.184308, -1.113950, -0.716808
-dd -0.603649, -1.284967, -0.836698
-dd -0.116344, -1.373611, -0.835407
-dd 0.202721, -1.437721, -0.825390
-dd 0.362930, -1.480086, -0.807475
-dd 0.420451, -1.513698, -0.779383
-dd 0.409138, -1.553567, -0.731412
-dd 0.322382, -1.616007, -0.643722
-dd 0.133293, -1.716692, -0.493217
-dd -0.156032, -1.854060, -0.281885
-dd -0.449143, -1.985787, -0.076095
-dd -0.654755, -2.080560, 0.070896
-dd -0.776226, -2.148454, 0.170954
-dd -0.849683, -2.213527, 0.258128
-dd -0.909436, -2.299221, 0.365416
-dd -0.985089, -2.401811, 0.494697
-dd -1.103108, -2.489592, 0.616142
-dd -1.272482, -2.491815, 0.653022
-dd -1.449211, -2.361543, 0.544284
-dd -1.582729, -2.183656, 0.373896
-dd -1.675088, -2.026608, 0.218283
-dd -1.751042, -1.905551, 0.099300
-dd -1.837309, -1.809037, 0.009664
-dd -1.943378, -1.706058, -0.083129
-dd -2.058631, -1.571607, -0.208997
-dd -2.136997, -1.404927, -0.378143
-dd -2.122998, -1.254107, -0.548494
-dd -2.044732, -1.160793, -0.668312
-dd -1.944391, -1.117427, -0.737590
-dd -1.834183, -1.104446, -0.775799
-dd -1.695169, -1.110750, -0.799496
-dd -1.473410, -1.138855, -0.816757
-dd -1.109249, -1.197157, -0.829639
-dd -0.537912, -1.373160, -0.932826
-dd -0.036118, -1.467720, -0.928317
-dd 0.290448, -1.543091, -0.908124
-dd 0.450788, -1.595137, -0.880240
-dd 0.501582, -1.633984, -0.845511
-dd 0.475130, -1.673292, -0.795399
-dd 0.362776, -1.729017, -0.710131
-dd 0.137121, -1.815995, -0.567486
-dd -0.191607, -1.934420, -0.369194
-dd -0.508997, -2.049379, -0.177091
-dd -0.721504, -2.133475, -0.040557
-dd -0.840935, -2.194838, 0.051836
-dd -0.910047, -2.254349, 0.131952
-dd -0.966093, -2.332818, 0.230466
-dd -1.037165, -2.426842, 0.349303
-dd -1.147212, -2.507586, 0.461315
-dd -1.303533, -2.510478, 0.496288
-dd -1.464857, -2.392402, 0.397960
-dd -1.585697, -2.230515, 0.242761
-dd -1.668902, -2.087266, 0.100611
-dd -1.737557, -1.976526, -0.008399
-dd -1.816259, -1.887776, -0.090952
-dd -1.913559, -1.792544, -0.176923
-dd -2.019595, -1.667839, -0.293844
-dd -2.091900, -1.513194, -0.450858
-dd -2.079014, -1.373315, -0.608825
-dd -2.005702, -1.286141, -0.720751
-dd -1.910001, -1.244061, -0.787494
-dd -1.802087, -1.228241, -0.828077
-dd -1.661828, -1.227414, -0.859402
-dd -1.434507, -1.244817, -0.888920
-dd -1.059300, -1.291397, -0.916257
-dd -0.525656, -1.468026, -0.995731
-dd -0.033702, -1.563183, -0.988934
-dd 0.284976, -1.644066, -0.961755
-dd 0.438710, -1.701385, -0.927367
-dd 0.482204, -1.742635, -0.888984
-dd 0.445209, -1.779868, -0.839320
-dd 0.317858, -1.828092, -0.759483
-dd 0.073507, -1.900887, -0.628852
-dd -0.271790, -1.999784, -0.448889
-dd -0.594586, -2.097032, -0.275352
-dd -0.803509, -2.169393, -0.152575
-dd -0.916375, -2.223164, -0.069945
-dd -0.979254, -2.275906, 0.001389
-dd -1.030103, -2.345536, 0.089031
-dd -1.094677, -2.429034, 0.194862
-dd -1.193986, -2.500985, 0.294929
-dd -1.333726, -2.504274, 0.326973
-dd -1.476449, -2.400519, 0.240768
-dd -1.582479, -2.257714, 0.103747
-dd -1.655160, -2.131076, -0.022097
-dd -1.715328, -2.032906, -0.118874
-dd -1.784917, -1.953842, -0.192524
-dd -1.871398, -1.868555, -0.269651
-dd -1.965908, -1.756565, -0.374795
-dd -2.030524, -1.617649, -0.515908
-dd -2.019032, -1.492039, -0.657737
-dd -1.952601, -1.413235, -0.758909
-dd -1.864473, -1.373905, -0.820909
-dd -1.762838, -1.356563, -0.861622
-dd -1.627488, -1.350284, -0.897506
-dd -1.405396, -1.358725, -0.935220
-dd -1.037383, -1.394336, -0.972537
-dd -0.568506, -1.566776, -1.022685
-dd -0.110983, -1.657068, -1.014624
-dd 0.184305, -1.737409, -0.983942
-dd 0.324744, -1.795325, -0.946797
-dd 0.360577, -1.836007, -0.907925
-dd 0.318071, -1.869677, -0.861346
-dd 0.187036, -1.909835, -0.789849
-dd -0.057146, -1.968397, -0.675111
-dd -0.395131, -2.047771, -0.518317
-dd -0.703853, -2.126893, -0.367765
-dd -0.898581, -2.186803, -0.261694
-dd -1.000455, -2.232133, -0.190670
-dd -1.055360, -2.277082, -0.129609
-dd -1.099650, -2.336490, -0.054648
-dd -1.155966, -2.407787, 0.035957
-dd -1.242041, -2.469423, 0.121882
-dd -1.362103, -2.472813, 0.150039
-dd -1.483531, -2.385113, 0.077334
-dd -1.573029, -2.263951, -0.039013
-dd -1.634112, -2.156284, -0.146149
-dd -1.684839, -2.072600, -0.228761
-dd -1.744013, -2.004889, -0.291921
-dd -1.817917, -1.931487, -0.358407
-dd -1.898894, -1.834856, -0.449247
-dd -1.954396, -1.714960, -0.571093
-dd -1.944544, -1.606582, -0.693447
-dd -1.886748, -1.538172, -0.781270
-dd -1.808959, -1.503004, -0.836416
-dd -1.717487, -1.485534, -0.874958
-dd -1.593190, -1.475690, -0.912118
-dd -1.387207, -1.477226, -0.953619
-dd -1.044830, -1.502980, -0.996026
-dd -0.664726, -1.666353, -1.013139
-dd -0.264981, -1.746509, -1.004868
-dd -0.007751, -1.820318, -0.974244
-dd 0.113165, -1.874173, -0.938145
-dd 0.141213, -1.911354, -0.901941
-dd 0.098357, -1.940097, -0.860968
-dd -0.025022, -1.971872, -0.800444
-dd -0.250319, -2.016588, -0.704960
-dd -0.557519, -2.077044, -0.575431
-dd -0.833266, -2.138185, -0.451541
-dd -1.003705, -2.185316, -0.364592
-dd -1.090531, -2.221619, -0.306648
-dd -1.135981, -2.257996, -0.257025
-dd -1.172559, -2.306127, -0.196152
-dd -1.219125, -2.363933, -0.122507
-dd -1.289895, -2.414059, -0.052472
-dd -1.387808, -2.417254, -0.029031
-dd -1.485922, -2.346836, -0.087284
-dd -1.557687, -2.249198, -0.181114
-dd -1.606459, -2.162262, -0.267734
-dd -1.647088, -2.094521, -0.334694
-dd -1.694877, -2.039468, -0.386113
-dd -1.754842, -1.979511, -0.440502
-dd -1.820710, -1.900391, -0.514969
-dd -1.865961, -1.802200, -0.614799
-dd -1.857944, -1.713467, -0.714961
-dd -1.810259, -1.657138, -0.787269
-dd -1.745239, -1.627407, -0.833676
-dd -1.667470, -1.611195, -0.867829
-dd -1.559986, -1.599767, -0.902971
-dd -1.380413, -1.596654, -0.943767
-dd -1.081188, -1.613957, -0.986254
-dd -0.809435, -1.763742, -0.968745
-dd -0.488209, -1.828994, -0.961285
-dd -0.282014, -1.890700, -0.934147
-dd -0.186035, -1.936132, -0.902724
-dd -0.165656, -1.967093, -0.872146
-dd -0.203882, -1.989744, -0.839038
-dd -0.308919, -2.013083, -0.791689
-dd -0.497884, -2.044741, -0.718118
-dd -0.752626, -2.087427, -0.618978
-dd -0.978195, -2.131263, -0.524493
-dd -1.115355, -2.165682, -0.458419
-dd -1.183680, -2.192666, -0.414580
-dd -1.218531, -2.219978, -0.377175
-dd -1.246520, -2.256154, -0.331321
-dd -1.282191, -2.299631, -0.275800
-dd -1.336121, -2.337442, -0.222860
-dd -1.410172, -2.340164, -0.204792
-dd -1.483724, -2.287691, -0.248111
-dd -1.537132, -2.214681, -0.318326
-dd -1.573278, -2.149549, -0.383300
-dd -1.603480, -2.098677, -0.433649
-dd -1.639289, -2.057160, -0.472473
-dd -1.684423, -2.011747, -0.513726
-dd -1.734116, -1.951686, -0.570317
-dd -1.768331, -1.877131, -0.646146
-dd -1.762279, -1.809776, -0.722167
-dd -1.725825, -1.766793, -0.777339
-dd -1.675528, -1.743562, -0.813454
-dd -1.614461, -1.729907, -0.841216
-dd -1.528828, -1.718850, -0.871227
-dd -1.384793, -1.713395, -0.907016
-dd -1.144287, -1.723855, -0.944760
-dd -0.995267, -1.856261, -0.893067
-dd -0.769669, -1.902582, -0.887348
-dd -0.625158, -1.947329, -0.866800
-dd -0.558450, -1.980506, -0.843308
-dd -0.545410, -2.002889, -0.820958
-dd -0.574489, -2.018534, -0.797598
-dd -0.651728, -2.033631, -0.765103
-dd -0.789104, -2.053346, -0.715295
-dd -0.972656, -2.079853, -0.648583
-dd -1.133420, -2.107519, -0.585213
-dd -1.229865, -2.129656, -0.541045
-dd -1.276998, -2.147317, -0.511862
-dd -1.300489, -2.165369, -0.487047
-dd -1.319319, -2.189301, -0.456648
-dd -1.343340, -2.218084, -0.419810
-dd -1.379484, -2.243183, -0.384598
-dd -1.428762, -2.245186, -0.372361
-dd -1.477303, -2.210757, -0.400726
-dd -1.512300, -2.162693, -0.446984
-dd -1.535891, -2.119736, -0.489888
-dd -1.555661, -2.086107, -0.523211
-dd -1.579282, -2.058553, -0.549006
-dd -1.609181, -2.028290, -0.576533
-dd -1.642174, -1.988182, -0.614364
-dd -1.664937, -1.938384, -0.665030
-dd -1.660918, -1.893406, -0.715788
-dd -1.636415, -1.864564, -0.752808
-dd -1.602241, -1.848636, -0.777479
-dd -1.560193, -1.838676, -0.797163
-dd -1.500489, -1.829808, -0.819284
-dd -1.399488, -1.824237, -0.846190
-dd -1.230547, -1.829554, -0.874820
-dd -1.213318, -1.941772, -0.791048
-dd -1.096242, -1.966029, -0.787868
-dd -1.021379, -1.989874, -0.776546
-dd -0.987069, -2.007652, -0.763727
-dd -0.980864, -2.019550, -0.751742
-dd -0.996940, -2.027552, -0.739572
-dd -1.038557, -2.034817, -0.723044
-dd -1.111910, -2.043936, -0.698016
-dd -1.209216, -2.056158, -0.664682
-dd -1.293682, -2.069138, -0.633115
-dd -1.343785, -2.079728, -0.611181
-dd -1.367868, -2.088324, -0.596744
-dd -1.379624, -2.097193, -0.584509
-dd -1.389032, -2.108962, -0.569530
-dd -1.401043, -2.123125, -0.551364
-dd -1.419035, -2.135508, -0.533959
-dd -1.443404, -2.136588, -0.527809
-dd -1.467219, -2.119791, -0.541621
-dd -1.484272, -2.096265, -0.564278
-dd -1.495722, -2.075202, -0.585338
-dd -1.505345, -2.058676, -0.601732
-dd -1.516929, -2.045085, -0.614470
-dd -1.531651, -2.030100, -0.628117
-dd -1.547931, -2.010201, -0.646904
-dd -1.559186, -1.985489, -0.672056
-dd -1.557202, -1.963175, -0.697235
-dd -1.544971, -1.948801, -0.715683
-dd -1.527743, -1.940706, -0.728181
-dd -1.506294, -1.935374, -0.738478
-dd -1.475503, -1.930285, -0.750419
-dd -1.423156, -1.926625, -0.765164
-dd -1.335468, -1.928489, -0.780959
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd -1.454153, -2.018794, -0.668374
-dd 0.671861, -0.050925, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671862, -0.050925, -0.255719
-dd 0.671861, -0.050926, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671861, -0.050926, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.671861, -0.050925, -0.255719
-dd 0.606030, 0.021506, -0.102472
-dd 0.568528, -0.000383, -0.054937
-dd 0.539316, -0.017436, -0.023884
-dd 0.523148, -0.030222, -0.009766
-dd 0.518801, -0.042226, -0.008257
-dd 0.525982, -0.057870, -0.018047
-dd 0.545962, -0.080560, -0.042645
-dd 0.580731, -0.111687, -0.087620
-dd 0.625254, -0.145529, -0.150770
-dd 0.661607, -0.167743, -0.210368
-dd 0.681455, -0.175379, -0.249834
-dd 0.689893, -0.174750, -0.272394
-dd 0.693530, -0.171157, -0.286781
-dd 0.696762, -0.166544, -0.300464
-dd 0.700806, -0.157899, -0.317216
-dd 0.705737, -0.140339, -0.338178
-dd 0.710386, -0.110862, -0.359565
-dd 0.712568, -0.076552, -0.372454
-dd 0.712414, -0.048939, -0.375752
-dd 0.711198, -0.029715, -0.373942
-dd 0.709703, -0.015282, -0.370428
-dd 0.707981, -0.001093, -0.366103
-dd 0.704971, 0.016207, -0.357911
-dd 0.699176, 0.037772, -0.341145
-dd 0.689784, 0.059672, -0.312860
-dd 0.679174, 0.072728, -0.279813
-dd 0.670980, 0.075845, -0.253130
-dd 0.665707, 0.073626, -0.234479
-dd 0.662337, 0.069505, -0.220402
-dd 0.659221, 0.064447, -0.205966
-dd 0.652425, 0.056342, -0.184826
-dd 0.636233, 0.042305, -0.150629
-dd 0.560054, 0.083174, 0.055078
-dd 0.484204, 0.034829, 0.146139
-dd 0.423161, -0.001756, 0.204488
-dd 0.388455, -0.028125, 0.230206
-dd 0.378586, -0.051882, 0.232010
-dd 0.393421, -0.082112, 0.212465
-dd 0.435286, -0.125456, 0.164470
-dd 0.507728, -0.184493, 0.076904
-dd 0.599407, -0.248243, -0.046318
-dd 0.672703, -0.289587, -0.163127
-dd 0.711477, -0.303281, -0.240903
-dd 0.727072, -0.301447, -0.285704
-dd 0.733316, -0.294101, -0.314550
-dd 0.739217, -0.284754, -0.342153
-dd 0.747072, -0.267225, -0.376047
-dd 0.756926, -0.231621, -0.418521
-dd 0.766328, -0.171847, -0.461884
-dd 0.770753, -0.102272, -0.488021
-dd 0.770440, -0.046280, -0.494709
-dd 0.767974, -0.007298, -0.491038
-dd 0.764944, 0.021970, -0.483912
-dd 0.761411, 0.050744, -0.475143
-dd 0.754999, 0.085843, -0.458525
-dd 0.742277, 0.129624, -0.424510
-dd 0.721237, 0.174140, -0.367120
-dd 0.697156, 0.200729, -0.300056
-dd 0.678655, 0.206994, -0.245868
-dd 0.667255, 0.202163, -0.207921
-dd 0.660980, 0.193075, -0.179169
-dd 0.656707, 0.181414, -0.149627
-dd 0.646377, 0.162516, -0.106890
-dd 0.617886, 0.130188, -0.038939
-dd 0.537841, 0.130861, 0.212761
-dd 0.423835, 0.051704, 0.341520
-dd 0.328965, -0.006622, 0.422113
-dd 0.273603, -0.047068, 0.456244
-dd 0.257054, -0.081943, 0.456968
-dd 0.279848, -0.125128, 0.428000
-dd 0.345086, -0.186211, 0.358664
-dd 0.457347, -0.268693, 0.232469
-dd 0.597739, -0.357020, 0.054445
-dd 0.707538, -0.413446, -0.115170
-dd 0.763629, -0.431239, -0.228807
-dd 0.784720, -0.427587, -0.294821
-dd 0.792333, -0.416418, -0.337776
-dd 0.800190, -0.402342, -0.379148
-dd 0.811478, -0.375930, -0.430110
-dd 0.826098, -0.322272, -0.494072
-dd 0.840231, -0.232186, -0.559417
-dd 0.846899, -0.127328, -0.598809
-dd 0.846428, -0.042941, -0.608889
-dd 0.842712, 0.015811, -0.603355
-dd 0.838144, 0.059921, -0.592616
-dd 0.832758, 0.103291, -0.579398
-dd 0.822602, 0.156215, -0.554345
-dd 0.801883, 0.222282, -0.503054
-dd 0.767002, 0.289544, -0.416506
-dd 0.726626, 0.329796, -0.315352
-dd 0.695748, 0.339152, -0.233556
-dd 0.677441, 0.331341, -0.176164
-dd 0.668872, 0.316483, -0.132501
-dd 0.665681, 0.296676, -0.087551
-dd 0.655604, 0.264276, -0.023348
-dd 0.619572, 0.209410, 0.076845
-dd 0.542438, 0.161713, 0.365756
-dd 0.391659, 0.047899, 0.524651
-dd 0.261802, -0.033932, 0.621251
-dd 0.184090, -0.088563, 0.660034
-dd 0.159790, -0.133519, 0.658197
-dd 0.190633, -0.187468, 0.620460
-dd 0.280166, -0.262541, 0.532698
-dd 0.433386, -0.362844, 0.373416
-dd 0.622709, -0.469131, 0.148062
-dd 0.767408, -0.535727, -0.067895
-dd 0.838516, -0.555337, -0.213602
-dd 0.863111, -0.549249, -0.299050
-dd 0.870690, -0.534298, -0.355294
-dd 0.879655, -0.515644, -0.409847
-dd 0.893858, -0.480619, -0.477271
-dd 0.912925, -0.409453, -0.562038
-dd 0.931618, -0.289966, -0.648698
-dd 0.940463, -0.150885, -0.700946
-dd 0.939838, -0.038956, -0.714315
-dd 0.934909, 0.038969, -0.706976
-dd 0.928850, 0.097476, -0.692732
-dd 0.921619, 0.155005, -0.675198
-dd 0.907459, 0.225239, -0.641958
-dd 0.877812, 0.312985, -0.573890
-dd 0.827101, 0.402439, -0.459021
-dd 0.767827, 0.456080, -0.324738
-dd 0.722671, 0.468366, -0.216068
-dd 0.696812, 0.457266, -0.139663
-dd 0.686690, 0.435933, -0.081286
-dd 0.687014, 0.406530, -0.021069
-dd 0.681344, 0.358064, 0.063797
-dd 0.643233, 0.276679, 0.193584
-dd 0.575574, 0.173596, 0.508986
-dd 0.390642, 0.022086, 0.688993
-dd 0.225644, -0.084405, 0.794428
-dd 0.124463, -0.152899, 0.833694
-dd 0.091509, -0.206511, 0.827792
-dd 0.130249, -0.268547, 0.782258
-dd 0.244309, -0.353167, 0.679759
-dd 0.438434, -0.464718, 0.494346
-dd 0.675403, -0.581329, 0.231128
-dd 0.852203, -0.652520, -0.022817
-dd 0.935403, -0.671452, -0.195541
-dd 0.961259, -0.662342, -0.297916
-dd 0.967304, -0.643771, -0.366161
-dd 0.976439, -0.620842, -0.432858
-dd 0.992910, -0.577762, -0.515586
-dd 1.015945, -0.490213, -0.619778
-dd 1.038873, -0.343214, -0.726377
-dd 1.049755, -0.172108, -0.790657
-dd 1.048986, -0.034405, -0.807104
-dd 1.042922, 0.061464, -0.798075
-dd 1.035468, 0.133442, -0.780551
-dd 1.026458, 0.204224, -0.758978
-dd 1.008140, 0.290679, -0.718068
-dd 0.968846, 0.398781, -0.634279
-dd 0.900671, 0.509145, -0.492863
-dd 0.820297, 0.575465, -0.327512
-dd 0.759277, 0.590422, -0.193586
-dd 0.725409, 0.575801, -0.099219
-dd 0.714577, 0.547437, -0.026798
-dd 0.720907, 0.507187, 0.048062
-dd 0.723951, 0.440411, 0.152092
-dd 0.689671, 0.329072, 0.307718
-dd 0.637329, 0.165403, 0.637613
-dd 0.422029, -0.025786, 0.828697
-dd 0.222825, -0.157372, 0.935243
-dd 0.097741, -0.238962, 0.970647
-dd 0.055465, -0.299482, 0.959244
-dd 0.101696, -0.366570, 0.907165
-dd 0.239761, -0.455824, 0.794222
-dd 0.473464, -0.571442, 0.590718
-dd 0.755259, -0.690124, 0.300647
-dd 0.960253, -0.759980, 0.018574
-dd 1.052129, -0.775659, -0.175076
-dd 1.076880, -0.763013, -0.291246
-dd 1.079879, -0.741102, -0.369781
-dd 1.088203, -0.714345, -0.447165
-dd 1.106199, -0.664042, -0.543518
-dd 1.132581, -0.561790, -0.665098
-dd 1.159276, -0.390096, -0.789587
-dd 1.171986, -0.190244, -0.864665
-dd 1.171088, -0.029407, -0.883876
-dd 1.164005, 0.082567, -0.873330
-dd 1.155298, 0.166638, -0.852862
-dd 1.144634, 0.249319, -0.827663
-dd 1.122128, 0.350357, -0.779861
-dd 1.072741, 0.476809, -0.681937
-dd 0.985945, 0.606099, -0.516641
-dd 0.882842, 0.683966, -0.323328
-dd 0.804801, 0.701240, -0.166615
-dd 0.762700, 0.682969, -0.055939
-dd 0.752055, 0.647216, 0.029394
-dd 0.766793, 0.595157, 0.117795
-dd 0.782755, 0.508310, 0.238834
-dd 0.758325, 0.364380, 0.415595
-dd 0.726016, 0.137231, 0.747552
-dd 0.485102, -0.094409, 0.939259
-dd 0.253688, -0.250753, 1.039099
-dd 0.105005, -0.344262, 1.066380
-dd 0.053018, -0.409714, 1.048198
-dd 0.106103, -0.478641, 0.991037
-dd 0.266904, -0.567432, 0.872299
-dd 0.537624, -0.679760, 0.659365
-dd 0.860021, -0.792131, 0.354368
-dd 1.088402, -0.854712, 0.054973
-dd 1.185243, -0.864649, -0.152821
-dd 1.206535, -0.848056, -0.279204
-dd 1.205061, -0.823192, -0.365986
-dd 1.211609, -0.793177, -0.452259
-dd 1.230336, -0.736709, -0.560123
-dd 1.259337, -0.621901, -0.696503
-dd 1.289209, -0.429115, -0.836263
-dd 1.303480, -0.204710, -0.920565
-dd 1.302472, -0.024114, -0.942136
-dd 1.294519, 0.101618, -0.930295
-dd 1.284743, 0.196016, -0.907312
-dd 1.272600, 0.288865, -0.879014
-dd 1.246004, 0.402388, -0.825317
-dd 1.186385, 0.544598, -0.715292
-dd 1.080381, 0.690233, -0.529545
-dd 0.953609, 0.778149, -0.312262
-dd 0.857908, 0.797312, -0.135953
-dd 0.807601, 0.775372, -0.011137
-dd 0.798041, 0.732098, 0.085569
-dd 0.823348, 0.667624, 0.185979
-dd 0.856066, 0.559550, 0.321330
-dd 0.847247, 0.381380, 0.513833
-dd 0.838332, 0.090390, 0.835892
-dd 0.577224, -0.181230, 1.017987
-dd 0.316531, -0.361249, 1.103685
-dd 0.145260, -0.465167, 1.118925
-dd 0.083480, -0.533469, 1.092921
-dd 0.142585, -0.601041, 1.032266
-dd 0.324193, -0.684403, 0.912449
-dd 0.628305, -0.786348, 0.698835
-dd 0.985943, -0.884408, 0.391019
-dd 1.232303, -0.934134, 0.085387
-dd 1.330332, -0.936067, -0.129492
-dd 1.345973, -0.915248, -0.262277
-dd 1.338764, -0.887896, -0.355059
-dd 1.342650, -0.855279, -0.448195
-dd 1.361308, -0.793869, -0.565155
-dd 1.392135, -0.668984, -0.713355
-dd 1.424514, -0.459266, -0.865365
-dd 1.440038, -0.215150, -0.957072
-dd 1.438941, -0.018691, -0.980537
-dd 1.430290, 0.118083, -0.967656
-dd 1.419655, 0.220774, -0.942654
-dd 1.406250, 0.321788, -0.911868
-dd 1.375786, 0.445365, -0.853429
-dd 1.306110, 0.600326, -0.733658
-dd 1.180903, 0.759285, -0.531429
-dd 1.030264, 0.855483, -0.294808
-dd 0.916813, 0.876058, -0.102615
-dd 0.858577, 0.850543, 0.033792
-dd 0.850946, 0.799846, 0.140023
-dd 0.888614, 0.722743, 0.250581
-dd 0.941329, 0.592959, 0.397175
-dd 0.953279, 0.379974, 0.599673
-dd 0.969741, 0.027226, 0.901141
-dd 0.694177, -0.282746, 1.064204
-dd 0.407846, -0.484717, 1.129122
-dd 0.215614, -0.597300, 1.128963
-dd 0.144251, -0.666397, 1.094380
-dd 0.208409, -0.729622, 1.031835
-dd 0.408381, -0.803008, 0.915447
-dd 0.741460, -0.888149, 0.709471
-dd 1.128216, -0.964734, 0.410402
-dd 1.386895, -0.996692, 0.109229
-dd 1.482496, -0.988713, -0.105832
-dd 1.490572, -0.963526, -0.241218
-dd 1.476603, -0.934204, -0.337691
-dd 1.477063, -0.899682, -0.435566
-dd 1.494897, -0.834635, -0.559064
-dd 1.526745, -0.702323, -0.715909
-dd 1.560918, -0.480118, -0.876942
-dd 1.577367, -0.221465, -0.974110
-dd 1.576205, -0.013307, -0.998972
-dd 1.567038, 0.131612, -0.985325
-dd 1.555770, 0.240418, -0.958834
-dd 1.541347, 0.347459, -0.926210
-dd 1.507337, 0.478488, -0.864262
-dd 1.428068, 0.642970, -0.737267
-dd 1.284232, 0.811996, -0.522808
-dd 1.110239, 0.914554, -0.271809
-dd 0.979478, 0.936049, -0.067723
-dd 0.913808, 0.907153, 0.077517
-dd 0.908852, 0.849347, 0.191237
-dd 0.960213, 0.759783, 0.309880
-dd 1.035410, 0.608468, 0.464474
-dd 1.072406, 0.361153, 0.671220
-dd 1.115008, -0.049183, 0.943250
-dd 0.830688, -0.394916, 1.079137
-dd 0.522805, -0.616624, 1.117753
-dd 0.311707, -0.736022, 1.099536
-dd 0.231228, -0.803995, 1.055919
-dd 0.299403, -0.860240, 0.993019
-dd 0.514965, -0.919741, 0.884115
-dd 0.872109, -0.982641, 0.693226
-dd 1.281509, -1.031759, 0.413315
-dd 1.546940, -1.041926, 0.126335
-dd 1.636849, -1.022558, -0.082541
-dd 1.635812, -0.992998, -0.216948
-dd 1.614329, -0.962236, -0.314882
-dd 1.610757, -0.926508, -0.415403
-dd 1.627094, -0.859132, -0.542894
-dd 1.659191, -0.722044, -0.705212
-dd 1.694453, -0.491804, -0.872036
-dd 1.711497, -0.223797, -0.972718
-dd 1.710293, -0.008112, -0.998480
-dd 1.700795, 0.142049, -0.984339
-dd 1.689119, 0.254789, -0.956890
-dd 1.673932, 0.365715, -0.923082
-dd 1.636774, 0.501585, -0.858861
-dd 1.548611, 0.672341, -0.727172
-dd 1.387205, 0.848145, -0.504749
-dd 1.190998, 0.955111, -0.244355
-dd 1.043825, 0.977046, -0.032392
-dd 0.971390, 0.945043, 0.118887
-dd 0.969718, 0.880618, 0.238006
-dd 1.035612, 0.779106, 0.362603
-dd 1.134940, 0.607040, 0.521980
-dd 1.200212, 0.326816, 0.727556
-dd 1.268759, -0.135405, 0.963435
-dd 0.981038, -0.513597, 1.065575
-dd 0.655862, -0.752516, 1.073645
-dd 0.428293, -0.876881, 1.035477
-dd 0.339364, -0.942037, 0.982664
-dd 0.410519, -0.989129, 0.920796
-dd 0.638753, -1.031614, 0.822815
-dd 1.014906, -1.067995, 0.653290
-dd 1.440521, -1.085016, 0.401362
-dd 1.707522, -1.070372, 0.136926
-dd 1.788963, -1.038600, -0.060216
-dd 1.777671, -1.004780, -0.190458
-dd 1.748202, -0.973096, -0.287808
-dd 1.740164, -0.936822, -0.389024
-dd 1.754440, -0.868352, -0.518115
-dd 1.786088, -0.729000, -0.682909
-dd 1.821775, -0.494942, -0.852466
-dd 1.839101, -0.222490, -0.954818
-dd 1.837877, -0.003226, -0.981007
-dd 1.828221, 0.149425, -0.966631
-dd 1.816352, 0.264036, -0.938727
-dd 1.800647, 0.376816, -0.904354
-dd 1.760787, 0.515052, -0.839032
-dd 1.664600, 0.688993, -0.705048
-dd 1.487054, 0.868439, -0.478708
-dd 1.270261, 0.977940, -0.213650
-dd 1.107929, 0.999871, 0.002371
-dd 1.029513, 0.965094, 0.157015
-dd 1.031583, 0.894672, 0.279512
-dd 1.112368, 0.781993, 0.407984
-dd 1.236651, 0.590442, 0.569126
-dd 1.332328, 0.279484, 0.768702
-dd 1.379731, -0.114682, 0.972078
-dd 1.113245, -0.515140, 1.057665
-dd 0.809819, -0.766905, 1.051743
-dd 0.597667, -0.896636, 1.005182
-dd 0.516682, -0.962968, 0.949476
-dd 0.588354, -1.008931, 0.890166
-dd 0.810312, -1.048178, 0.800407
-dd 1.173471, -1.079025, 0.645202
-dd 1.582214, -1.089195, 0.411083
-dd 1.836199, -1.069305, 0.160301
-dd 1.911296, -1.034975, -0.030187
-dd 1.897986, -1.000342, -0.158313
-dd 1.868261, -0.968554, -0.255393
-dd 1.860223, -0.932280, -0.356610
-dd 1.874498, -0.863810, -0.485701
-dd 1.906147, -0.724459, -0.650496
-dd 1.941834, -0.490401, -0.820052
-dd 1.959160, -0.217948, -0.922404
-dd 1.957936, 0.001315, -0.948593
-dd 1.948280, 0.153967, -0.934217
-dd 1.936411, 0.268577, -0.906313
-dd 1.920702, 0.381663, -0.871968
-dd 1.880811, 0.522309, -0.806869
-dd 1.784527, 0.703826, -0.673585
-dd 1.606781, 0.898816, -0.448680
-dd 1.389616, 1.028595, -0.185491
-dd 1.226388, 1.066840, 0.029051
-dd 1.146221, 1.041454, 0.182893
-dd 1.145169, 0.974001, 0.305239
-dd 1.220875, 0.857990, 0.433957
-dd 1.339816, 0.655955, 0.594177
-dd 1.434074, 0.325860, 0.788951
-dd 1.455809, 0.010809, 0.974501
-dd 1.232011, -0.398389, 1.063210
-dd 0.986122, -0.656707, 1.061944
-dd 0.818965, -0.791403, 1.019807
-dd 0.761129, -0.862724, 0.967943
-dd 0.830777, -0.915753, 0.912333
-dd 1.028451, -0.966027, 0.826867
-dd 1.348561, -1.013150, 0.676790
-dd 1.709874, -1.042745, 0.447639
-dd 1.938203, -1.037955, 0.199576
-dd 2.010031, -1.011298, 0.009664
-dd 2.003243, -0.979420, -0.118711
-dd 1.981030, -0.948363, -0.215878
-dd 1.977458, -0.912636, -0.316400
-dd 1.993794, -0.845260, -0.443891
-dd 2.025892, -0.708172, -0.606209
-dd 2.061154, -0.477931, -0.773033
-dd 2.078198, -0.209925, -0.873715
-dd 2.076994, 0.005760, -0.899477
-dd 2.067496, 0.155921, -0.885335
-dd 2.055820, 0.268662, -0.857886
-dd 2.040621, 0.380459, -0.824159
-dd 2.003376, 0.523197, -0.760573
-dd 1.914935, 0.715542, -0.630878
-dd 1.752961, 0.935652, -0.412548
-dd 1.555693, 1.100413, -0.157480
-dd 1.405966, 1.168847, 0.050267
-dd 1.328538, 1.163612, 0.199260
-dd 1.317971, 1.107649, 0.317951
-dd 1.369386, 0.996640, 0.443248
-dd 1.453491, 0.794692, 0.599996
-dd 1.514716, 0.459924, 0.791888
-dd 1.546396, 0.122298, 0.962326
-dd 1.364966, -0.286385, 1.052010
-dd 1.175054, -0.545297, 1.054900
-dd 1.051167, -0.681673, 1.017537
-dd 1.015022, -0.755980, 0.970125
-dd 1.081469, -0.814201, 0.918920
-dd 1.253621, -0.873236, 0.838984
-dd 1.529099, -0.933839, 0.696485
-dd 1.841063, -0.980058, 0.476366
-dd 2.042034, -0.988753, 0.235723
-dd 2.109514, -0.969438, 0.050158
-dd 2.108646, -0.940645, -0.075845
-dd 2.093541, -0.910865, -0.171128
-dd 2.094001, -0.876343, -0.269003
-dd 2.111835, -0.811297, -0.392501
-dd 2.143682, -0.678985, -0.549346
-dd 2.177856, -0.456779, -0.710379
-dd 2.194305, -0.198127, -0.807546
-dd 2.193143, 0.010031, -0.832409
-dd 2.183976, 0.154951, -0.818762
-dd 2.172708, 0.263756, -0.792270
-dd 2.158268, 0.372154, -0.759772
-dd 2.124120, 0.513863, -0.698810
-dd 2.044420, 0.711926, -0.574918
-dd 1.899700, 0.949863, -0.366824
-dd 1.724057, 1.142311, -0.124109
-dd 1.589324, 1.236130, 0.073419
-dd 1.515888, 1.248865, 0.215105
-dd 1.497097, 1.204220, 0.328157
-dd 1.525939, 1.099888, 0.447890
-dd 1.577459, 0.902096, 0.598396
-dd 1.608160, 0.569944, 0.783856
-dd 1.650395, 0.214809, 0.934262
-dd 1.509688, -0.183067, 1.022503
-dd 1.372321, -0.435918, 1.028862
-dd 1.288467, -0.570267, 0.996515
-dd 1.271733, -0.645232, 0.954103
-dd 1.333766, -0.706404, 0.907952
-dd 1.479789, -0.771411, 0.834760
-dd 1.710227, -0.841969, 0.702338
-dd 1.972202, -0.901190, 0.495503
-dd 2.144751, -0.921162, 0.267291
-dd 2.206811, -0.908594, 0.090139
-dd 2.211013, -0.883164, -0.030646
-dd 2.202351, -0.855227, -0.121904
-dd 2.206237, -0.822609, -0.215040
-dd 2.224895, -0.761199, -0.332000
-dd 2.255721, -0.636315, -0.480200
-dd 2.288100, -0.426597, -0.632210
-dd 2.303624, -0.182481, -0.723917
-dd 2.302528, 0.013978, -0.747382
-dd 2.293876, 0.150753, -0.734502
-dd 2.283241, 0.253443, -0.709500
-dd 2.269814, 0.356192, -0.678873
-dd 2.239175, 0.493430, -0.621696
-dd 2.168948, 0.691343, -0.505893
-dd 2.042610, 0.938442, -0.311806
-dd 1.889860, 1.149614, -0.085780
-dd 1.771328, 1.262695, 0.098024
-dd 1.703159, 1.290429, 0.229885
-dd 1.677833, 1.256566, 0.335263
-dd 1.686698, 1.160573, 0.447214
-dd 1.709129, 0.971342, 0.588580
-dd 1.713027, 0.649846, 0.763852
-dd 1.765731, 0.283874, 0.889825
-dd 1.662709, -0.092363, 0.974043
-dd 1.572537, -0.332119, 0.983020
-dd 1.523970, -0.460481, 0.955801
-dd 1.523573, -0.533563, 0.918827
-dd 1.580011, -0.595161, 0.878278
-dd 1.700058, -0.662930, 0.812937
-dd 1.886401, -0.739311, 0.692990
-dd 2.099238, -0.807201, 0.503642
-dd 2.243086, -0.835706, 0.292915
-dd 2.298733, -0.829037, 0.128329
-dd 2.306923, -0.807162, 0.015689
-dd 2.303785, -0.781627, -0.069348
-dd 2.310333, -0.751612, -0.155621
-dd 2.329060, -0.695144, -0.263485
-dd 2.358060, -0.580337, -0.399865
-dd 2.387933, -0.387550, -0.539625
-dd 2.402204, -0.163146, -0.623927
-dd 2.401196, 0.017451, -0.645498
-dd 2.393243, 0.143182, -0.633657
-dd 2.383466, 0.237581, -0.610674
-dd 2.371297, 0.332416, -0.582559
-dd 2.344502, 0.461584, -0.530308
-dd 2.284251, 0.652986, -0.424827
-dd 2.176952, 0.899565, -0.248405
-dd 2.047763, 1.119159, -0.043256
-dd 1.946243, 1.244264, 0.123446
-dd 1.884561, 1.283310, 0.243054
-dd 1.854734, 1.259314, 0.338785
-dd 1.847055, 1.173206, 0.440790
-dd 1.845089, 0.997050, 0.570153
-dd 1.827048, 0.694606, 0.731476
-dd 1.889434, 0.326065, 0.829508
-dd 1.819717, -0.017784, 0.907107
-dd 1.769632, -0.237435, 0.917724
-dd 1.750247, -0.355821, 0.895589
-dd 1.762437, -0.424397, 0.864345
-dd 1.812209, -0.483748, 0.829803
-dd 1.907247, -0.550807, 0.773236
-dd 2.051868, -0.628474, 0.667904
-dd 2.217992, -0.700194, 0.499934
-dd 2.333738, -0.734072, 0.311473
-dd 2.382123, -0.732220, 0.163440
-dd 2.393040, -0.713997, 0.061780
-dd 2.394284, -0.691378, -0.014913
-dd 2.402607, -0.664621, -0.092296
-dd 2.420603, -0.614318, -0.188650
-dd 2.446986, -0.512066, -0.310230
-dd 2.473680, -0.340372, -0.434719
-dd 2.486390, -0.140521, -0.509797
-dd 2.485492, 0.020316, -0.529008
-dd 2.478409, 0.132291, -0.518462
-dd 2.469702, 0.216361, -0.497994
-dd 2.459011, 0.301140, -0.472989
-dd 2.436293, 0.418697, -0.426713
-dd 2.386240, 0.597082, -0.333585
-dd 2.298077, 0.832947, -0.178135
-dd 2.192422, 1.049835, 0.002368
-dd 2.108238, 1.178961, 0.148938
-dd 2.054127, 1.225076, 0.254115
-dd 2.022085, 1.209676, 0.338418
-dd 2.001997, 1.134777, 0.428503
-dd 1.981342, 0.976050, 0.543220
-dd 1.947174, 0.700916, 0.687062
-dd 2.017857, 0.339448, 0.754813
-dd 1.975931, 0.037979, 0.823344
-dd 1.957413, -0.155018, 0.834546
-dd 1.960059, -0.259657, 0.817292
-dd 1.980609, -0.321183, 0.791901
-dd 2.022826, -0.375618, 0.763594
-dd 2.094620, -0.438437, 0.716473
-dd 2.201241, -0.512707, 0.627495
-dd 2.324586, -0.583188, 0.484215
-dd 2.413717, -0.619039, 0.322226
-dd 2.454196, -0.620748, 0.194312
-dd 2.466464, -0.606161, 0.106190
-dd 2.470784, -0.586895, 0.039754
-dd 2.479919, -0.563965, -0.026942
-dd 2.496389, -0.520886, -0.109671
-dd 2.519424, -0.433337, -0.213863
-dd 2.542352, -0.286338, -0.320462
-dd 2.553234, -0.115231, -0.384741
-dd 2.552465, 0.022471, -0.401189
-dd 2.546401, 0.118340, -0.392160
-dd 2.538947, 0.190318, -0.374636
-dd 2.529910, 0.263161, -0.353253
-dd 2.511384, 0.365841, -0.313842
-dd 2.471437, 0.524959, -0.234765
-dd 2.401918, 0.740010, -0.103019
-dd 2.319036, 0.942890, 0.049747
-dd 2.251982, 1.067719, 0.173710
-dd 2.206317, 1.116345, 0.262676
-dd 2.174467, 1.107975, 0.334084
-dd 2.146587, 1.045289, 0.410600
-dd 2.113662, 0.907906, 0.508420
-dd 2.069818, 0.667684, 0.631709
-dd 2.147028, 0.323832, 0.668139
-dd 2.126569, 0.073362, 0.725448
-dd 2.130197, -0.087301, 0.736174
-dd 2.147102, -0.174870, 0.723451
-dd 2.171559, -0.227038, 0.703854
-dd 2.205571, -0.274060, 0.681816
-dd 2.256588, -0.329266, 0.644519
-dd 2.330066, -0.395596, 0.573116
-dd 2.415845, -0.459845, 0.457061
-dd 2.480652, -0.494235, 0.324903
-dd 2.512829, -0.498151, 0.220031
-dd 2.525041, -0.487072, 0.147571
-dd 2.531048, -0.471487, 0.092976
-dd 2.540013, -0.452833, 0.038423
-dd 2.554215, -0.417808, -0.029001
-dd 2.573282, -0.346642, -0.113768
-dd 2.591975, -0.227156, -0.200428
-dd 2.600820, -0.088075, -0.252676
-dd 2.600195, 0.023855, -0.266045
-dd 2.595266, 0.101780, -0.258706
-dd 2.589207, 0.160286, -0.244462
-dd 2.581952, 0.219694, -0.227102
-dd 2.567602, 0.304714, -0.195227
-dd 2.537359, 0.438949, -0.131453
-dd 2.485425, 0.623804, -0.025397
-dd 2.423865, 0.801891, 0.097417
-dd 2.373211, 0.914302, 0.197008
-dd 2.336601, 0.960838, 0.268492
-dd 2.307326, 0.957725, 0.325946
-dd 2.276474, 0.907876, 0.387671
-dd 2.238026, 0.795067, 0.466878
-dd 2.191199, 0.596233, 0.567197
-dd 2.273049, 0.280771, 0.572532
-dd 2.267326, 0.088067, 0.616882
-dd 2.283368, -0.035761, 0.626123
-dd 2.306624, -0.103574, 0.617458
-dd 2.330586, -0.144442, 0.603425
-dd 2.356013, -0.181872, 0.587501
-dd 2.389249, -0.226447, 0.560097
-dd 2.435251, -0.280701, 0.506921
-dd 2.489609, -0.334098, 0.419713
-dd 2.533026, -0.363765, 0.319727
-dd 2.556768, -0.368518, 0.240019
-dd 2.567570, -0.360718, 0.184797
-dd 2.573878, -0.349022, 0.143212
-dd 2.581734, -0.334947, 0.101841
-dd 2.593022, -0.308535, 0.050879
-dd 2.607642, -0.254877, -0.013084
-dd 2.621775, -0.164791, -0.078429
-dd 2.628443, -0.059933, -0.117821
-dd 2.627972, 0.024455, -0.127900
-dd 2.624256, 0.083206, -0.122367
-dd 2.619688, 0.127316, -0.111628
-dd 2.614282, 0.172246, -0.098554
-dd 2.603968, 0.237456, -0.074636
-dd 2.582754, 0.342151, -0.026913
-dd 2.546856, 0.488682, 0.052313
-dd 2.504583, 0.632337, 0.143938
-dd 2.469135, 0.724886, 0.218190
-dd 2.441896, 0.764965, 0.271492
-dd 2.417412, 0.765247, 0.314390
-dd 2.388318, 0.728450, 0.360592
-dd 2.351005, 0.642587, 0.420093
-dd 2.307731, 0.490133, 0.495802
-dd 2.392468, 0.213307, 0.471349
-dd 2.394763, 0.083018, 0.501494
-dd 2.413763, -0.000838, 0.508350
-dd 2.435793, -0.046958, 0.503183
-dd 2.455160, -0.075039, 0.494338
-dd 2.471896, -0.101116, 0.484207
-dd 2.490664, -0.132546, 0.466473
-dd 2.515290, -0.171211, 0.431602
-dd 2.544880, -0.209753, 0.373921
-dd 2.570270, -0.231786, 0.307360
-dd 2.585699, -0.236070, 0.254070
-dd 2.593868, -0.231243, 0.217058
-dd 2.599169, -0.223516, 0.189201
-dd 2.605071, -0.214170, 0.161598
-dd 2.612925, -0.196641, 0.127703
-dd 2.622779, -0.161036, 0.085229
-dd 2.632182, -0.101262, 0.041867
-dd 2.636606, -0.031688, 0.015729
-dd 2.636293, 0.024305, 0.009041
-dd 2.633827, 0.063287, 0.012713
-dd 2.630797, 0.092555, 0.019838
-dd 2.627250, 0.122455, 0.028504
-dd 2.620723, 0.166419, 0.044302
-dd 2.607644, 0.238078, 0.075743
-dd 2.585871, 0.339801, 0.127848
-dd 2.560420, 0.441012, 0.188035
-dd 2.538622, 0.507316, 0.236779
-dd 2.520776, 0.537045, 0.271775
-dd 2.503016, 0.538883, 0.299974
-dd 2.480048, 0.514962, 0.330420
-dd 2.450064, 0.457481, 0.369764
-dd 2.416346, 0.354726, 0.420045
-dd 2.502556, 0.125531, 0.367917
-dd 2.506535, 0.060146, 0.383118
-dd 2.519810, 0.018001, 0.386838
-dd 2.533758, -0.005269, 0.384562
-dd 2.544930, -0.019568, 0.380417
-dd 2.553120, -0.033008, 0.375624
-dd 2.560841, -0.049374, 0.367089
-dd 2.570228, -0.069688, 0.350085
-dd 2.581793, -0.090150, 0.321725
-dd 2.592716, -0.102112, 0.288799
-dd 2.600173, -0.104753, 0.262331
-dd 2.604670, -0.102535, 0.243905
-dd 2.607806, -0.098740, 0.230043
-dd 2.611038, -0.094128, 0.216360
-dd 2.615082, -0.085482, 0.199608
-dd 2.620013, -0.067923, 0.178646
-dd 2.624662, -0.038446, 0.157259
-dd 2.626843, -0.004135, 0.144370
-dd 2.626689, 0.023477, 0.141071
-dd 2.625473, 0.042701, 0.142882
-dd 2.623979, 0.057134, 0.146396
-dd 2.622249, 0.071920, 0.150665
-dd 2.619178, 0.093928, 0.158423
-dd 2.613194, 0.130290, 0.173822
-dd 2.603412, 0.182555, 0.199302
-dd 2.592076, 0.235222, 0.228699
-dd 2.582132, 0.270208, 0.252492
-dd 2.573437, 0.286335, 0.269577
-dd 2.563971, 0.288012, 0.283360
-dd 2.550932, 0.276447, 0.298276
-dd 2.533703, 0.247861, 0.317614
-dd 2.514736, 0.196442, 0.342432
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265237
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601440, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265237
-dd 2.601441, 0.022070, 0.265236
-dd 2.601441, 0.022070, 0.265237
-dd 2.601441, 0.022070, 0.265237
-vertcount equ ($ - test_verts) / 12
-test_faces:
 
+
+;-----------------------------------------------------------------------.
+						test_verts:		;
+
+dd -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129
+dd -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197130, -0.738858, 1.038101, 0.197130
+dd -0.738858, 1.038101, 0.197130, -0.738858, 1.038101, 0.197130, -0.738858, 1.038101, 0.197130, -0.738858, 1.038102, 0.197130
+dd -0.738858, 1.038101, 0.197130, -0.738858, 1.038102, 0.197130, -0.738858, 1.038102, 0.197130, -0.738858, 1.038102, 0.197130
+dd -0.738858, 1.038102, 0.197130, -0.738858, 1.038102, 0.197130, -0.738858, 1.038101, 0.197130, -0.738858, 1.038102, 0.197130
+dd -0.738858, 1.038102, 0.197130, -0.738858, 1.038102, 0.197130, -0.738858, 1.038102, 0.197130, -0.738858, 1.038102, 0.197130
+dd -0.738858, 1.038101, 0.197130, -0.738858, 1.038101, 0.197130, -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129
+dd -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129, -0.738858, 1.038101, 0.197129
+dd -0.823888, 1.164486, 0.091314, -0.858255, 1.108221, 0.095998, -0.879501, 1.053632, 0.101126, -0.890063, 1.012707, 0.105449
+dd -0.894985, 0.984304, 0.109032, -0.897475, 0.963663, 0.112560, -0.896556, 0.946284, 0.116992, -0.888690, 0.931548, 0.122966
+dd -0.870246, 0.923169, 0.129885, -0.844715, 0.925079, 0.135226, -0.821837, 0.932483, 0.137709, -0.804577, 0.939872, 0.138053
+dd -0.790951, 0.944776, 0.137068, -0.777320, 0.946689, 0.134834, -0.759703, 0.948253, 0.130378, -0.735417, 0.953453, 0.122350
+dd -0.706715, 0.966819, 0.110660, -0.683765, 0.987550, 0.098916, -0.671441, 1.007506, 0.090566, -0.666410, 1.023470, 0.085346
+dd -0.664463, 1.036806, 0.081667, -0.663092, 1.050856, 0.078096, -0.662892, 1.069867, 0.074411, -0.666029, 1.097058, 0.071516
+dd -0.675073, 1.130308, 0.071588, -0.688983, 1.158202, 0.075908, -0.702560, 1.174832, 0.081458, -0.713986, 1.183897, 0.085875
+dd -0.724516, 1.190725, 0.088470, -0.737148, 1.198737, 0.089233, -0.756188, 1.204049, 0.089079, -0.785581, 1.196993, 0.089215
+dd -0.914443, 1.284865, 0.001834, -0.985028, 1.165509, 0.013561, -1.028959, 1.051495, 0.025414, -1.050848, 0.967322, 0.034887
+dd -1.060822, 0.910349, 0.042356, -1.065257, 0.871014, 0.049324, -1.062031, 0.840526, 0.057612, -1.043821, 0.817825, 0.068248
+dd -1.003578, 0.809002, 0.079967, -0.949514, 0.818444, 0.088371, -0.901913, 0.835556, 0.091688, -0.866469, 0.850608, 0.091422
+dd -0.838759, 0.859857, 0.088976, -0.811175, 0.862816, 0.084341, -0.775650, 0.864410, 0.075554, -0.726821, 0.871997, 0.060011
+dd -0.669269, 0.894422, 0.037573, -0.623409, 0.931321, 0.015157, -0.598891, 0.968072, -0.000772, -0.588930, 0.998463, -0.010826
+dd -0.585054, 1.024904, -0.018125, -0.582236, 1.053970, -0.025526, -0.581844, 1.094286, -0.033514, -0.588541, 1.152472, -0.040344
+dd -0.607857, 1.223664, -0.041501, -0.637583, 1.283072, -0.033887, -0.666486, 1.318054, -0.023272, -0.690575, 1.336580, -0.014512
+dd -0.712413, 1.349941, -0.009134, -0.738156, 1.365172, -0.007169, -0.776724, 1.373955, -0.006593, -0.836351, 1.356053, -0.004714
+dd -1.008514, 1.394867, -0.066547, -1.116318, 1.206614, -0.045331, -1.183877, 1.029503, -0.025154, -1.217617, 0.900761, -0.009753
+dd -1.232636, 0.815887, 0.001826, -1.238344, 0.760611, 0.012034, -1.231314, 0.722222, 0.023412, -1.200277, 0.699424, 0.037090
+dd -1.135106, 0.699120, 0.051075, -1.049981, 0.722207, 0.059886, -0.976317, 0.751332, 0.062152, -0.922192, 0.774124, 0.060217
+dd -0.880302, 0.786959, 0.055818, -0.838821, 0.789956, 0.048666, -0.785599, 0.789846, 0.035819, -0.712670, 0.796580, 0.013564
+dd -0.626965, 0.822938, -0.018235, -0.558929, 0.870375, -0.049798, -0.522726, 0.919853, -0.072209, -0.508099, 0.962508, -0.086516
+dd -0.502371, 1.001401, -0.097260, -0.498062, 1.046121, -0.108667, -0.497495, 1.109692, -0.121530, -0.508122, 1.202232, -0.133346
+dd -0.538788, 1.315518, -0.137163, -0.586003, 1.409578, -0.127511, -0.631746, 1.464305, -0.112530, -0.669514, 1.492455, -0.099639
+dd -0.703195, 1.511819, -0.091350, -0.742196, 1.533159, -0.087725, -0.800258, 1.543231, -0.085443, -0.890162, 1.510538, -0.080062
+dd -1.103568, 1.490087, -0.109633, -1.248551, 1.228663, -0.076527, -1.340051, 0.986352, -0.046525, -1.385855, 0.812954, -0.024522
+dd -1.405756, 0.701771, -0.008712, -1.411961, 0.634070, 0.004417, -1.399596, 0.593747, 0.017948, -1.353395, 0.579509, 0.032795
+dd -1.260621, 0.597317, 0.046191, -1.142603, 0.640352, 0.052473, -1.042203, 0.683657, 0.051646, -0.969423, 0.714038, 0.046932
+dd -0.913684, 0.729515, 0.040098, -0.858793, 0.731438, 0.030379, -0.788646, 0.727773, 0.013894, -0.692844, 0.730117, -0.013984
+dd -0.580616, 0.754649, -0.053334, -0.491890, 0.806111, -0.092085, -0.444922, 0.863452, -0.119573, -0.426061, 0.915617, -0.137364
+dd -0.418622, 0.965864, -0.151256, -0.412820, 1.026459, -0.166740, -0.412101, 1.114715, -0.184954, -0.426945, 1.244249, -0.202763
+dd -0.469797, 1.402905, -0.210731, -0.535807, 1.534006, -0.200484, -0.599536, 1.609402, -0.182040, -0.651682, 1.647062, -0.165378
+dd -0.697432, 1.671663, -0.154125, -0.749447, 1.697704, -0.148388, -0.826368, 1.706628, -0.143379, -0.945668, 1.655257, -0.132670
+dd -1.196722, 1.566536, -0.124320, -1.377688, 1.229643, -0.077125, -1.492719, 0.921906, -0.035995, -1.550440, 0.705143, -0.006873
+dd -1.574900, 0.570169, 0.013164, -1.580753, 0.494191, 0.028783, -1.561584, 0.458381, 0.043397, -1.498187, 0.461698, 0.057370
+dd -1.375804, 0.507317, 0.067144, -1.223959, 0.576424, 0.067835, -1.096930, 0.635789, 0.061827, -1.006104, 0.673361, 0.053230
+dd -0.937298, 0.690387, 0.043522, -0.869934, 0.690082, 0.031261, -0.784214, 0.680989, 0.011703, -0.667562, 0.675294, -0.020457
+dd -0.531379, 0.691898, -0.065187, -0.424194, 0.740291, -0.108807, -0.367780, 0.800051, -0.139712, -0.345278, 0.858483, -0.160056
+dd -0.336333, 0.918554, -0.176680, -0.329083, 0.994769, -0.196191, -0.328241, 1.108474, -0.220101, -0.347477, 1.276679, -0.244792
+dd -0.403031, 1.482800, -0.258376, -0.488649, 1.652349, -0.249098, -0.571033, 1.748762, -0.228263, -0.637857, 1.795511, -0.208334
+dd -0.695545, 1.824368, -0.194153, -0.759908, 1.853457, -0.185884, -0.854423, 1.858662, -0.177141, -1.001263, 1.785036, -0.159317
+dd -1.285003, 1.621105, -0.109046, -1.499588, 1.208702, -0.045915, -1.636994, 0.837340, 0.007349, -1.706108, 0.579906, 0.043904
+dd -1.734646, 0.424498, 0.068036, -1.739278, 0.344809, 0.085616, -1.711991, 0.320068, 0.100170, -1.629824, 0.349738, 0.111176
+dd -1.476669, 0.432381, 0.114285, -1.291076, 0.533112, 0.106380, -1.138361, 0.609988, 0.093184, -1.030681, 0.654115, 0.079679
+dd -0.950030, 0.671506, 0.066729, -0.871555, 0.667841, 0.052032, -0.772151, 0.651546, 0.030082, -0.637400, 0.634273, -0.004835
+dd -0.480673, 0.636853, -0.052521, -0.357924, 0.674905, -0.098451, -0.293725, 0.731348, -0.130940, -0.268313, 0.792484, -0.152790
+dd -0.258121, 0.860485, -0.171629, -0.249515, 0.951569, -0.194990, -0.248583, 1.090725, -0.224776, -0.272259, 1.298138, -0.257058
+dd -0.340655, 1.552425, -0.277607, -0.446116, 1.760683, -0.270892, -0.547270, 1.877821, -0.248855, -0.628625, 1.932944, -0.226282
+dd -0.697743, 1.964903, -0.209303, -0.773379, 1.995228, -0.198146, -0.883625, 1.994159, -0.184738, -1.055220, 1.895253, -0.158162
+dd -1.365647, 1.651939, -0.064049, -1.610430, 1.166317, 0.016384, -1.768355, 0.735112, 0.082423, -1.847982, 0.440976, 0.126498
+dd -1.879990, 0.269148, 0.154463, -1.882563, 0.190466, 0.173412, -1.846080, 0.183057, 0.186755, -1.744138, 0.247134, 0.192777
+dd -1.559989, 0.374941, 0.186361, -1.341773, 0.511913, 0.167095, -1.165115, 0.607221, 0.144910, -1.042302, 0.657058, 0.125616
+dd -0.951401, 0.673611, 0.109154, -0.863532, 0.665552, 0.092203, -0.752771, 0.640487, 0.068623, -0.603250, 0.608426, 0.032571
+dd -0.430054, 0.591274, -0.015537, -0.295136, 0.611974, -0.061125, -0.225070, 0.659426, -0.093305, -0.197573, 0.719590, -0.115560
+dd -0.186435, 0.793369, -0.136024, -0.176605, 0.898104, -0.162937, -0.175622, 1.061926, -0.198599, -0.203646, 1.307881, -0.238953
+dd -0.284630, 1.609550, -0.267611, -0.409557, 1.855589, -0.264985, -0.529016, 1.992517, -0.242982, -0.624309, 2.055029, -0.218476
+dd -0.703991, 2.088835, -0.198915, -0.789466, 2.118532, -0.184600, -0.913082, 2.108805, -0.165733, -1.105862, 1.982353, -0.129026
+dd -1.436381, 1.658643, 0.008626, -1.707105, 1.104264, 0.107176, -1.883110, 0.618725, 0.186225, -1.972071, 0.292880, 0.237679
+dd -2.006849, 0.109054, 0.269104, -2.006606, 0.035956, 0.288803, -1.960157, 0.051476, 0.299847, -1.838055, 0.156785, 0.299062
+dd -1.623638, 0.336340, 0.280618, -1.374884, 0.512965, 0.247635, -1.176712, 0.627048, 0.214973, -1.040910, 0.681597, 0.189204
+dd -0.941629, 0.696161, 0.169073, -0.846327, 0.682828, 0.150114, -0.726828, 0.647730, 0.125697, -0.566241, 0.598192, 0.090131
+dd -0.381055, 0.556330, 0.044088, -0.237658, 0.553353, 0.001423, -0.163775, 0.586539, -0.028605, -0.135063, 0.642171, -0.050177
+dd -0.123299, 0.719447, -0.071640, -0.112415, 0.836231, -0.101706, -0.111418, 1.023204, -0.143066, -0.143569, 1.305876, -0.191717
+dd -0.236512, 1.652727, -0.229357, -0.379944, 1.934492, -0.232188, -0.516700, 2.089695, -0.211425, -0.624926, 2.158414, -0.185738
+dd -0.714006, 2.192779, -0.163884, -0.807623, 2.220047, -0.146244, -0.941894, 2.199598, -0.121309, -1.151726, 2.044221, -0.073431
+dd -1.495628, 1.642265, 0.105407, -1.787489, 1.025389, 0.222307, -1.978729, 0.492346, 0.314209, -2.075633, 0.140462, 0.372687
+dd -2.112433, -0.050816, 0.407119, -2.108740, -0.114151, 0.426958, -2.051886, -0.071072, 0.434739, -1.909857, 0.080725, 0.425622
+dd -1.666751, 0.316745, 0.393129, -1.390341, 0.535089, 0.344597, -1.173594, 0.667718, 0.300358, -1.027218, 0.725892, 0.267654
+dd -0.921577, 0.737434, 0.243814, -0.820923, 0.718150, 0.223139, -0.695426, 0.672115, 0.198662, -0.527611, 0.603067, 0.165103
+dd -0.335038, 0.532501, 0.123425, -0.186910, 0.500549, 0.086045, -0.111267, 0.514890, 0.059852, -0.082202, 0.562745, 0.039975
+dd -0.070137, 0.641253, 0.018135, -0.058388, 0.768209, -0.014612, -0.057414, 0.976213, -0.061334, -0.093361, 1.292791, -0.118251
+dd -0.197311, 1.681402, -0.165433, -0.357795, 1.995887, -0.174857, -0.510379, 2.167392, -0.156442, -0.630204, 2.241011, -0.130323
+dd -0.727297, 2.274702, -0.106519, -0.827205, 2.297902, -0.085492, -0.969243, 2.265089, -0.054089, -1.191705, 2.080332, 0.005617
+dd -1.542602, 1.605079, 0.221650, -1.850569, 0.933255, 0.356595, -2.053989, 0.360355, 0.460837, -2.157324, -0.011599, 0.525815
+dd -2.195403, -0.205926, 0.562748, -2.187772, -0.255926, 0.582162, -2.120407, -0.181806, 0.585883, -1.959230, 0.020000, 0.567265
+dd -1.689709, 0.315226, 0.519261, -1.389086, 0.576006, 0.453937, -1.157001, 0.726439, 0.397435, -1.002578, 0.787135, 0.357570
+dd -0.892622, 0.794789, 0.330088, -0.788684, 0.769099, 0.308017, -0.659887, 0.711605, 0.284198, -0.488588, 0.621729, 0.253992
+dd -0.293081, 0.519596, 0.218673, -0.143811, 0.454610, 0.188602, -0.068356, 0.446420, 0.167688, -0.039741, 0.483730, 0.150391
+dd -0.027681, 0.561347, 0.128758, -0.015267, 0.696457, 0.093841, -0.014349, 0.922939, 0.042220, -0.053680, 1.269866, -0.022697
+dd -0.167445, 1.695893, -0.079668, -0.343154, 2.039400, -0.096546, -0.509763, 2.224920, -0.081431, -0.639627, 2.302096, -0.055583
+dd -0.743231, 2.333995, -0.030200, -0.847545, 2.351733, -0.005826, -0.994466, 2.305395, 0.032228, -1.225123, 2.091675, 0.104030
+dd -1.577277, 1.550223, 0.352201, -1.896396, 0.831726, 0.504425, -2.108919, 0.226920, 0.620212, -2.217154, -0.159199, 0.691041
+dd -2.255809, -0.352538, 0.729953, -2.243909, -0.386359, 0.748445, -2.166224, -0.278916, 0.747502, -1.987121, -0.025301, 0.718592
+dd -1.693946, 0.329977, 0.654186, -1.372860, 0.632680, 0.571411, -1.128762, 0.799770, 0.502364, -0.968780, 0.861928, 0.455332
+dd -0.856462, 0.865022, 0.424368, -0.751188, 0.832691, 0.401224, -0.621601, 0.763583, 0.378690, -0.450275, 0.652262, 0.352953
+dd -0.255912, 0.516851, 0.325612, -0.108753, 0.416086, 0.304471, -0.035228, 0.382670, 0.289985, -0.007772, 0.407237, 0.275992
+dd 0.004007, 0.482081, 0.255087, 0.016887, 0.623311, 0.218516, 0.017721, 0.865475, 0.162547, -0.024529, 1.238729, 0.090083
+dd -0.146776, 1.697255, 0.023370, -0.335653, 2.065671, -0.001529, -0.514286, 2.262774, 0.009517, -0.652515, 2.342205, 0.034472
+dd -0.761103, 2.371354, 0.061057, -0.868010, 2.382528, 0.088651, -1.017092, 2.321990, 0.133340, -1.251738, 2.080472, 0.217150
+dd -1.558387, 1.571767, 0.471185, -1.872384, 0.867977, 0.627608, -2.080925, 0.278203, 0.745492, -2.186667, -0.096653, 0.817029
+dd -2.223908, -0.282761, 0.856069, -2.211246, -0.312719, 0.874529, -2.133165, -0.204527, 0.873149, -1.953919, 0.045619, 0.842825
+dd -1.660771, 0.392078, 0.775509, -1.339759, 0.683006, 0.688910, -1.095722, 0.840198, 0.616648, -0.935780, 0.895779, 0.567480
+dd -0.823486, 0.894970, 0.535249, -0.718076, 0.860413, 0.511482, -0.587316, 0.789470, 0.489143, -0.412281, 0.675459, 0.465018
+dd -0.210304, 0.535427, 0.441278, -0.053277, 0.428668, 0.424904, 0.027838, 0.390072, 0.414448, 0.058940, 0.410916, 0.403177
+dd 0.070369, 0.483043, 0.383968, 0.078440, 0.621983, 0.348371, 0.069528, 0.862419, 0.292387, 0.012507, 1.235525, 0.218042
+dd -0.126170, 1.697154, 0.146635, -0.325557, 2.071877, 0.115207, -0.507548, 2.275032, 0.120778, -0.645330, 2.358319, 0.142380
+dd -0.752391, 2.388746, 0.167602, -0.857955, 2.398684, 0.195684, -1.005404, 2.336142, 0.242688, -1.237284, 2.094926, 0.330744
+dd -1.486089, 1.674247, 0.573896, -1.779457, 1.044341, 0.720810, -1.971525, 0.514283, 0.831029, -2.067756, 0.174429, 0.898027
+dd -2.101807, 0.000714, 0.935322, -2.092001, -0.038274, 0.954647, -2.023510, 0.037978, 0.957121, -1.861924, 0.229897, 0.934475
+dd -1.592482, 0.499987, 0.878174, -1.292066, 0.727206, 0.801951, -1.060156, 0.849429, 0.736287, -0.905848, 0.891382, 0.690335
+dd -0.795961, 0.887909, 0.659240, -0.691634, 0.855874, 0.635394, -0.559492, 0.793151, 0.612130, -0.377625, 0.695607, 0.586520
+dd -0.160415, 0.580303, 0.561465, 0.016981, 0.498233, 0.544981, 0.114070, 0.475279, 0.535551, 0.153077, 0.501977, 0.526013
+dd 0.164139, 0.571850, 0.509215, 0.162846, 0.700434, 0.477071, 0.135984, 0.921990, 0.425410, 0.054554, 1.268496, 0.355128
+dd -0.106042, 1.703368, 0.284779, -0.311704, 2.064852, 0.249295, -0.487885, 2.267619, 0.248803, -0.616474, 2.355788, 0.265096
+dd -0.715726, 2.391330, 0.286595, -0.816212, 2.405542, 0.312360, -0.958478, 2.353491, 0.357010, -1.181252, 2.140633, 0.440914
+dd -1.402647, 1.764600, 0.678210, -1.671802, 1.212921, 0.813726, -1.845386, 0.746513, 0.914924, -1.931241, 0.444555, 0.976544
+dd -1.961776, 0.285336, 1.011539, -1.954701, 0.239128, 1.031240, -1.896094, 0.285523, 1.037081, -1.753430, 0.421941, 1.021699
+dd -1.510446, 0.618867, 0.976303, -1.234359, 0.785013, 0.910818, -1.017882, 0.873764, 0.852329, -0.871686, 0.902786, 0.810157
+dd -0.766153, 0.897023, 0.780697, -0.664892, 0.867869, 0.757262, -0.534194, 0.813700, 0.733649, -0.349942, 0.732728, 0.707239
+dd -0.123613, 0.641676, 0.681525, 0.068260, 0.583153, 0.665276, 0.177551, 0.574530, 0.656946, 0.222778, 0.605880, 0.649136
+dd 0.233291, 0.672344, 0.634816, 0.223723, 0.789148, 0.606382, 0.181488, 0.989492, 0.559597, 0.080062, 1.305416, 0.494338
+dd -0.096725, 1.707783, 0.426347, -0.303797, 2.050230, 0.387984, -0.471269, 2.248557, 0.382126, -0.589111, 2.339273, 0.393383
+dd -0.679435, 2.378633, 0.411146, -0.773389, 2.396348, 0.434336, -0.908187, 2.354649, 0.475999, -1.118388, 2.171232, 0.554527
+dd -1.309327, 1.838705, 0.781144, -1.551009, 1.367717, 0.903504, -1.704430, 0.967409, 0.994444, -1.779261, 0.705421, 1.049915
+dd -1.806024, 0.562599, 1.082062, -1.801456, 0.511409, 1.101584, -1.752764, 0.531170, 1.110147, -1.629850, 0.616809, 1.101350
+dd -1.415589, 0.746361, 1.066401, -1.167248, 0.856220, 1.011734, -0.969422, 0.914183, 0.960846, -0.833851, 0.931444, 0.922966
+dd -0.734706, 0.923874, 0.895648, -0.638629, 0.897917, 0.873158, -0.512477, 0.852415, 0.849846, -0.330866, 0.787625, 0.823423
+dd -0.102504, 0.719561, 0.797799, 0.096845, 0.682598, 0.782163, 0.213766, 0.686412, 0.774983, 0.263150, 0.720932, 0.768845
+dd 0.272928, 0.782804, 0.756999, 0.256546, 0.886603, 0.732451, 0.202277, 1.063778, 0.691010, 0.086376, 1.345613, 0.631689
+dd -0.099730, 1.710059, 0.567433, -0.302751, 2.027588, 0.527587, -0.458550, 2.217100, 0.517304, -0.564240, 2.307687, 0.523982
+dd -0.644660, 2.349302, 0.538109, -0.730663, 2.369555, 0.558516, -0.855674, 2.337739, 0.596574, -1.049823, 2.184077, 0.668527
+dd -1.208170, 1.892895, 0.879402, -1.419693, 1.502778, 0.987106, -1.551753, 1.169184, 1.066762, -1.615196, 0.948182, 1.115439
+dd -1.638026, 0.823316, 1.144230, -1.635645, 0.769723, 1.162976, -1.596593, 0.767172, 1.173477, -1.493721, 0.808721, 1.170322
+dd -1.309752, 0.879260, 1.145004, -1.092007, 0.939768, 1.100905, -0.915746, 0.970803, 1.057846, -0.793198, 0.977935, 1.024682
+dd -0.702453, 0.969139, 0.999988, -0.613696, 0.946622, 0.978994, -0.495316, 0.909643, 0.956679, -0.321717, 0.860113, 0.931099
+dd -0.099073, 0.812953, 0.906375, 0.099925, 0.794730, 0.891743, 0.219281, 0.808543, 0.885730, 0.270453, 0.844529, 0.881151
+dd 0.279319, 0.900666, 0.871702, 0.257920, 0.990529, 0.851107, 0.195609, 1.143130, 0.815354, 0.071669, 1.388126, 0.762780
+dd -0.116013, 1.709947, 0.703638, -0.309184, 1.996946, 0.663873, -0.450453, 2.173166, 0.650319, -0.542841, 2.260723, 0.653055
+dd -0.612606, 2.302830, 0.663768, -0.689360, 2.324495, 0.681250, -0.802371, 2.301750, 0.715147, -0.977190, 2.177262, 0.779426
+dd -1.101900, 1.924397, 0.969671, -1.281368, 1.612824, 1.061592, -1.391468, 1.344518, 1.129233, -1.443495, 1.164296, 1.170646
+dd -1.462342, 1.058469, 1.195651, -1.461745, 1.005269, 1.213016, -1.431745, 0.985656, 1.224570, -1.348597, 0.991542, 1.225888
+dd -1.195631, 1.013724, 1.209040, -1.010536, 1.033727, 1.174917, -0.858241, 1.042744, 1.139682, -0.750839, 1.041785, 1.111535
+dd -0.670353, 1.032413, 1.089893, -0.590942, 1.013485, 1.070927, -0.483493, 0.984610, 1.050313, -0.323320, 0.948894, 1.026452
+dd -0.114388, 0.919792, 1.003456, 0.076015, 0.916750, 0.990208, 0.192252, 0.937678, 0.985344, 0.242660, 0.973288, 0.982156
+dd 0.250452, 1.022663, 0.974946, 0.226089, 1.098046, 0.958256, 0.160197, 1.225355, 0.928373, 0.035255, 1.431756, 0.883190
+dd -0.145789, 1.707318, 0.830458, -0.323301, 1.958822, 0.792417, -0.447481, 2.117443, 0.776915, -0.525769, 2.199007, 0.776503
+dd -0.584418, 2.239732, 0.784140, -0.650846, 2.261576, 0.798641, -0.749896, 2.246762, 0.827918, -0.902528, 2.149929, 0.883604
+dd -0.993694, 1.931704, 1.048962, -1.140166, 1.693857, 1.124439, -1.228374, 1.487351, 1.179691, -1.269310, 1.346434, 1.213585
+dd -1.284251, 1.260164, 1.234480, -1.284966, 1.210205, 1.249887, -1.263134, 1.179434, 1.261554, -1.198772, 1.159387, 1.266011
+dd -1.076575, 1.145615, 1.256181, -0.925219, 1.135423, 1.231118, -0.798603, 1.128130, 1.203462, -0.708050, 1.121415, 1.180482
+dd -0.639407, 1.112151, 1.162235, -0.571123, 1.096852, 1.145781, -0.477500, 1.075402, 1.127535, -0.335877, 1.051592, 1.106235
+dd -0.148412, 1.037074, 1.085758, 0.025229, 1.045101, 1.074241, 0.132761, 1.069974, 1.070473, 0.179817, 1.103331, 1.068461
+dd 0.186404, 1.145106, 1.063260, 0.161268, 1.205898, 1.050301, 0.096469, 1.307966, 1.026296, -0.022242, 1.475176, 0.988932
+dd -0.188449, 1.702196, 0.943735, -0.344843, 1.914224, 0.909049, -0.449845, 2.051386, 0.893010, -0.513656, 2.124110, 0.890361
+dd -0.561060, 2.161577, 0.895365, -0.616379, 2.182334, 0.906919, -0.699896, 2.174039, 0.931250, -0.828108, 2.102449, 0.977668
+dd -0.886886, 1.914779, 1.114929, -1.000435, 1.743616, 1.173808, -1.067490, 1.593556, 1.216680, -1.097999, 1.489275, 1.243032
+dd -1.109226, 1.422474, 1.259622, -1.110749, 1.378485, 1.272560, -1.095957, 1.342754, 1.283405, -1.048876, 1.307225, 1.289579
+dd -0.956272, 1.270910, 1.285111, -0.838701, 1.241680, 1.267924, -0.738676, 1.224241, 1.247369, -0.666146, 1.214263, 1.229547
+dd -0.610554, 1.205783, 1.214932, -0.554824, 1.194043, 1.201392, -0.477476, 1.179116, 1.186103, -0.358918, 1.164951, 1.168122
+dd -0.199958, 1.161123, 1.150873, -0.050670, 1.175799, 1.141377, 0.042880, 1.201349, 1.138619, 0.084116, 1.230664, 1.137533
+dd 0.089407, 1.264237, 1.134051, 0.065696, 1.310778, 1.124538, 0.006597, 1.388429, 1.106237, -0.098897, 1.517057, 1.076879
+dd -0.242586, 1.694756, 1.040103, -0.373093, 1.864569, 1.010286, -0.457434, 1.977099, 0.995127, -0.506834, 2.038429, 0.991214
+dd -0.543212, 2.070876, 0.994104, -0.586985, 2.089325, 1.002836, -0.653884, 2.085946, 1.022049, -0.756209, 2.036432, 1.058815
+dd -0.784623, 1.875036, 1.166096, -0.866308, 1.761780, 1.208726, -0.913556, 1.661320, 1.239595, -0.934587, 1.590008, 1.258610
+dd -0.942398, 1.542013, 1.270838, -0.944217, 1.506438, 1.280887, -0.935169, 1.471864, 1.290033, -0.903402, 1.431375, 1.296506
+dd -0.838372, 1.386101, 1.295647, -0.753618, 1.349143, 1.284957, -0.680266, 1.327795, 1.270831, -0.626348, 1.317053, 1.258005
+dd -0.584581, 1.309982, 1.247141, -0.542403, 1.301626, 1.236814, -0.483197, 1.292160, 1.224961, -0.391360, 1.285177, 1.210929
+dd -0.266826, 1.287970, 1.197493, -0.148469, 1.304842, 1.190239, -0.073561, 1.327904, 1.188376, -0.040342, 1.351573, 1.187949
+dd -0.036399, 1.376613, 1.185855, -0.056612, 1.409654, 1.179409, -0.105748, 1.464414, 1.166474, -0.191696, 1.556200, 1.145061
+dd -0.306148, 1.685310, 1.117308, -0.406953, 1.811535, 1.093671, -0.469822, 1.897117, 1.080731, -0.505310, 1.944934, 1.076526
+dd -0.531203, 1.970818, 1.077868, -0.563356, 1.985850, 1.083980, -0.613090, 1.985699, 1.098065, -0.688890, 1.954548, 1.125097
+dd -0.689575, 1.815118, 1.201942, -0.741310, 1.749886, 1.229123, -0.770583, 1.691189, 1.248693, -0.783301, 1.648462, 1.260773
+dd -0.788074, 1.618103, 1.268711, -0.789701, 1.592986, 1.275564, -0.785019, 1.565251, 1.282241, -0.766282, 1.529783, 1.287677
+dd -0.726141, 1.488507, 1.288683, -0.672345, 1.454615, 1.283014, -0.624969, 1.435302, 1.274502, -0.589674, 1.426153, 1.266376
+dd -0.562053, 1.421036, 1.259264, -0.533966, 1.415803, 1.252338, -0.494123, 1.410644, 1.244269, -0.431648, 1.408332, 1.234659
+dd -0.346074, 1.413751, 1.225474, -0.263899, 1.428592, 1.220601, -0.211448, 1.446279, 1.219500, -0.188070, 1.462968, 1.219463
+dd -0.185483, 1.479411, 1.218407, -0.200361, 1.500050, 1.214586, -0.235839, 1.534007, 1.206546, -0.296892, 1.591649, 1.192791
+dd -0.376675, 1.674261, 1.174359, -0.445075, 1.756881, 1.157950, -0.486339, 1.814131, 1.148415, -0.508782, 1.846850, 1.144838
+dd -0.524999, 1.864916, 1.145201, -0.545800, 1.875595, 1.148962, -0.578358, 1.877000, 1.158055, -0.627806, 1.860211, 1.175560
+dd -0.603738, 1.738523, 1.222858, -0.628099, 1.710988, 1.235745, -0.641565, 1.685762, 1.244970, -0.647258, 1.666836, 1.250677
+dd -0.649420, 1.652560, 1.254509, -0.650419, 1.639466, 1.257975, -0.648728, 1.623548, 1.261552, -0.640582, 1.602036, 1.264766
+dd -0.622192, 1.576429, 1.265999, -0.596803, 1.555338, 1.263869, -0.574045, 1.543407, 1.260073, -0.556864, 1.537951, 1.256245
+dd -0.543285, 1.535229, 1.252784, -0.529387, 1.532793, 1.249333, -0.509478, 1.530773, 1.245258, -0.477949, 1.530718, 1.240380
+dd -0.434373, 1.535057, 1.235724, -0.392145, 1.544080, 1.233292, -0.364995, 1.553917, 1.232813, -0.352842, 1.562607, 1.232910
+dd -0.351579, 1.570636, 1.232545, -0.359602, 1.580213, 1.230874, -0.378441, 1.595848, 1.227162, -0.410431, 1.622751, 1.220591
+dd -0.451572, 1.662063, 1.211493, -0.486010, 1.702278, 1.203062, -0.506148, 1.730728, 1.197917, -0.516700, 1.747326, 1.195784
+dd -0.524247, 1.756652, 1.195717, -0.534256, 1.762248, 1.197434, -0.550106, 1.763644, 1.201801, -0.574096, 1.757178, 1.210231
+dd -0.528352, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973
+dd -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649169, 1.229973
+dd -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973
+dd -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649169, 1.229972, -0.528353, 1.649170, 1.229973
+dd -0.528353, 1.649170, 1.229973, -0.528353, 1.649169, 1.229972, -0.528353, 1.649169, 1.229972, -0.528353, 1.649169, 1.229972
+dd -0.528353, 1.649169, 1.229972, -0.528353, 1.649170, 1.229972, -0.528353, 1.649169, 1.229972, -0.528353, 1.649169, 1.229972
+dd -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528353, 1.649170, 1.229973, -0.528352, 1.649170, 1.229973
+dd -0.528352, 1.649169, 1.229973, -0.528352, 1.649170, 1.229973, -0.528352, 1.649170, 1.229973, -0.528352, 1.649170, 1.229973
+dd -1.147479, 0.248323, 0.435546, -1.153552, 0.247975, 0.438222, -1.159075, 0.243510, 0.438132, -1.162248, 0.231235, 0.432793
+dd -1.162662, 0.206751, 0.419848, -1.159658, 0.162401, 0.395071, -1.151665, 0.095681, 0.356692, -1.136404, 0.012758, 0.307402
+dd -1.114033, -0.056615, 0.263357, -1.092685, -0.070848, 0.249201, -1.082492, -0.045250, 0.258619, -1.085726, -0.010164, 0.275066
+dd -1.103319, 0.018657, 0.289205, -1.139898, 0.036090, 0.297399, -1.197633, 0.045684, 0.300155, -1.272416, 0.049478, 0.296648
+dd -1.339765, 0.048384, 0.285848, -1.362903, 0.044108, 0.271080, -1.354507, 0.036553, 0.257987, -1.342322, 0.024722, 0.247982
+dd -1.344352, 0.005896, 0.239714, -1.371716, -0.024023, 0.231804, -1.417597, -0.059862, 0.227460, -1.463179, -0.085318, 0.234741
+dd -1.469535, -0.069208, 0.264341, -1.408067, 0.003689, 0.313638, -1.321978, 0.090076, 0.360042, -1.248164, 0.159336, 0.393164
+dd -1.196916, 0.205292, 0.413658, -1.167188, 0.230662, 0.424731, -1.151157, 0.243386, 0.430472, -1.145208, 0.248007, 0.433350
+dd -1.118360, 0.203462, 0.357319, -1.096590, 0.202166, 0.370976, -1.081800, 0.191515, 0.382100, -1.072184, 0.172548, 0.386541
+dd -1.063919, 0.142965, 0.382892, -1.053230, 0.095384, 0.369526, -1.038214, 0.025168, 0.348637, -1.018881, -0.064346, 0.326657
+dd -1.000125, -0.145875, 0.318545, -0.991679, -0.175483, 0.337557, -0.995783, -0.160922, 0.370960, -1.009427, -0.129499, 0.406265
+dd -1.032252, -0.096282, 0.441491, -1.069072, -0.064903, 0.480715, -1.125446, -0.032892, 0.524155, -1.202542, -0.002792, 0.561899
+dd -1.283012, 0.013073, 0.568757, -1.331046, 0.002300, 0.526714, -1.347846, -0.023904, 0.465753, -1.355158, -0.052932, 0.411372
+dd -1.371238, -0.081331, 0.370182, -1.409371, -0.110656, 0.340130, -1.464676, -0.137753, 0.315885, -1.518104, -0.149506, 0.297329
+dd -1.527954, -0.122314, 0.290377, -1.463147, -0.050018, 0.299405, -1.370113, 0.028913, 0.315197, -1.289004, 0.090949, 0.329318
+dd -1.231008, 0.133541, 0.338730, -1.194099, 0.161240, 0.343124, -1.167207, 0.181079, 0.345333, -1.142936, 0.195608, 0.348765
+dd -1.092995, 0.140239, 0.274622, -1.041466, 0.137487, 0.297666, -1.005145, 0.121624, 0.317924, -0.982097, 0.097278, 0.330446
+dd -0.964803, 0.063663, 0.335019, -0.946169, 0.013460, 0.332621, -0.923925, -0.060052, 0.329241, -0.900455, -0.156427, 0.334952
+dd -0.885535, -0.250927, 0.363312, -0.890516, -0.297081, 0.415796, -0.909499, -0.294926, 0.473077, -0.934045, -0.268842, 0.526742
+dd -0.962519, -0.233603, 0.582114, -1.000002, -0.191973, 0.650797, -1.055522, -0.142421, 0.732763, -1.135555, -0.090908, 0.809456
+dd -1.229776, -0.060003, 0.832767, -1.303073, -0.073657, 0.764537, -1.345167, -0.112464, 0.657929, -1.371951, -0.153204, 0.561276
+dd -1.402052, -0.187227, 0.488697, -1.451009, -0.213535, 0.437418, -1.515978, -0.230225, 0.393845, -1.577841, -0.226785, 0.349882
+dd -1.592225, -0.186847, 0.306802, -1.525296, -0.113461, 0.276021, -1.426220, -0.040920, 0.261652, -1.338279, 0.014157, 0.257252
+dd -1.273605, 0.052860, 0.256213, -1.229193, 0.081437, 0.254879, -1.190605, 0.106012, 0.254734, -1.146502, 0.127409, 0.259729
+dd -1.072621, 0.058208, 0.189364, -0.990066, 0.053474, 0.219715, -0.931486, 0.033651, 0.246488, -0.894682, 0.005569, 0.264937
+dd -0.868235, -0.030754, 0.276274, -0.841599, -0.082815, 0.284013, -0.812117, -0.159298, 0.297641, -0.784560, -0.262634, 0.330643
+dd -0.773608, -0.370635, 0.394991, -0.792207, -0.434158, 0.480289, -0.826276, -0.445581, 0.560609, -0.861957, -0.426566, 0.631518
+dd -0.896383, -0.392044, 0.705376, -0.934978, -0.344634, 0.800865, -0.990243, -0.283564, 0.917770, -1.073833, -0.216796, 1.029650
+dd -1.182099, -0.173462, 1.067563, -1.280318, -0.185834, 0.975158, -1.347055, -0.230052, 0.826772, -1.392704, -0.275967, 0.691486
+dd -1.436375, -0.310994, 0.590187, -1.495891, -0.331648, 0.519348, -1.570505, -0.336364, 0.457670, -1.641211, -0.316509, 0.389547
+dd -1.661167, -0.262327, 0.311899, -1.593553, -0.185978, 0.243022, -1.489633, -0.118434, 0.199903, -1.395585, -0.069809, 0.178076
+dd -1.324516, -0.035473, 0.167612, -1.272460, -0.007676, 0.161792, -1.221585, 0.018811, 0.160693, -1.156541, 0.043442, 0.168343
+dd -1.058360, -0.041989, 0.103902, -0.944335, -0.049225, 0.139052, -0.863377, -0.071507, 0.169260, -0.812884, -0.101403, 0.191081
+dd -0.777429, -0.138899, 0.207375, -0.742975, -0.191919, 0.224028, -0.706462, -0.270927, 0.253591, -0.674999, -0.381119, 0.312607
+dd -0.668041, -0.502789, 0.411305, -0.700050, -0.584056, 0.527687, -0.748972, -0.609929, 0.629421, -0.795700, -0.599669, 0.715821
+dd -0.836227, -0.568851, 0.805770, -0.876399, -0.520757, 0.924326, -0.932072, -0.455144, 1.071155, -1.019790, -0.380359, 1.213005
+dd -1.141998, -0.327851, 1.263038, -1.263996, -0.334403, 1.149410, -1.353910, -0.375956, 0.964783, -1.417173, -0.419700, 0.796051
+dd -1.473503, -0.450621, 0.669844, -1.542964, -0.462890, 0.581877, -1.626906, -0.454280, 0.503996, -1.706634, -0.417166, 0.413826
+dd -1.733132, -0.347532, 0.304384, -1.666434, -0.266250, 0.200461, -1.559135, -0.202020, 0.131026, -1.459966, -0.159092, 0.093512
+dd -1.383008, -0.129512, 0.075038, -1.323386, -0.104297, 0.066234, -1.259953, -0.079062, 0.065749, -1.173390, -0.055291, 0.077173
+dd -1.051081, -0.158510, 0.020876, -0.906089, -0.168726, 0.057991, -0.803322, -0.191787, 0.088233, -0.739637, -0.221386, 0.110590
+dd -0.695608, -0.258372, 0.129751, -0.653774, -0.311361, 0.153732, -0.610671, -0.392337, 0.197588, -0.575617, -0.509060, 0.280445
+dd -0.572554, -0.644157, 0.410677, -0.617334, -0.743016, 0.555327, -0.680400, -0.783824, 0.676068, -0.737739, -0.783848, 0.775602
+dd -0.784338, -0.759820, 0.878581, -0.826533, -0.716512, 1.015487, -0.883312, -0.653959, 1.185947, -0.975641, -0.579152, 1.351257
+dd -1.111246, -0.521234, 1.410378, -1.255063, -0.517292, 1.279345, -1.365863, -0.547624, 1.065524, -1.444859, -0.581405, 0.869932
+dd -1.512480, -0.602880, 0.723671, -1.590919, -0.604107, 0.621711, -1.683561, -0.581133, 0.530163, -1.772224, -0.526395, 0.420888
+dd -1.806097, -0.440497, 0.283609, -1.741999, -0.352328, 0.148991, -1.632995, -0.289506, 0.056661, -1.529918, -0.251290, 0.005806
+dd -1.447795, -0.226735, -0.018913, -1.380926, -0.205949, -0.028999, -1.305035, -0.185312, -0.027213, -1.197004, -0.166755, -0.010936
+dd -1.051282, -0.288364, -0.057035, -0.876810, -0.301964, -0.020961, -0.753503, -0.324034, 0.005779, -0.677551, -0.351150, 0.025712
+dd -0.625667, -0.385896, 0.045478, -0.577139, -0.437826, 0.074913, -0.528110, -0.520129, 0.130910, -0.489903, -0.642844, 0.234607
+dd -0.490513, -0.790697, 0.392465, -0.547003, -0.906442, 0.561579, -0.623033, -0.962224, 0.698235, -0.690199, -0.973804, 0.808047
+dd -0.742651, -0.959555, 0.920470, -0.787270, -0.926571, 1.070256, -0.845848, -0.874882, 1.257071, -0.943145, -0.808356, 1.438346
+dd -1.091163, -0.749110, 1.503121, -1.254087, -0.730144, 1.359192, -1.382743, -0.740716, 1.124408, -1.475025, -0.756749, 0.909636
+dd -1.552164, -0.763523, 0.748989, -1.638299, -0.751288, 0.636725, -1.738716, -0.713324, 0.534572, -1.835944, -0.641130, 0.409846
+dd -1.877830, -0.538628, 0.249706, -1.818000, -0.441758, 0.089869, -1.709083, -0.378321, -0.021090, -1.603480, -0.343647, -0.082433
+dd -1.517105, -0.324241, -0.111370, -1.443548, -0.309665, -0.120932, -1.355687, -0.296958, -0.115222, -1.226909, -0.287977, -0.093120
+dd -1.059016, -0.427644, -0.127386, -0.857472, -0.444928, -0.095349, -0.715538, -0.464254, -0.075564, -0.628631, -0.486764, -0.060967
+dd -0.569858, -0.517594, -0.042891, -0.515533, -0.567462, -0.010061, -0.461430, -0.650408, 0.055535, -0.420609, -0.778384, 0.176405
+dd -0.424554, -0.937922, 0.357097, -0.491324, -1.069322, 0.546084, -0.578730, -1.139654, 0.695050, -0.654631, -1.163714, 0.811943
+dd -0.712534, -1.161957, 0.929906, -0.759906, -1.144555, 1.086659, -0.820922, -1.111261, 1.281994, -0.923395, -1.061129, 1.471189
+dd -1.082454, -1.004708, 1.537984, -1.261158, -0.966617, 1.386100, -1.404064, -0.949431, 1.139294, -1.506759, -0.940421, 0.913673
+dd -1.591335, -0.927654, 0.744793, -1.683635, -0.899935, 0.626266, -1.790656, -0.846810, 0.516919, -1.895814, -0.757869, 0.380899
+dd -1.946107, -0.638936, 0.203619, -1.892094, -0.531804, 0.024860, -1.785066, -0.465732, -0.099854, -1.678408, -0.433311, -0.168484
+dd -1.588831, -0.419020, -0.199466, -1.509355, -0.412258, -0.206699, -1.410390, -0.410594, -0.195522, -1.262230, -0.415288, -0.166798
+dd -1.073876, -0.571908, -0.188214, -0.848435, -0.593061, -0.163019, -0.690308, -0.608013, -0.153355, -0.594061, -0.623979, -0.146776
+dd -0.529553, -0.649375, -0.132582, -0.470484, -0.696264, -0.098472, -0.412293, -0.779162, -0.026053, -0.369465, -0.911528, 0.107885
+dd -0.376314, -1.081350, 0.306036, -0.451653, -1.226727, 0.509807, -0.548538, -1.310754, 0.667187, -0.631840, -1.347818, 0.787820
+dd -0.694636, -1.360824, 0.907339, -0.744999, -1.363672, 1.065072, -0.809007, -1.355570, 1.261011, -0.916702, -1.329264, 1.450024
+dd -1.085122, -1.279642, 1.515225, -1.275878, -1.218998, 1.360457, -1.429081, -1.167084, 1.110732, -1.539062, -1.126660, 0.882731
+dd -1.628817, -1.090215, 0.711884, -1.725598, -1.045506, 0.591229, -1.837880, -0.977512, 0.478241, -1.950102, -0.873026, 0.335334
+dd -2.008933, -0.738328, 0.147025, -1.962075, -0.619719, -0.043929, -1.858642, -0.549119, -0.177216, -1.752398, -0.517624, -0.249786
+dd -1.660744, -0.508259, -0.280629, -1.576278, -0.510639, -0.283839, -1.467389, -0.522727, -0.265852, -1.301774, -0.544687, -0.229926
+dd -1.095055, -0.716642, -0.238215, -0.849434, -0.741724, -0.222321, -0.677901, -0.750885, -0.225480, -0.574121, -0.758663, -0.229226
+dd -0.505140, -0.777347, -0.220879, -0.442466, -0.820473, -0.187532, -0.381244, -0.902671, -0.111124, -0.337042, -1.038469, 0.031604
+dd -0.346300, -1.216944, 0.241601, -0.428334, -1.374292, 0.454894, -0.532619, -1.470800, 0.616741, -0.621838, -1.520980, 0.737839
+dd -0.688855, -1.550468, 0.855089, -0.742347, -1.577394, 1.008095, -0.809781, -1.600189, 1.197112, -0.922587, -1.604054, 1.378264
+dd -1.098502, -1.564797, 1.438492, -1.297418, -1.479017, 1.285734, -1.456863, -1.386788, 1.041808, -1.570951, -1.309834, 0.819532
+dd -1.663589, -1.246486, 0.652715, -1.763125, -1.183860, 0.533918, -1.879235, -1.101717, 0.420767, -1.997496, -0.983283, 0.275355
+dd -2.064736, -0.833917, 0.082136, -2.026092, -0.703019, -0.114271, -1.927763, -0.626229, -0.250965, -1.823314, -0.594374, -0.324184
+dd -1.730711, -0.589610, -0.352819, -1.642286, -0.602124, -0.350521, -1.524886, -0.630125, -0.324651, -1.344153, -0.672246, -0.281187
+dd -1.121456, -0.857687, -0.276815, -0.859655, -0.886642, -0.272223, -0.677667, -0.888871, -0.290330, -0.568233, -0.887180, -0.306235
+dd -0.496071, -0.898163, -0.305379, -0.430945, -0.936912, -0.274655, -0.367750, -1.017828, -0.196985, -0.322799, -1.156079, -0.049661
+dd -0.333941, -1.341457, 0.166671, -0.420751, -1.508589, 0.384366, -0.530309, -1.616101, 0.546918, -0.623912, -1.679127, 0.665446
+dd -0.694406, -1.726213, 0.776967, -0.751065, -1.780060, 0.920119, -0.822230, -1.838131, 1.095476, -0.939899, -1.877155, 1.261913
+dd -1.121374, -1.851256, 1.314196, -1.324631, -1.738672, 1.167900, -1.486403, -1.602127, 0.937646, -1.601552, -1.484971, 0.728399
+dd -1.694875, -1.392513, 0.571028, -1.795493, -1.311626, 0.457709, -1.914005, -1.216395, 0.347603, -2.037185, -1.085884, 0.203796
+dd -2.112478, -0.923279, 0.011449, -2.082788, -0.779694, -0.184044, -1.990810, -0.695357, -0.319286, -1.889377, -0.661967, -0.390102
+dd -1.796891, -0.661375, -0.414684, -1.705570, -0.684647, -0.405663, -1.581204, -0.730101, -0.371148, -1.387941, -0.794479, -0.320050
+dd -1.151825, -0.991580, -0.304125, -0.877876, -1.024250, -0.312325, -0.688367, -1.018712, -0.346881, -0.575122, -1.006658, -0.376258
+dd -0.501025, -1.009263, -0.384167, -0.434547, -1.043204, -0.357667, -0.370384, -1.122351, -0.281215, -0.325265, -1.262107, -0.133185
+dd -0.337769, -1.452629, 0.084361, -0.427501, -1.627313, 0.301739, -0.540282, -1.744204, 0.461597, -0.636768, -1.819486, 0.574903
+dd -0.709982, -1.884691, 0.677745, -0.769755, -1.967278, 0.806708, -0.844822, -2.063596, 0.962727, -0.966999, -2.141299, 1.108697
+dd -1.152146, -2.131082, 1.150580, -1.356197, -1.990929, 1.014570, -1.516716, -1.807682, 0.804681, -1.630161, -1.648119, 0.614669
+dd -1.722179, -1.525363, 0.471347, -1.822350, -1.426404, 0.366608, -1.941915, -1.319399, 0.262346, -2.068876, -1.178817, 0.123790
+dd -2.151681, -1.004617, -0.062517, -2.131366, -0.848331, -0.251404, -2.046686, -0.755437, -0.380872, -1.949285, -0.719498, -0.446609
+dd -1.857870, -0.722577, -0.465595, -1.764684, -0.756875, -0.448945, -1.634928, -0.820690, -0.405333, -1.431800, -0.908599, -0.346722
+dd -1.063770, -1.079451, -0.400046, -0.743738, -1.124029, -0.412417, -0.525938, -1.127236, -0.446912, -0.401466, -1.120043, -0.474380
+dd -0.328608, -1.124506, -0.480054, -0.274493, -1.157950, -0.451523, -0.235759, -1.234604, -0.373019, -0.231287, -1.370159, -0.222891
+dd -0.293236, -1.556116, -0.003756, -0.421018, -1.728630, 0.213741, -0.552803, -1.846989, 0.371925, -0.656076, -1.927122, 0.481877
+dd -0.731463, -2.001027, 0.579250, -0.793504, -2.097935, 0.699454, -0.871589, -2.213614, 0.843763, -0.996837, -2.311375, 0.977758
+dd -1.183278, -2.310319, 1.014466, -1.385241, -2.157957, 0.886326, -1.542149, -1.952621, 0.690211, -1.652282, -1.772686, 0.512798
+dd -1.741900, -1.635323, 0.378485, -1.840674, -1.527727, 0.279084, -1.959911, -1.415151, 0.178312, -2.088168, -1.269710, 0.042883
+dd -2.174525, -1.089601, -0.139551, -2.158977, -0.926416, -0.323980, -2.077296, -0.828071, -0.450296, -1.979703, -0.788881, -0.514900
+dd -1.884160, -0.790555, -0.534842, -1.780856, -0.825121, -0.521620, -1.630926, -0.891548, -0.484129, -1.392683, -0.985789, -0.434078
+dd -0.874374, -1.136932, -0.564230, -0.481153, -1.199825, -0.571561, -0.218460, -1.226920, -0.589493, -0.076985, -1.238928, -0.599886
+dd -0.008350, -1.254895, -0.592497, 0.021502, -1.291666, -0.555671, 0.012116, -1.364629, -0.471664, -0.058978, -1.489851, -0.317734
+dd -0.211331, -1.661338, -0.096315, -0.406863, -1.822106, 0.121900, -0.570719, -1.934125, 0.279559, -0.683622, -2.011424, 0.388319
+dd -0.760090, -2.083675, 0.484076, -0.822746, -2.178557, 0.602156, -0.901781, -2.291936, 0.744102, -1.027252, -2.388175, 0.876453
+dd -1.211559, -2.388375, 0.914122, -1.408574, -2.240940, 0.790448, -1.560156, -2.041337, 0.599617, -1.666022, -1.865970, 0.426408
+dd -1.752479, -1.731637, 0.294819, -1.848768, -1.625755, 0.196816, -1.965760, -1.514190, 0.096710, -2.092055, -1.369505, -0.038279
+dd -2.177390, -1.190262, -0.219958, -2.162069, -1.027938, -0.403373, -2.079735, -0.929166, -0.530225, -1.978692, -0.887390, -0.598228
+dd -1.875089, -0.883375, -0.625797, -1.755309, -0.907733, -0.626688, -1.573646, -0.960794, -0.609690, -1.280373, -1.043279, -0.583026
+dd -0.718162, -1.205705, -0.711900, -0.267991, -1.283564, -0.714614, 0.029200, -1.331293, -0.717500, 0.182892, -1.360081, -0.712544
+dd 0.246398, -1.385927, -0.693722, 0.254135, -1.424904, -0.650286, 0.202276, -1.493121, -0.563097, 0.065618, -1.606653, -0.408904
+dd -0.163813, -1.761848, -0.189931, -0.415462, -1.908954, 0.024513, -0.604445, -2.013091, 0.178523, -0.723604, -2.086315, 0.284030
+dd -0.799486, -2.155642, 0.376419, -0.861423, -2.246812, 0.490233, -0.939705, -2.355861, 0.627218, -1.062840, -2.448807, 0.755438
+dd -1.241533, -2.450116, 0.793198, -1.430181, -2.310028, 0.675981, -1.573982, -2.119538, 0.493688, -1.673925, -1.951762, 0.327705
+dd -1.755834, -1.822830, 0.201188, -1.847975, -1.720605, 0.106403, -1.960614, -1.612190, 0.008910, -2.082619, -1.471097, -0.122962
+dd -2.165325, -1.296241, -0.300304, -2.150515, -1.137959, -0.479116, -2.069264, -1.040803, -0.603879, -1.967203, -0.997577, -0.673525
+dd -1.858546, -0.988599, -0.707299, -1.726577, -1.003414, -0.720684, -1.520448, -1.043554, -0.722199, -1.184308, -1.113950, -0.716808
+dd -0.603649, -1.284967, -0.836698, -0.116344, -1.373611, -0.835407, 0.202721, -1.437721, -0.825390, 0.362930, -1.480086, -0.807475
+dd 0.420451, -1.513698, -0.779383, 0.409138, -1.553567, -0.731412, 0.322382, -1.616007, -0.643722, 0.133293, -1.716692, -0.493217
+dd -0.156032, -1.854060, -0.281885, -0.449143, -1.985787, -0.076095, -0.654755, -2.080560, 0.070896, -0.776226, -2.148454, 0.170954
+dd -0.849683, -2.213527, 0.258128, -0.909436, -2.299221, 0.365416, -0.985089, -2.401811, 0.494697, -1.103108, -2.489592, 0.616142
+dd -1.272482, -2.491815, 0.653022, -1.449211, -2.361543, 0.544284, -1.582729, -2.183656, 0.373896, -1.675088, -2.026608, 0.218283
+dd -1.751042, -1.905551, 0.099300, -1.837309, -1.809037, 0.009664, -1.943378, -1.706058, -0.083129, -2.058631, -1.571607, -0.208997
+dd -2.136997, -1.404927, -0.378143, -2.122998, -1.254107, -0.548494, -2.044732, -1.160793, -0.668312, -1.944391, -1.117427, -0.737590
+dd -1.834183, -1.104446, -0.775799, -1.695169, -1.110750, -0.799496, -1.473410, -1.138855, -0.816757, -1.109249, -1.197157, -0.829639
+dd -0.537912, -1.373160, -0.932826, -0.036118, -1.467720, -0.928317, 0.290448, -1.543091, -0.908124, 0.450788, -1.595137, -0.880240
+dd 0.501582, -1.633984, -0.845511, 0.475130, -1.673292, -0.795399, 0.362776, -1.729017, -0.710131, 0.137121, -1.815995, -0.567486
+dd -0.191607, -1.934420, -0.369194, -0.508997, -2.049379, -0.177091, -0.721504, -2.133475, -0.040557, -0.840935, -2.194838, 0.051836
+dd -0.910047, -2.254349, 0.131952, -0.966093, -2.332818, 0.230466, -1.037165, -2.426842, 0.349303, -1.147212, -2.507586, 0.461315
+dd -1.303533, -2.510478, 0.496288, -1.464857, -2.392402, 0.397960, -1.585697, -2.230515, 0.242761, -1.668902, -2.087266, 0.100611
+dd -1.737557, -1.976526, -0.008399, -1.816259, -1.887776, -0.090952, -1.913559, -1.792544, -0.176923, -2.019595, -1.667839, -0.293844
+dd -2.091900, -1.513194, -0.450858, -2.079014, -1.373315, -0.608825, -2.005702, -1.286141, -0.720751, -1.910001, -1.244061, -0.787494
+dd -1.802087, -1.228241, -0.828077, -1.661828, -1.227414, -0.859402, -1.434507, -1.244817, -0.888920, -1.059300, -1.291397, -0.916257
+dd -0.525656, -1.468026, -0.995731, -0.033702, -1.563183, -0.988934, 0.284976, -1.644066, -0.961755, 0.438710, -1.701385, -0.927367
+dd 0.482204, -1.742635, -0.888984, 0.445209, -1.779868, -0.839320, 0.317858, -1.828092, -0.759483, 0.073507, -1.900887, -0.628852
+dd -0.271790, -1.999784, -0.448889, -0.594586, -2.097032, -0.275352, -0.803509, -2.169393, -0.152575, -0.916375, -2.223164, -0.069945
+dd -0.979254, -2.275906, 0.001389, -1.030103, -2.345536, 0.089031, -1.094677, -2.429034, 0.194862, -1.193986, -2.500985, 0.294929
+dd -1.333726, -2.504274, 0.326973, -1.476449, -2.400519, 0.240768, -1.582479, -2.257714, 0.103747, -1.655160, -2.131076, -0.022097
+dd -1.715328, -2.032906, -0.118874, -1.784917, -1.953842, -0.192524, -1.871398, -1.868555, -0.269651, -1.965908, -1.756565, -0.374795
+dd -2.030524, -1.617649, -0.515908, -2.019032, -1.492039, -0.657737, -1.952601, -1.413235, -0.758909, -1.864473, -1.373905, -0.820909
+dd -1.762838, -1.356563, -0.861622, -1.627488, -1.350284, -0.897506, -1.405396, -1.358725, -0.935220, -1.037383, -1.394336, -0.972537
+dd -0.568506, -1.566776, -1.022685, -0.110983, -1.657068, -1.014624, 0.184305, -1.737409, -0.983942, 0.324744, -1.795325, -0.946797
+dd 0.360577, -1.836007, -0.907925, 0.318071, -1.869677, -0.861346, 0.187036, -1.909835, -0.789849, -0.057146, -1.968397, -0.675111
+dd -0.395131, -2.047771, -0.518317, -0.703853, -2.126893, -0.367765, -0.898581, -2.186803, -0.261694, -1.000455, -2.232133, -0.190670
+dd -1.055360, -2.277082, -0.129609, -1.099650, -2.336490, -0.054648, -1.155966, -2.407787, 0.035957, -1.242041, -2.469423, 0.121882
+dd -1.362103, -2.472813, 0.150039, -1.483531, -2.385113, 0.077334, -1.573029, -2.263951, -0.039013, -1.634112, -2.156284, -0.146149
+dd -1.684839, -2.072600, -0.228761, -1.744013, -2.004889, -0.291921, -1.817917, -1.931487, -0.358407, -1.898894, -1.834856, -0.449247
+dd -1.954396, -1.714960, -0.571093, -1.944544, -1.606582, -0.693447, -1.886748, -1.538172, -0.781270, -1.808959, -1.503004, -0.836416
+dd -1.717487, -1.485534, -0.874958, -1.593190, -1.475690, -0.912118, -1.387207, -1.477226, -0.953619, -1.044830, -1.502980, -0.996026
+dd -0.664726, -1.666353, -1.013139, -0.264981, -1.746509, -1.004868, -0.007751, -1.820318, -0.974244, 0.113165, -1.874173, -0.938145
+dd 0.141213, -1.911354, -0.901941, 0.098357, -1.940097, -0.860968, -0.025022, -1.971872, -0.800444, -0.250319, -2.016588, -0.704960
+dd -0.557519, -2.077044, -0.575431, -0.833266, -2.138185, -0.451541, -1.003705, -2.185316, -0.364592, -1.090531, -2.221619, -0.306648
+dd -1.135981, -2.257996, -0.257025, -1.172559, -2.306127, -0.196152, -1.219125, -2.363933, -0.122507, -1.289895, -2.414059, -0.052472
+dd -1.387808, -2.417254, -0.029031, -1.485922, -2.346836, -0.087284, -1.557687, -2.249198, -0.181114, -1.606459, -2.162262, -0.267734
+dd -1.647088, -2.094521, -0.334694, -1.694877, -2.039468, -0.386113, -1.754842, -1.979511, -0.440502, -1.820710, -1.900391, -0.514969
+dd -1.865961, -1.802200, -0.614799, -1.857944, -1.713467, -0.714961, -1.810259, -1.657138, -0.787269, -1.745239, -1.627407, -0.833676
+dd -1.667470, -1.611195, -0.867829, -1.559986, -1.599767, -0.902971, -1.380413, -1.596654, -0.943767, -1.081188, -1.613957, -0.986254
+dd -0.809435, -1.763742, -0.968745, -0.488209, -1.828994, -0.961285, -0.282014, -1.890700, -0.934147, -0.186035, -1.936132, -0.902724
+dd -0.165656, -1.967093, -0.872146, -0.203882, -1.989744, -0.839038, -0.308919, -2.013083, -0.791689, -0.497884, -2.044741, -0.718118
+dd -0.752626, -2.087427, -0.618978, -0.978195, -2.131263, -0.524493, -1.115355, -2.165682, -0.458419, -1.183680, -2.192666, -0.414580
+dd -1.218531, -2.219978, -0.377175, -1.246520, -2.256154, -0.331321, -1.282191, -2.299631, -0.275800, -1.336121, -2.337442, -0.222860
+dd -1.410172, -2.340164, -0.204792, -1.483724, -2.287691, -0.248111, -1.537132, -2.214681, -0.318326, -1.573278, -2.149549, -0.383300
+dd -1.603480, -2.098677, -0.433649, -1.639289, -2.057160, -0.472473, -1.684423, -2.011747, -0.513726, -1.734116, -1.951686, -0.570317
+dd -1.768331, -1.877131, -0.646146, -1.762279, -1.809776, -0.722167, -1.725825, -1.766793, -0.777339, -1.675528, -1.743562, -0.813454
+dd -1.614461, -1.729907, -0.841216, -1.528828, -1.718850, -0.871227, -1.384793, -1.713395, -0.907016, -1.144287, -1.723855, -0.944760
+dd -0.995267, -1.856261, -0.893067, -0.769669, -1.902582, -0.887348, -0.625158, -1.947329, -0.866800, -0.558450, -1.980506, -0.843308
+dd -0.545410, -2.002889, -0.820958, -0.574489, -2.018534, -0.797598, -0.651728, -2.033631, -0.765103, -0.789104, -2.053346, -0.715295
+dd -0.972656, -2.079853, -0.648583, -1.133420, -2.107519, -0.585213, -1.229865, -2.129656, -0.541045, -1.276998, -2.147317, -0.511862
+dd -1.300489, -2.165369, -0.487047, -1.319319, -2.189301, -0.456648, -1.343340, -2.218084, -0.419810, -1.379484, -2.243183, -0.384598
+dd -1.428762, -2.245186, -0.372361, -1.477303, -2.210757, -0.400726, -1.512300, -2.162693, -0.446984, -1.535891, -2.119736, -0.489888
+dd -1.555661, -2.086107, -0.523211, -1.579282, -2.058553, -0.549006, -1.609181, -2.028290, -0.576533, -1.642174, -1.988182, -0.614364
+dd -1.664937, -1.938384, -0.665030, -1.660918, -1.893406, -0.715788, -1.636415, -1.864564, -0.752808, -1.602241, -1.848636, -0.777479
+dd -1.560193, -1.838676, -0.797163, -1.500489, -1.829808, -0.819284, -1.399488, -1.824237, -0.846190, -1.230547, -1.829554, -0.874820
+dd -1.213318, -1.941772, -0.791048, -1.096242, -1.966029, -0.787868, -1.021379, -1.989874, -0.776546, -0.987069, -2.007652, -0.763727
+dd -0.980864, -2.019550, -0.751742, -0.996940, -2.027552, -0.739572, -1.038557, -2.034817, -0.723044, -1.111910, -2.043936, -0.698016
+dd -1.209216, -2.056158, -0.664682, -1.293682, -2.069138, -0.633115, -1.343785, -2.079728, -0.611181, -1.367868, -2.088324, -0.596744
+dd -1.379624, -2.097193, -0.584509, -1.389032, -2.108962, -0.569530, -1.401043, -2.123125, -0.551364, -1.419035, -2.135508, -0.533959
+dd -1.443404, -2.136588, -0.527809, -1.467219, -2.119791, -0.541621, -1.484272, -2.096265, -0.564278, -1.495722, -2.075202, -0.585338
+dd -1.505345, -2.058676, -0.601732, -1.516929, -2.045085, -0.614470, -1.531651, -2.030100, -0.628117, -1.547931, -2.010201, -0.646904
+dd -1.559186, -1.985489, -0.672056, -1.557202, -1.963175, -0.697235, -1.544971, -1.948801, -0.715683, -1.527743, -1.940706, -0.728181
+dd -1.506294, -1.935374, -0.738478, -1.475503, -1.930285, -0.750419, -1.423156, -1.926625, -0.765164, -1.335468, -1.928489, -0.780959
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374, -1.454153, -2.018794, -0.668374
+dd 0.671861, -0.050925, -0.255719, 0.671861, -0.050925, -0.255719, 0.671861, -0.050925, -0.255719, 0.671861, -0.050925, -0.255719
+dd 0.671861, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671861, -0.050925, -0.255719
+dd 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719
+dd 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719
+dd 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719
+dd 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719
+dd 0.671862, -0.050925, -0.255719, 0.671862, -0.050925, -0.255719, 0.671861, -0.050926, -0.255719, 0.671861, -0.050925, -0.255719
+dd 0.671861, -0.050925, -0.255719, 0.671861, -0.050926, -0.255719, 0.671861, -0.050925, -0.255719, 0.671861, -0.050925, -0.255719
+dd 0.606030, 0.021506, -0.102472, 0.568528, -0.000383, -0.054937, 0.539316, -0.017436, -0.023884, 0.523148, -0.030222, -0.009766
+dd 0.518801, -0.042226, -0.008257, 0.525982, -0.057870, -0.018047, 0.545962, -0.080560, -0.042645, 0.580731, -0.111687, -0.087620
+dd 0.625254, -0.145529, -0.150770, 0.661607, -0.167743, -0.210368, 0.681455, -0.175379, -0.249834, 0.689893, -0.174750, -0.272394
+dd 0.693530, -0.171157, -0.286781, 0.696762, -0.166544, -0.300464, 0.700806, -0.157899, -0.317216, 0.705737, -0.140339, -0.338178
+dd 0.710386, -0.110862, -0.359565, 0.712568, -0.076552, -0.372454, 0.712414, -0.048939, -0.375752, 0.711198, -0.029715, -0.373942
+dd 0.709703, -0.015282, -0.370428, 0.707981, -0.001093, -0.366103, 0.704971, 0.016207, -0.357911, 0.699176, 0.037772, -0.341145
+dd 0.689784, 0.059672, -0.312860, 0.679174, 0.072728, -0.279813, 0.670980, 0.075845, -0.253130, 0.665707, 0.073626, -0.234479
+dd 0.662337, 0.069505, -0.220402, 0.659221, 0.064447, -0.205966, 0.652425, 0.056342, -0.184826, 0.636233, 0.042305, -0.150629
+dd 0.560054, 0.083174, 0.055078, 0.484204, 0.034829, 0.146139, 0.423161, -0.001756, 0.204488, 0.388455, -0.028125, 0.230206
+dd 0.378586, -0.051882, 0.232010, 0.393421, -0.082112, 0.212465, 0.435286, -0.125456, 0.164470, 0.507728, -0.184493, 0.076904
+dd 0.599407, -0.248243, -0.046318, 0.672703, -0.289587, -0.163127, 0.711477, -0.303281, -0.240903, 0.727072, -0.301447, -0.285704
+dd 0.733316, -0.294101, -0.314550, 0.739217, -0.284754, -0.342153, 0.747072, -0.267225, -0.376047, 0.756926, -0.231621, -0.418521
+dd 0.766328, -0.171847, -0.461884, 0.770753, -0.102272, -0.488021, 0.770440, -0.046280, -0.494709, 0.767974, -0.007298, -0.491038
+dd 0.764944, 0.021970, -0.483912, 0.761411, 0.050744, -0.475143, 0.754999, 0.085843, -0.458525, 0.742277, 0.129624, -0.424510
+dd 0.721237, 0.174140, -0.367120, 0.697156, 0.200729, -0.300056, 0.678655, 0.206994, -0.245868, 0.667255, 0.202163, -0.207921
+dd 0.660980, 0.193075, -0.179169, 0.656707, 0.181414, -0.149627, 0.646377, 0.162516, -0.106890, 0.617886, 0.130188, -0.038939
+dd 0.537841, 0.130861, 0.212761, 0.423835, 0.051704, 0.341520, 0.328965, -0.006622, 0.422113, 0.273603, -0.047068, 0.456244
+dd 0.257054, -0.081943, 0.456968, 0.279848, -0.125128, 0.428000, 0.345086, -0.186211, 0.358664, 0.457347, -0.268693, 0.232469
+dd 0.597739, -0.357020, 0.054445, 0.707538, -0.413446, -0.115170, 0.763629, -0.431239, -0.228807, 0.784720, -0.427587, -0.294821
+dd 0.792333, -0.416418, -0.337776, 0.800190, -0.402342, -0.379148, 0.811478, -0.375930, -0.430110, 0.826098, -0.322272, -0.494072
+dd 0.840231, -0.232186, -0.559417, 0.846899, -0.127328, -0.598809, 0.846428, -0.042941, -0.608889, 0.842712, 0.015811, -0.603355
+dd 0.838144, 0.059921, -0.592616, 0.832758, 0.103291, -0.579398, 0.822602, 0.156215, -0.554345, 0.801883, 0.222282, -0.503054
+dd 0.767002, 0.289544, -0.416506, 0.726626, 0.329796, -0.315352, 0.695748, 0.339152, -0.233556, 0.677441, 0.331341, -0.176164
+dd 0.668872, 0.316483, -0.132501, 0.665681, 0.296676, -0.087551, 0.655604, 0.264276, -0.023348, 0.619572, 0.209410, 0.076845
+dd 0.542438, 0.161713, 0.365756, 0.391659, 0.047899, 0.524651, 0.261802, -0.033932, 0.621251, 0.184090, -0.088563, 0.660034
+dd 0.159790, -0.133519, 0.658197, 0.190633, -0.187468, 0.620460, 0.280166, -0.262541, 0.532698, 0.433386, -0.362844, 0.373416
+dd 0.622709, -0.469131, 0.148062, 0.767408, -0.535727, -0.067895, 0.838516, -0.555337, -0.213602, 0.863111, -0.549249, -0.299050
+dd 0.870690, -0.534298, -0.355294, 0.879655, -0.515644, -0.409847, 0.893858, -0.480619, -0.477271, 0.912925, -0.409453, -0.562038
+dd 0.931618, -0.289966, -0.648698, 0.940463, -0.150885, -0.700946, 0.939838, -0.038956, -0.714315, 0.934909, 0.038969, -0.706976
+dd 0.928850, 0.097476, -0.692732, 0.921619, 0.155005, -0.675198, 0.907459, 0.225239, -0.641958, 0.877812, 0.312985, -0.573890
+dd 0.827101, 0.402439, -0.459021, 0.767827, 0.456080, -0.324738, 0.722671, 0.468366, -0.216068, 0.696812, 0.457266, -0.139663
+dd 0.686690, 0.435933, -0.081286, 0.687014, 0.406530, -0.021069, 0.681344, 0.358064, 0.063797, 0.643233, 0.276679, 0.193584
+dd 0.575574, 0.173596, 0.508986, 0.390642, 0.022086, 0.688993, 0.225644, -0.084405, 0.794428, 0.124463, -0.152899, 0.833694
+dd 0.091509, -0.206511, 0.827792, 0.130249, -0.268547, 0.782258, 0.244309, -0.353167, 0.679759, 0.438434, -0.464718, 0.494346
+dd 0.675403, -0.581329, 0.231128, 0.852203, -0.652520, -0.022817, 0.935403, -0.671452, -0.195541, 0.961259, -0.662342, -0.297916
+dd 0.967304, -0.643771, -0.366161, 0.976439, -0.620842, -0.432858, 0.992910, -0.577762, -0.515586, 1.015945, -0.490213, -0.619778
+dd 1.038873, -0.343214, -0.726377, 1.049755, -0.172108, -0.790657, 1.048986, -0.034405, -0.807104, 1.042922, 0.061464, -0.798075
+dd 1.035468, 0.133442, -0.780551, 1.026458, 0.204224, -0.758978, 1.008140, 0.290679, -0.718068, 0.968846, 0.398781, -0.634279
+dd 0.900671, 0.509145, -0.492863, 0.820297, 0.575465, -0.327512, 0.759277, 0.590422, -0.193586, 0.725409, 0.575801, -0.099219
+dd 0.714577, 0.547437, -0.026798, 0.720907, 0.507187, 0.048062, 0.723951, 0.440411, 0.152092, 0.689671, 0.329072, 0.307718
+dd 0.637329, 0.165403, 0.637613, 0.422029, -0.025786, 0.828697, 0.222825, -0.157372, 0.935243, 0.097741, -0.238962, 0.970647
+dd 0.055465, -0.299482, 0.959244, 0.101696, -0.366570, 0.907165, 0.239761, -0.455824, 0.794222, 0.473464, -0.571442, 0.590718
+dd 0.755259, -0.690124, 0.300647, 0.960253, -0.759980, 0.018574, 1.052129, -0.775659, -0.175076, 1.076880, -0.763013, -0.291246
+dd 1.079879, -0.741102, -0.369781, 1.088203, -0.714345, -0.447165, 1.106199, -0.664042, -0.543518, 1.132581, -0.561790, -0.665098
+dd 1.159276, -0.390096, -0.789587, 1.171986, -0.190244, -0.864665, 1.171088, -0.029407, -0.883876, 1.164005, 0.082567, -0.873330
+dd 1.155298, 0.166638, -0.852862, 1.144634, 0.249319, -0.827663, 1.122128, 0.350357, -0.779861, 1.072741, 0.476809, -0.681937
+dd 0.985945, 0.606099, -0.516641, 0.882842, 0.683966, -0.323328, 0.804801, 0.701240, -0.166615, 0.762700, 0.682969, -0.055939
+dd 0.752055, 0.647216, 0.029394, 0.766793, 0.595157, 0.117795, 0.782755, 0.508310, 0.238834, 0.758325, 0.364380, 0.415595
+dd 0.726016, 0.137231, 0.747552, 0.485102, -0.094409, 0.939259, 0.253688, -0.250753, 1.039099, 0.105005, -0.344262, 1.066380
+dd 0.053018, -0.409714, 1.048198, 0.106103, -0.478641, 0.991037, 0.266904, -0.567432, 0.872299, 0.537624, -0.679760, 0.659365
+dd 0.860021, -0.792131, 0.354368, 1.088402, -0.854712, 0.054973, 1.185243, -0.864649, -0.152821, 1.206535, -0.848056, -0.279204
+dd 1.205061, -0.823192, -0.365986, 1.211609, -0.793177, -0.452259, 1.230336, -0.736709, -0.560123, 1.259337, -0.621901, -0.696503
+dd 1.289209, -0.429115, -0.836263, 1.303480, -0.204710, -0.920565, 1.302472, -0.024114, -0.942136, 1.294519, 0.101618, -0.930295
+dd 1.284743, 0.196016, -0.907312, 1.272600, 0.288865, -0.879014, 1.246004, 0.402388, -0.825317, 1.186385, 0.544598, -0.715292
+dd 1.080381, 0.690233, -0.529545, 0.953609, 0.778149, -0.312262, 0.857908, 0.797312, -0.135953, 0.807601, 0.775372, -0.011137
+dd 0.798041, 0.732098, 0.085569, 0.823348, 0.667624, 0.185979, 0.856066, 0.559550, 0.321330, 0.847247, 0.381380, 0.513833
+dd 0.838332, 0.090390, 0.835892, 0.577224, -0.181230, 1.017987, 0.316531, -0.361249, 1.103685, 0.145260, -0.465167, 1.118925
+dd 0.083480, -0.533469, 1.092921, 0.142585, -0.601041, 1.032266, 0.324193, -0.684403, 0.912449, 0.628305, -0.786348, 0.698835
+dd 0.985943, -0.884408, 0.391019, 1.232303, -0.934134, 0.085387, 1.330332, -0.936067, -0.129492, 1.345973, -0.915248, -0.262277
+dd 1.338764, -0.887896, -0.355059, 1.342650, -0.855279, -0.448195, 1.361308, -0.793869, -0.565155, 1.392135, -0.668984, -0.713355
+dd 1.424514, -0.459266, -0.865365, 1.440038, -0.215150, -0.957072, 1.438941, -0.018691, -0.980537, 1.430290, 0.118083, -0.967656
+dd 1.419655, 0.220774, -0.942654, 1.406250, 0.321788, -0.911868, 1.375786, 0.445365, -0.853429, 1.306110, 0.600326, -0.733658
+dd 1.180903, 0.759285, -0.531429, 1.030264, 0.855483, -0.294808, 0.916813, 0.876058, -0.102615, 0.858577, 0.850543, 0.033792
+dd 0.850946, 0.799846, 0.140023, 0.888614, 0.722743, 0.250581, 0.941329, 0.592959, 0.397175, 0.953279, 0.379974, 0.599673
+dd 0.969741, 0.027226, 0.901141, 0.694177, -0.282746, 1.064204, 0.407846, -0.484717, 1.129122, 0.215614, -0.597300, 1.128963
+dd 0.144251, -0.666397, 1.094380, 0.208409, -0.729622, 1.031835, 0.408381, -0.803008, 0.915447, 0.741460, -0.888149, 0.709471
+dd 1.128216, -0.964734, 0.410402, 1.386895, -0.996692, 0.109229, 1.482496, -0.988713, -0.105832, 1.490572, -0.963526, -0.241218
+dd 1.476603, -0.934204, -0.337691, 1.477063, -0.899682, -0.435566, 1.494897, -0.834635, -0.559064, 1.526745, -0.702323, -0.715909
+dd 1.560918, -0.480118, -0.876942, 1.577367, -0.221465, -0.974110, 1.576205, -0.013307, -0.998972, 1.567038, 0.131612, -0.985325
+dd 1.555770, 0.240418, -0.958834, 1.541347, 0.347459, -0.926210, 1.507337, 0.478488, -0.864262, 1.428068, 0.642970, -0.737267
+dd 1.284232, 0.811996, -0.522808, 1.110239, 0.914554, -0.271809, 0.979478, 0.936049, -0.067723, 0.913808, 0.907153, 0.077517
+dd 0.908852, 0.849347, 0.191237, 0.960213, 0.759783, 0.309880, 1.035410, 0.608468, 0.464474, 1.072406, 0.361153, 0.671220
+dd 1.115008, -0.049183, 0.943250, 0.830688, -0.394916, 1.079137, 0.522805, -0.616624, 1.117753, 0.311707, -0.736022, 1.099536
+dd 0.231228, -0.803995, 1.055919, 0.299403, -0.860240, 0.993019, 0.514965, -0.919741, 0.884115, 0.872109, -0.982641, 0.693226
+dd 1.281509, -1.031759, 0.413315, 1.546940, -1.041926, 0.126335, 1.636849, -1.022558, -0.082541, 1.635812, -0.992998, -0.216948
+dd 1.614329, -0.962236, -0.314882, 1.610757, -0.926508, -0.415403, 1.627094, -0.859132, -0.542894, 1.659191, -0.722044, -0.705212
+dd 1.694453, -0.491804, -0.872036, 1.711497, -0.223797, -0.972718, 1.710293, -0.008112, -0.998480, 1.700795, 0.142049, -0.984339
+dd 1.689119, 0.254789, -0.956890, 1.673932, 0.365715, -0.923082, 1.636774, 0.501585, -0.858861, 1.548611, 0.672341, -0.727172
+dd 1.387205, 0.848145, -0.504749, 1.190998, 0.955111, -0.244355, 1.043825, 0.977046, -0.032392, 0.971390, 0.945043, 0.118887
+dd 0.969718, 0.880618, 0.238006, 1.035612, 0.779106, 0.362603, 1.134940, 0.607040, 0.521980, 1.200212, 0.326816, 0.727556
+dd 1.268759, -0.135405, 0.963435, 0.981038, -0.513597, 1.065575, 0.655862, -0.752516, 1.073645, 0.428293, -0.876881, 1.035477
+dd 0.339364, -0.942037, 0.982664, 0.410519, -0.989129, 0.920796, 0.638753, -1.031614, 0.822815, 1.014906, -1.067995, 0.653290
+dd 1.440521, -1.085016, 0.401362, 1.707522, -1.070372, 0.136926, 1.788963, -1.038600, -0.060216, 1.777671, -1.004780, -0.190458
+dd 1.748202, -0.973096, -0.287808, 1.740164, -0.936822, -0.389024, 1.754440, -0.868352, -0.518115, 1.786088, -0.729000, -0.682909
+dd 1.821775, -0.494942, -0.852466, 1.839101, -0.222490, -0.954818, 1.837877, -0.003226, -0.981007, 1.828221, 0.149425, -0.966631
+dd 1.816352, 0.264036, -0.938727, 1.800647, 0.376816, -0.904354, 1.760787, 0.515052, -0.839032, 1.664600, 0.688993, -0.705048
+dd 1.487054, 0.868439, -0.478708, 1.270261, 0.977940, -0.213650, 1.107929, 0.999871, 0.002371, 1.029513, 0.965094, 0.157015
+dd 1.031583, 0.894672, 0.279512, 1.112368, 0.781993, 0.407984, 1.236651, 0.590442, 0.569126, 1.332328, 0.279484, 0.768702
+dd 1.379731, -0.114682, 0.972078, 1.113245, -0.515140, 1.057665, 0.809819, -0.766905, 1.051743, 0.597667, -0.896636, 1.005182
+dd 0.516682, -0.962968, 0.949476, 0.588354, -1.008931, 0.890166, 0.810312, -1.048178, 0.800407, 1.173471, -1.079025, 0.645202
+dd 1.582214, -1.089195, 0.411083, 1.836199, -1.069305, 0.160301, 1.911296, -1.034975, -0.030187, 1.897986, -1.000342, -0.158313
+dd 1.868261, -0.968554, -0.255393, 1.860223, -0.932280, -0.356610, 1.874498, -0.863810, -0.485701, 1.906147, -0.724459, -0.650496
+dd 1.941834, -0.490401, -0.820052, 1.959160, -0.217948, -0.922404, 1.957936, 0.001315, -0.948593, 1.948280, 0.153967, -0.934217
+dd 1.936411, 0.268577, -0.906313, 1.920702, 0.381663, -0.871968, 1.880811, 0.522309, -0.806869, 1.784527, 0.703826, -0.673585
+dd 1.606781, 0.898816, -0.448680, 1.389616, 1.028595, -0.185491, 1.226388, 1.066840, 0.029051, 1.146221, 1.041454, 0.182893
+dd 1.145169, 0.974001, 0.305239, 1.220875, 0.857990, 0.433957, 1.339816, 0.655955, 0.594177, 1.434074, 0.325860, 0.788951
+dd 1.455809, 0.010809, 0.974501, 1.232011, -0.398389, 1.063210, 0.986122, -0.656707, 1.061944, 0.818965, -0.791403, 1.019807
+dd 0.761129, -0.862724, 0.967943, 0.830777, -0.915753, 0.912333, 1.028451, -0.966027, 0.826867, 1.348561, -1.013150, 0.676790
+dd 1.709874, -1.042745, 0.447639, 1.938203, -1.037955, 0.199576, 2.010031, -1.011298, 0.009664, 2.003243, -0.979420, -0.118711
+dd 1.981030, -0.948363, -0.215878, 1.977458, -0.912636, -0.316400, 1.993794, -0.845260, -0.443891, 2.025892, -0.708172, -0.606209
+dd 2.061154, -0.477931, -0.773033, 2.078198, -0.209925, -0.873715, 2.076994, 0.005760, -0.899477, 2.067496, 0.155921, -0.885335
+dd 2.055820, 0.268662, -0.857886, 2.040621, 0.380459, -0.824159, 2.003376, 0.523197, -0.760573, 1.914935, 0.715542, -0.630878
+dd 1.752961, 0.935652, -0.412548, 1.555693, 1.100413, -0.157480, 1.405966, 1.168847, 0.050267, 1.328538, 1.163612, 0.199260
+dd 1.317971, 1.107649, 0.317951, 1.369386, 0.996640, 0.443248, 1.453491, 0.794692, 0.599996, 1.514716, 0.459924, 0.791888
+dd 1.546396, 0.122298, 0.962326, 1.364966, -0.286385, 1.052010, 1.175054, -0.545297, 1.054900, 1.051167, -0.681673, 1.017537
+dd 1.015022, -0.755980, 0.970125, 1.081469, -0.814201, 0.918920, 1.253621, -0.873236, 0.838984, 1.529099, -0.933839, 0.696485
+dd 1.841063, -0.980058, 0.476366, 2.042034, -0.988753, 0.235723, 2.109514, -0.969438, 0.050158, 2.108646, -0.940645, -0.075845
+dd 2.093541, -0.910865, -0.171128, 2.094001, -0.876343, -0.269003, 2.111835, -0.811297, -0.392501, 2.143682, -0.678985, -0.549346
+dd 2.177856, -0.456779, -0.710379, 2.194305, -0.198127, -0.807546, 2.193143, 0.010031, -0.832409, 2.183976, 0.154951, -0.818762
+dd 2.172708, 0.263756, -0.792270, 2.158268, 0.372154, -0.759772, 2.124120, 0.513863, -0.698810, 2.044420, 0.711926, -0.574918
+dd 1.899700, 0.949863, -0.366824, 1.724057, 1.142311, -0.124109, 1.589324, 1.236130, 0.073419, 1.515888, 1.248865, 0.215105
+dd 1.497097, 1.204220, 0.328157, 1.525939, 1.099888, 0.447890, 1.577459, 0.902096, 0.598396, 1.608160, 0.569944, 0.783856
+dd 1.650395, 0.214809, 0.934262, 1.509688, -0.183067, 1.022503, 1.372321, -0.435918, 1.028862, 1.288467, -0.570267, 0.996515
+dd 1.271733, -0.645232, 0.954103, 1.333766, -0.706404, 0.907952, 1.479789, -0.771411, 0.834760, 1.710227, -0.841969, 0.702338
+dd 1.972202, -0.901190, 0.495503, 2.144751, -0.921162, 0.267291, 2.206811, -0.908594, 0.090139, 2.211013, -0.883164, -0.030646
+dd 2.202351, -0.855227, -0.121904, 2.206237, -0.822609, -0.215040, 2.224895, -0.761199, -0.332000, 2.255721, -0.636315, -0.480200
+dd 2.288100, -0.426597, -0.632210, 2.303624, -0.182481, -0.723917, 2.302528, 0.013978, -0.747382, 2.293876, 0.150753, -0.734502
+dd 2.283241, 0.253443, -0.709500, 2.269814, 0.356192, -0.678873, 2.239175, 0.493430, -0.621696, 2.168948, 0.691343, -0.505893
+dd 2.042610, 0.938442, -0.311806, 1.889860, 1.149614, -0.085780, 1.771328, 1.262695, 0.098024, 1.703159, 1.290429, 0.229885
+dd 1.677833, 1.256566, 0.335263, 1.686698, 1.160573, 0.447214, 1.709129, 0.971342, 0.588580, 1.713027, 0.649846, 0.763852
+dd 1.765731, 0.283874, 0.889825, 1.662709, -0.092363, 0.974043, 1.572537, -0.332119, 0.983020, 1.523970, -0.460481, 0.955801
+dd 1.523573, -0.533563, 0.918827, 1.580011, -0.595161, 0.878278, 1.700058, -0.662930, 0.812937, 1.886401, -0.739311, 0.692990
+dd 2.099238, -0.807201, 0.503642, 2.243086, -0.835706, 0.292915, 2.298733, -0.829037, 0.128329, 2.306923, -0.807162, 0.015689
+dd 2.303785, -0.781627, -0.069348, 2.310333, -0.751612, -0.155621, 2.329060, -0.695144, -0.263485, 2.358060, -0.580337, -0.399865
+dd 2.387933, -0.387550, -0.539625, 2.402204, -0.163146, -0.623927, 2.401196, 0.017451, -0.645498, 2.393243, 0.143182, -0.633657
+dd 2.383466, 0.237581, -0.610674, 2.371297, 0.332416, -0.582559, 2.344502, 0.461584, -0.530308, 2.284251, 0.652986, -0.424827
+dd 2.176952, 0.899565, -0.248405, 2.047763, 1.119159, -0.043256, 1.946243, 1.244264, 0.123446, 1.884561, 1.283310, 0.243054
+dd 1.854734, 1.259314, 0.338785, 1.847055, 1.173206, 0.440790, 1.845089, 0.997050, 0.570153, 1.827048, 0.694606, 0.731476
+dd 1.889434, 0.326065, 0.829508, 1.819717, -0.017784, 0.907107, 1.769632, -0.237435, 0.917724, 1.750247, -0.355821, 0.895589
+dd 1.762437, -0.424397, 0.864345, 1.812209, -0.483748, 0.829803, 1.907247, -0.550807, 0.773236, 2.051868, -0.628474, 0.667904
+dd 2.217992, -0.700194, 0.499934, 2.333738, -0.734072, 0.311473, 2.382123, -0.732220, 0.163440, 2.393040, -0.713997, 0.061780
+dd 2.394284, -0.691378, -0.014913, 2.402607, -0.664621, -0.092296, 2.420603, -0.614318, -0.188650, 2.446986, -0.512066, -0.310230
+dd 2.473680, -0.340372, -0.434719, 2.486390, -0.140521, -0.509797, 2.485492, 0.020316, -0.529008, 2.478409, 0.132291, -0.518462
+dd 2.469702, 0.216361, -0.497994, 2.459011, 0.301140, -0.472989, 2.436293, 0.418697, -0.426713, 2.386240, 0.597082, -0.333585
+dd 2.298077, 0.832947, -0.178135, 2.192422, 1.049835, 0.002368, 2.108238, 1.178961, 0.148938, 2.054127, 1.225076, 0.254115
+dd 2.022085, 1.209676, 0.338418, 2.001997, 1.134777, 0.428503, 1.981342, 0.976050, 0.543220, 1.947174, 0.700916, 0.687062
+dd 2.017857, 0.339448, 0.754813, 1.975931, 0.037979, 0.823344, 1.957413, -0.155018, 0.834546, 1.960059, -0.259657, 0.817292
+dd 1.980609, -0.321183, 0.791901, 2.022826, -0.375618, 0.763594, 2.094620, -0.438437, 0.716473, 2.201241, -0.512707, 0.627495
+dd 2.324586, -0.583188, 0.484215, 2.413717, -0.619039, 0.322226, 2.454196, -0.620748, 0.194312, 2.466464, -0.606161, 0.106190
+dd 2.470784, -0.586895, 0.039754, 2.479919, -0.563965, -0.026942, 2.496389, -0.520886, -0.109671, 2.519424, -0.433337, -0.213863
+dd 2.542352, -0.286338, -0.320462, 2.553234, -0.115231, -0.384741, 2.552465, 0.022471, -0.401189, 2.546401, 0.118340, -0.392160
+dd 2.538947, 0.190318, -0.374636, 2.529910, 0.263161, -0.353253, 2.511384, 0.365841, -0.313842, 2.471437, 0.524959, -0.234765
+dd 2.401918, 0.740010, -0.103019, 2.319036, 0.942890, 0.049747, 2.251982, 1.067719, 0.173710, 2.206317, 1.116345, 0.262676
+dd 2.174467, 1.107975, 0.334084, 2.146587, 1.045289, 0.410600, 2.113662, 0.907906, 0.508420, 2.069818, 0.667684, 0.631709
+dd 2.147028, 0.323832, 0.668139, 2.126569, 0.073362, 0.725448, 2.130197, -0.087301, 0.736174, 2.147102, -0.174870, 0.723451
+dd 2.171559, -0.227038, 0.703854, 2.205571, -0.274060, 0.681816, 2.256588, -0.329266, 0.644519, 2.330066, -0.395596, 0.573116
+dd 2.415845, -0.459845, 0.457061, 2.480652, -0.494235, 0.324903, 2.512829, -0.498151, 0.220031, 2.525041, -0.487072, 0.147571
+dd 2.531048, -0.471487, 0.092976, 2.540013, -0.452833, 0.038423, 2.554215, -0.417808, -0.029001, 2.573282, -0.346642, -0.113768
+dd 2.591975, -0.227156, -0.200428, 2.600820, -0.088075, -0.252676, 2.600195, 0.023855, -0.266045, 2.595266, 0.101780, -0.258706
+dd 2.589207, 0.160286, -0.244462, 2.581952, 0.219694, -0.227102, 2.567602, 0.304714, -0.195227, 2.537359, 0.438949, -0.131453
+dd 2.485425, 0.623804, -0.025397, 2.423865, 0.801891, 0.097417, 2.373211, 0.914302, 0.197008, 2.336601, 0.960838, 0.268492
+dd 2.307326, 0.957725, 0.325946, 2.276474, 0.907876, 0.387671, 2.238026, 0.795067, 0.466878, 2.191199, 0.596233, 0.567197
+dd 2.273049, 0.280771, 0.572532, 2.267326, 0.088067, 0.616882, 2.283368, -0.035761, 0.626123, 2.306624, -0.103574, 0.617458
+dd 2.330586, -0.144442, 0.603425, 2.356013, -0.181872, 0.587501, 2.389249, -0.226447, 0.560097, 2.435251, -0.280701, 0.506921
+dd 2.489609, -0.334098, 0.419713, 2.533026, -0.363765, 0.319727, 2.556768, -0.368518, 0.240019, 2.567570, -0.360718, 0.184797
+dd 2.573878, -0.349022, 0.143212, 2.581734, -0.334947, 0.101841, 2.593022, -0.308535, 0.050879, 2.607642, -0.254877, -0.013084
+dd 2.621775, -0.164791, -0.078429, 2.628443, -0.059933, -0.117821, 2.627972, 0.024455, -0.127900, 2.624256, 0.083206, -0.122367
+dd 2.619688, 0.127316, -0.111628, 2.614282, 0.172246, -0.098554, 2.603968, 0.237456, -0.074636, 2.582754, 0.342151, -0.026913
+dd 2.546856, 0.488682, 0.052313, 2.504583, 0.632337, 0.143938, 2.469135, 0.724886, 0.218190, 2.441896, 0.764965, 0.271492
+dd 2.417412, 0.765247, 0.314390, 2.388318, 0.728450, 0.360592, 2.351005, 0.642587, 0.420093, 2.307731, 0.490133, 0.495802
+dd 2.392468, 0.213307, 0.471349, 2.394763, 0.083018, 0.501494, 2.413763, -0.000838, 0.508350, 2.435793, -0.046958, 0.503183
+dd 2.455160, -0.075039, 0.494338, 2.471896, -0.101116, 0.484207, 2.490664, -0.132546, 0.466473, 2.515290, -0.171211, 0.431602
+dd 2.544880, -0.209753, 0.373921, 2.570270, -0.231786, 0.307360, 2.585699, -0.236070, 0.254070, 2.593868, -0.231243, 0.217058
+dd 2.599169, -0.223516, 0.189201, 2.605071, -0.214170, 0.161598, 2.612925, -0.196641, 0.127703, 2.622779, -0.161036, 0.085229
+dd 2.632182, -0.101262, 0.041867, 2.636606, -0.031688, 0.015729, 2.636293, 0.024305, 0.009041, 2.633827, 0.063287, 0.012713
+dd 2.630797, 0.092555, 0.019838, 2.627250, 0.122455, 0.028504, 2.620723, 0.166419, 0.044302, 2.607644, 0.238078, 0.075743
+dd 2.585871, 0.339801, 0.127848, 2.560420, 0.441012, 0.188035, 2.538622, 0.507316, 0.236779, 2.520776, 0.537045, 0.271775
+dd 2.503016, 0.538883, 0.299974, 2.480048, 0.514962, 0.330420, 2.450064, 0.457481, 0.369764, 2.416346, 0.354726, 0.420045
+dd 2.502556, 0.125531, 0.367917, 2.506535, 0.060146, 0.383118, 2.519810, 0.018001, 0.386838, 2.533758, -0.005269, 0.384562
+dd 2.544930, -0.019568, 0.380417, 2.553120, -0.033008, 0.375624, 2.560841, -0.049374, 0.367089, 2.570228, -0.069688, 0.350085
+dd 2.581793, -0.090150, 0.321725, 2.592716, -0.102112, 0.288799, 2.600173, -0.104753, 0.262331, 2.604670, -0.102535, 0.243905
+dd 2.607806, -0.098740, 0.230043, 2.611038, -0.094128, 0.216360, 2.615082, -0.085482, 0.199608, 2.620013, -0.067923, 0.178646
+dd 2.624662, -0.038446, 0.157259, 2.626843, -0.004135, 0.144370, 2.626689, 0.023477, 0.141071, 2.625473, 0.042701, 0.142882
+dd 2.623979, 0.057134, 0.146396, 2.622249, 0.071920, 0.150665, 2.619178, 0.093928, 0.158423, 2.613194, 0.130290, 0.173822
+dd 2.603412, 0.182555, 0.199302, 2.592076, 0.235222, 0.228699, 2.582132, 0.270208, 0.252492, 2.573437, 0.286335, 0.269577
+dd 2.563971, 0.288012, 0.283360, 2.550932, 0.276447, 0.298276, 2.533703, 0.247861, 0.317614, 2.514736, 0.196442, 0.342432
+dd 2.601441, 0.022070, 0.265236, 2.601441, 0.022070, 0.265237, 2.601441, 0.022070, 0.265236, 2.601441, 0.022070, 0.265236
+dd 2.601441, 0.022070, 0.265236, 2.601441, 0.022070, 0.265236, 2.601441, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236
+dd 2.601441, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236
+dd 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236
+dd 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236
+dd 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236
+dd 2.601440, 0.022070, 0.265236, 2.601440, 0.022070, 0.265236, 2.601441, 0.022070, 0.265236, 2.601441, 0.022070, 0.265236
+dd 2.601441, 0.022070, 0.265237, 2.601441, 0.022070, 0.265236, 2.601441, 0.022070, 0.265237, 2.601441, 0.022070, 0.265237
+vertcount equ ($ - test_verts) / 12
+
+
+
+;-----------------------------------------------------------------------.
+						test_faces:		;
 %macro face 3
   dw %1, %2, %3
   dd 0, 0, 0
