@@ -1,0 +1,82 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[dvips]{graphicx,epsfig}
+\begin{document}
+\pagenumbering{arabic}
+\title{Creating the Unununium network stack}
+\author{Niklas Kluegel \\ lodsb@lodsb.org}
+\date{13.09.2003}
+\maketitle
+\begin{abstract}
+The Unununium Operating System is geared towards extreme efficiency and flexability while still being low demanding on the computer`s resources. Hence, it provides common system routines on a small footprint. This article is aimed to propose 
+an implementation of a modern network stack which aims to keep up with the spirit embodied in Unununium.
+\end{abstract}
+\newpage
+\tableofcontents
+\newpage
+\section{Introduction: requirements and solutions}
+Today`s computers are, compared to their ancestors from the 70s and 80s, high-performance beasts.Modern computer-chip technologies allow for easily clocking central processing units beyond the gigahertz barrier. According to Moore`s Law, computer processing power can double every 18 months 
+\footnote {Let's neglect the fact that the computer-chip industry is soon producing components that are on the verge of what is physically possible. Therefore Moore himself revoked his law at the ISSCC (Solid-State Circuits Conference) in 2003.}. However today`s computer`s performance is not entirely limited by the raw processing power, it is to a high degree dependant on the current memory technology. The latter lags behind the development of processing chips in the means of performance
+\footnote {Currently, memory bandwidth increases by 25\% percent every two years}, but furthermore the price. Caching, for example was mainly introduced to allow for using cheap and therefore slow memory as main-memory while still making use of the bandwith the current most costly but fastest memory technology provides. A 
+hierarchy of different memories in size and speed as well as complex caching methods is the key to this
+commonly applied technology. However, the caching mechanisms are not always providing the optimal performance in certain applications. Furthermore, it is a matter of fact that not all important data can reside in small cache-memories all the time long although it is to be used very frequently by the application.
+\\\\
+The old BSD network stack, wich is widely implemented, claims much memory useage. This is because network packets that are received are quite often internally copied, of course this is partly caused by the operating system's protective mechanisms, i.e. packets are copied from userland to kernelland.
+This network stack can easily scale to 10-100MBit, but when using gigabit connections the CPU might not keep track with the incoming traffic, especially when you keep in mind that the cycles wasted for copying a packet from one layer to another can easily go above the number of cycles used for processing the packet itself.
+\\
+A network stack should therefore as infrequently as possible cause such a memory load. To allow for high customizability the stack would have to be quite flexible, especially when counting the demand for a totally dynamic system in, one would desire a stack that is as modular
+as possible.
+Modularity needs, of course, a common interface with generalized functions since many modules have services and data-structures in common.
+\\\\
+The primary effort of the unununium network stack is therefore to create this common api and buffer-methods which work without additional data copying. Therefore this stack can be classified as \bf{zero-copy stack}.\rm
+\section{The zero-copy stack}
+\subsection{Definition}
+BSD STACK: COPY DATA FROM USER TO KERNEL, CHECKSUM, COPY FROM MBUF TO OUTPUT BUFFER
+Although the term is pretty self-explanatory, it should be explicitely stated which characteristics it implies. Firstly, a zero-copy stack does not doublicate any data that is currently used; secondly, it also forbids "physically" moving data. Therfore one could even extend the current meaning to the ideal, that data should never be touched unless it is actually going to be modified.
+\subsection{Implementation}
+To abridge the theory about the implementation, one could simply say that data is not given directly but indirectly by passing descriptors which recapitulatory specify the most important parts of the data.
+\\\\
+Going back to the network stack that is to be implemented for Unununium, a workable and efficient solution could look like the following description:
+The network stack provides two slightly different buffer-mechanisms; one for the packet data itself and one for the descriptor. 
+\subsubsection{Data buffer}The former is basically a linked list. Data from the link-layers is directly saved to an allocated memory block that is linked within this list and resides there until the interfacing applications do not need it anymore. This kind of data-structure is used because it allows for important data-manipulation: one can append additional memory-blocks to the current one or truncate them. Packet encapsulation often requires such services, furthermore, adding data from, for example fragmented IP-packets becomes much more easy and is now handled by the buffer itself. The buffer also provides functions comparable to LOAD and STORE instructions to allow access to the stored data. This allows for automicity. Moreover, functions that calculate checksums even over a row of linked buffer-parts are supported. In order to overcome allocation/deallocation-overheads, the buffer leaves the memory-blocks that are idle allocated, so they can be easily re-used. Memory-blocks are only allocated if there is no free buffer-entry currently available, they are freed when a certain watermark of idle buffer-blocks is reached.
+\\
+\begin{center}
+
+\includegraphics[width=12.5cm]{mercury_data_buffer.ps}
+\end{center}
+\sl fig 1. A diagram of the data buffer 
+\\\\
+SIMPLIFIED MBUF
+small size and big size 1500Bytes?!?!
+\rm
+This figure shows the basic layout of the data buffer. It consists of a double linked list, data blocks can be of
+variable size. In order to additionally link memory blocks together to indicate that these are forming a complete packet, the header (grey area in the memory block) has a fields that contain:
+\begin{itemize}
+\item the previous and 
+\item next link to a part of the packet (blue arrows)
+\item the start and end offset of the packet to indicate which part of it is contained in this memory block
+\item and, finally the offset in the memory block where the data starts
+\end{itemize}
+When the packet is going to be sent, data is padded to the end of the memory block in order to offer the space needed
+for the headers needed for encapsulation.
+
+
+
+\subsubsection{Descriptor buffers}
+The second buffer is by far not as complex but it is a linked-list-derivate, too. Descriptors are saved in fixed-size memory blocks.
+
+
+\section{The network-core}
+The most important part of the stack is its core, it is comparable to what a kernel in a modern modular operating system is.
+\\
+It provides these previously shown systems for buffer handling, even more, it includes a programming-interface
+which is used by the stack-modules.
+(more to come)
+\section{Modules}
+
+\section{Network service numbers}
+\section{Parallelism}
+\section{Overview of the complete network stack}
+\section{More on the implementation}
+
+
+\end{document}
