@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.4 2003/10/12 19:24:18 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.5 2003/10/12 20:06:25 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -49,7 +49,7 @@ int		udbfslib_load_ind_block(
 
   ind_block = (UDBFSLIB_INDBLOCK *)malloc(
       sizeof(UDBFSLIB_INDBLOCK) +
-      (sizeof(UDBFSLIB_BLOCK *) * (ind_links-1)) );
+      (sizeof(UDBFSLIB_BLOCK *) * ind_links) );
 
   printf("ind_block [%016llX] allocated to [%p]\n", block_id, ind_block);
 
@@ -100,6 +100,7 @@ int		udbfslib_load_ind_block(
 
     offset_modifier += inode->mount->block_size;
   }
+  free(tmp_block);
 
   printf("udbfslib: ind block [%016llX] OK!\n", ind_block->id); fflush(stdout);
   return(0);

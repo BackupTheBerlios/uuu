@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.5 2003/10/12 19:25:03 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.6 2003/10/12 20:06:25 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -50,7 +50,7 @@ int		udbfslib_load_bind_block(
 
   bind_block = (UDBFSLIB_BINDBLOCK *)malloc(
       sizeof(UDBFSLIB_BINDBLOCK) +
-      (sizeof(UDBFSLIB_INDBLOCK *) * (ind_links-1)) );
+      (sizeof(UDBFSLIB_INDBLOCK *) * ind_links) );
 
   if( bind_block == NULL ) {
     perror("udbfslib: unable to allocate bi-indirect block memory structure\n");

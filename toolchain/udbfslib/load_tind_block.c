@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.3 2003/10/12 19:25:40 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.4 2003/10/12 20:06:25 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -45,7 +45,7 @@ int		udbfslib_load_tind_block(
 
   tind_block = (UDBFSLIB_TINDBLOCK *)malloc(
       sizeof(UDBFSLIB_TINDBLOCK) +
-      (sizeof(UDBFSLIB_BINDBLOCK *) * (ind_links-1)) );
+      (sizeof(UDBFSLIB_BINDBLOCK *) * ind_links) );
 
   if( tind_block == NULL ) {
     perror("udbfslib: unable to allocate tri-indirect block memory structure\n");
