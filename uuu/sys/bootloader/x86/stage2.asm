@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.9 2003/11/18 18:35:18 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.10 2004/01/08 17:20:39 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; misc. setup code
@@ -24,8 +24,6 @@
 ;				external symbols
 ;---------------===============/                \===============---------------
 
-extern set_pcx_palette
-extern set_video_mode
 extern builtin_clear
 extern start_prompt
 extern print_string
@@ -64,7 +62,7 @@ _start:
 get_to_business:			;---------------------------------
 
   mov bl, VGA_YELLOW
-  printstr "Unununium stage 2 bootloader version $Revision: 1.9 $",0x0a
+  printstr "Unununium stage 2 bootloader version $Revision: 1.10 $",0x0a
   mov bl, VGA_WHITE
   printstr "run ",0x27,"help",0x27," for a list of available commands.",0xa
   jmp start_prompt			;
