@@ -1,4 +1,4 @@
-$Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/INSTALL,v 1.2 2003/12/23 21:08:40 bitglue Exp $
+$Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/INSTALL,v 1.3 2003/12/24 05:16:42 bitglue Exp $
 
 Uuu build instructions
 ----------------------
@@ -15,20 +15,17 @@ and udbfstools. Udbfslib need not be installed; the tool in the toolchain
 depend on it, but will find it in the CVS tree by default.
 
 
-- get zlib 1.1
+- get zlib
 
 The boot image used by Unununium is compressed to save space. Thus, it requires
-zlib. However, due to changes made between zlib 1.1 and 1.2, Unununium will
-fail to build with zlib 1.2. If your system includes zlib 1.2, you will
-encounter problems described below. The solution is to download version 1.1.4
-from
+zlib. If your system doesn't already have zlib, it can be obtained from:
 
-  http://zlib.net/zlib-1.1.4.tar.gz
+  http://www.gzip.org/zlib/
 
 Building zlib is quite simple. As all we need is the library archive, running
-'make libz.a' in the zlib directory is sufficient. After building zlib, edit
-Make.config and change ZLIB_LDFLAGS to tell the build system to use this custom
-zlib (comments are in Make.config)
+'configure; make libz.a' in the zlib directory is sufficient. If you don't want
+to use the zlib found in your normal library paths, edit Make.config and change
+ZLIB_LDFLAGS (comments are in Make.config).
 
 
 - run make
@@ -53,16 +50,6 @@ Within are settings to control what programs are used, settings for them, etc.
 
 when things don't work
 ----------------------
-
-- It doesn't build. It says something about zcalloc.
-
-  linking stage2.o display.o command.o keyboard.o floppy.o ata.o boot.o multiboot.o  >  stage2
-  /usr/lib/libz.a(zutil.o)(.text+0x4e): In function `zcalloc':
-  : undefined reference to `malloc'
-
-This is due to some changes made to zlib between versions 1.1 and 1.2. The
-solution for now is to get zlib 1.1. Instructions were above.
-
 
 - It boots and I get a prompt, but it just hangs when I run 'boot'. I can still
   see the prompt after it hangs.
