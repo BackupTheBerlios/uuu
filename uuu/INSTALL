@@ -1,7 +1,9 @@
-$Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/INSTALL,v 1.1 2003/12/23 20:48:59 bitglue Exp $
+$Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/INSTALL,v 1.2 2003/12/23 21:08:40 bitglue Exp $
 
 Uuu build instructions
 ----------------------
+
+- get uuu toolchain
 
 If you have not done so, aquire the toolchain module from CVS. This contains
 tools required by the build environment of Uuu itself. At a minimum,
@@ -13,6 +15,24 @@ and udbfstools. Udbfslib need not be installed; the tool in the toolchain
 depend on it, but will find it in the CVS tree by default.
 
 
+- get zlib 1.1
+
+The boot image used by Unununium is compressed to save space. Thus, it requires
+zlib. However, due to changes made between zlib 1.1 and 1.2, Unununium will
+fail to build with zlib 1.2. If your system includes zlib 1.2, you will
+encounter problems described below. The solution is to download version 1.1.4
+from
+
+  http://zlib.net/zlib-1.1.4.tar.gz
+
+Building zlib is quite simple. As all we need is the library archive, running
+'make libz.a' in the zlib directory is sufficient. After building zlib, edit
+Make.config and change ZLIB_LDFLAGS to tell the build system to use this custom
+zlib (comments are in Make.config)
+
+
+- run make
+
 Once the standard toolchain is installed, simply running 'make' should create a
 file 'diskimage' that is a 1.44MB floppy image. This can either be used as a
 disk image by bochs, or written to a disk like so:
@@ -23,3 +43,54 @@ If you would like to use GRUB to boot unununium, run instead 'make grub'. This
 will create an ELF file sys/bootloader/x86/stage2 that is multiboot compliant
 and can be simply booted with GRUB with its 'kernel' command. This enables one
 to boot Unununium from any filesystem GRUB can read.
+
+
+customizing things
+------------------
+If you should need to change the behaviour of the build, edit Make.config.
+Within are settings to control what programs are used, settings for them, etc.
+
+
+when things don't work
+----------------------
+
+- It doesn't build. It says something about zcalloc.
+
+  linking stage2.o display.o command.o keyboard.o floppy.o ata.o boot.o multiboot.o  >  stage2
+  /usr/lib/libz.a(zutil.o)(.text+0x4e): In function `zcalloc':
+  : undefined reference to `malloc'
+
+This is due to some changes made to zlib between versions 1.1 and 1.2. The
+solution for now is to get zlib 1.1. Instructions were above.
+
+
+- It boots and I get a prompt, but it just hangs when I run 'boot'. I can still
+  see the prompt after it hangs.
+
+This is most likely a problem with zlib. Often, it's because the zlib included
+with one's build system will not run on the host system. If you are running Uuu
+in an emulator such as Bochs, or on another (usually older) box, this is
+usually the case.
+
+The solution is to download and compile a custom zlib that does not contain
+code that won't run on the host box. To do this, get zlib as described above,
+and when building it, assure that the environment variable CFLAGS is unset:
+
+  $ unset CFLAGS     # for bourne shells
+
+This should yield a zlib with no processor specific optimizations.
+
+
+- It boots and I get a prompt, but I see nothing special after I run boot. It
+  seems as if the video mode has changed, and I don't see the prompt.
+
+By default, the 'boot' command boots a nifty 3d demo which runs in a weird VGA
+mode. Many boxes don't like VGA modes at all, much less weird ones. Video
+drivers are in development that will allow us to use sane video modes.
+
+
+it still doesn't work
+---------------------
+
+If it still doesn't work, take a look at http://unununium.org/contact and let
+us know.
