@@ -38,7 +38,6 @@ struct __udbfs_superblock {
 		root_table_inode,
 		bad_block_inode,
 		persistence_inode,
-		component_inode,
 		error_inode,
 		journal_inode;
   uint8_t	mount_count,
