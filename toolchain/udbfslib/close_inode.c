@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/close_inode.c,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/close_inode.c,v 1.2 2003/10/12 18:12:01 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -24,7 +24,7 @@ int		udbfs_close_inode(
     return(0);
   }
 
-  printf("udbfslib: closing inode [%i] final size [%lli]\n", inode->id, inode->size);
+  printf("udbfslib: closing inode [%016llX] final size [%016llX]\n", inode->id, inode->size);
   // remove inode from link_list
   udbfslib_unlink(
       &inode->mount->opened_inodes,
@@ -62,17 +62,17 @@ int		udbfs_close_inode(
 
   if( inode->ind_block != NULL ) {
     physical_inode.ind_block	= inode->ind_block->id;
-    udbfslib_unload_ind_block( &inode->ind_block );
+    udbfslib_unload_ind_block( &inode->ind_block, inode );
   }
 
   if( inode->bind_block != NULL ) {
     physical_inode.bind_block	= inode->bind_block->id;
-    udbfslib_unload_bind_block( &inode->bind_block );
+    udbfslib_unload_bind_block( &inode->bind_block, inode );
   }
 
   if( inode->tind_block != NULL ) {
     physical_inode.tind_block	= inode->tind_block->id;
-    udbfslib_unload_tind_block( &inode->tind_block );
+    udbfslib_unload_tind_block( &inode->tind_block, inode );
   }
 
   if( (lseek( inode->mount->block_device, inode->physical_offset, SEEK_SET ) != inode->physical_offset) ||
