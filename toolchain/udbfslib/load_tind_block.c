@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.2 2003/10/12 15:26:09 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.3 2003/10/12 19:25:40 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -41,6 +41,8 @@ int		udbfslib_load_tind_block(
     return( -1 );
   }
 
+  if( block_id == 0 ) return(0);
+
   tind_block = (UDBFSLIB_TINDBLOCK *)malloc(
       sizeof(UDBFSLIB_TINDBLOCK) +
       (sizeof(UDBFSLIB_BINDBLOCK *) * (ind_links-1)) );
@@ -73,15 +75,20 @@ int		udbfslib_load_tind_block(
   *linkpoint =  tind_block;
 
   for( i = 0; i<ind_links; i++ ) {
-    if(
-      udbfslib_load_bind_block(
-	  inode,
-	  ((uint64_t *)tmp_block)[i],
-	  offset_modifier,
-	  &tind_block->bindblock[i] ) != 0 ) {
+    if( ((uint64_t *)tmp_block)[i] == 0 ) {
+      tind_block->bindblock[i] = NULL;
+    } else {
 
-      fprintf(stderr,"udbfslib: error happened while loading bi-indirects of tri-indirect block [%016llX]\n", tind_block->id);
-      return( -1 );
+      if(
+	udbfslib_load_bind_block(
+	    inode,
+	    ((uint64_t *)tmp_block)[i],
+	    offset_modifier,
+	    &tind_block->bindblock[i] ) != 0 ) {
+
+	fprintf(stderr,"udbfslib: error happened while loading bi-indirects of tri-indirect block [%016llX]\n", tind_block->id);
+	return( -1 );
+      }
     }
 
     offset_modifier += inode->mount->bind_storage;

@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.3 2003/10/12 18:08:57 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.4 2003/10/12 19:24:18 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -41,6 +41,8 @@ int		udbfslib_load_ind_block(
     return( -1 );
   }
 
+  if( block_id == 0 ) return(0);
+
   printf("udbfslib: request to load IND block [%016llX] for inode [%016llX] offset [%016llX]\n", block_id, inode->id, offset_modifier); fflush(stdout);
 
   ind_links = inode->mount->block_size>>3;
@@ -48,6 +50,8 @@ int		udbfslib_load_ind_block(
   ind_block = (UDBFSLIB_INDBLOCK *)malloc(
       sizeof(UDBFSLIB_INDBLOCK) +
       (sizeof(UDBFSLIB_BLOCK *) * (ind_links-1)) );
+
+  printf("ind_block [%016llX] allocated to [%p]\n", block_id, ind_block);
 
   if( ind_block == NULL ) {
     perror("udbfslib: unable to allocate indirect block memory structure\n");
@@ -77,15 +81,21 @@ int		udbfslib_load_ind_block(
   *linkpoint = ind_block;
 
   for( i = 0; i<ind_links; i++ ) {
-    if(
-      udbfslib_load_block(
-	  inode,
-	  ((uint64_t *)tmp_block)[i],
-	  offset_modifier,
-	  &ind_block->block[i] ) != 0 ) {
 
-      fprintf(stderr,"udbfslib: error happened while loading bi-indirects of tri-indirect block [%016llX]\n", ind_block->id);
-      return( -1 );
+    if( ((uint64_t *)tmp_block)[i] == 0 ) {
+      ind_block->block[i] = NULL;
+    } else {
+    
+      if(
+	udbfslib_load_block(
+	    inode,
+	    ((uint64_t *)tmp_block)[i],
+	    offset_modifier,
+	    &ind_block->block[i] ) != 0 ) {
+
+	fprintf(stderr,"udbfslib: error happened while loading bi-indirects of tri-indirect block [%016llX]\n", ind_block->id);
+	return( -1 );
+      }
     }
 
     offset_modifier += inode->mount->block_size;

@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.4 2003/10/12 18:24:11 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.5 2003/10/12 19:25:03 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -42,6 +42,8 @@ int		udbfslib_load_bind_block(
     return( -1 );
   }
 
+  if( block_id == 0 ) return(0);
+
   printf("udbfslib: request to load BIND block [%016llX] for inode [%016llX] offset [%016llX]\n", block_id, inode->id, offset_modifier); fflush(stdout);
 
   ind_links = inode->mount->block_size>>3;
@@ -80,15 +82,20 @@ int		udbfslib_load_bind_block(
   *linkpoint = bind_block;
 
   for( i = 0; i<ind_links; i++ ) {
-    if(
-      udbfslib_load_ind_block(
-	  inode,
-	  ((uint64_t *)tmp_block)[i],
-	  offset_modifier,
-	  &bind_block->indblock[i] ) != 0 ) {
+    if( ((uint64_t *)tmp_block)[i] == 0 ) {
+      bind_block->indblock[i] = NULL;
+    } else {
 
-      fprintf(stderr,"udbfslib: error happened while loading indirects of bi-indirect block [%016llX]\n", bind_block->id);
-      return( -1 );
+      if(
+	udbfslib_load_ind_block(
+	    inode,
+	    ((uint64_t *)tmp_block)[i],
+	    offset_modifier,
+	    &bind_block->indblock[i] ) != 0 ) {
+
+	fprintf(stderr,"udbfslib: error happened while loading indirects of bi-indirect block [%016llX]\n", bind_block->id);
+	return( -1 );
+      }
     }
 
     offset_modifier += inode->mount->ind_storage;
