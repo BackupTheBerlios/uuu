@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.6 2003/10/31 22:32:06 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.7 2003/10/31 22:37:25 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -13,12 +13,6 @@
 ;---------------===============/             \===============---------------
 
 %include "stage2-config.asm"
-
-%ifidn BOOT_CONSOLE,graphical
-  %assign VIDEO_RAM	0xa0000
-%elifidn BOOT_CONSOLE,textual
-  %assign VIDEO_RAM	0xb8000
-%endif
 
 %assign DEFAULT_SCROLL_SPEED	1
 

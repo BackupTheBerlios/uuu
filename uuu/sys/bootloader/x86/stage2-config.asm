@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.1 2003/10/31 22:32:06 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.2 2003/10/31 22:37:25 bitglue Exp $
 
 %ifndef __STAGE2_CONFIG__
 %define __STAGE2_CONFIG__
@@ -63,6 +63,12 @@
 %elifidn BOOT_CONSOLE,textual
   %assign CHAR_PER_COL	25
   %assign CHAR_PER_ROW	80
+%endif
+
+%ifidn BOOT_CONSOLE,graphical
+  %assign VIDEO_RAM	0xa0000
+%elifidn BOOT_CONSOLE,textual
+  %assign VIDEO_RAM	0xb8000
 %endif
 
 
