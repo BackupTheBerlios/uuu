@@ -1276,28 +1276,27 @@ static UDBFSLIB_BLOCK *udbfslib_extend_inode(
     inode->ind_block = udbfslib_allocate_memory_indblock( inode, &inode->ind_block );
     inode->ind_block->id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
 
-    block = udbfslib_extend_indblock( inode->ind_block, inode, inode->mount->dir_storage );
-    if( block != NULL )
-      goto finalize;
   }
+  block = udbfslib_extend_indblock( inode->ind_block, inode, inode->mount->dir_storage );
+  if( block != NULL )
+    goto finalize;
 
   if( inode->bind_block == NULL ) {
     inode->bind_block = udbfslib_allocate_memory_bindblock( inode, &inode->bind_block );
     inode->bind_block->id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
 
-    block = udbfslib_extend_bindblock( inode->bind_block, inode, inode->mount->dir_storage + inode->mount->ind_storage );
-    if( block != NULL )
-      goto finalize;
   }
+  block = udbfslib_extend_bindblock( inode->bind_block, inode, inode->mount->dir_storage + inode->mount->ind_storage );
+  if( block != NULL )
+    goto finalize;
 
   if( inode->tind_block == NULL ) {
     inode->tind_block = udbfslib_allocate_memory_tindblock( inode, &inode->tind_block );
     inode->tind_block->id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
-
-    block = udbfslib_extend_tindblock( inode->tind_block, inode, inode->mount->dir_storage + inode->mount->ind_storage + inode->mount->bind_storage );
-    if( block != NULL )
-      goto finalize;
   }
+  block = udbfslib_extend_tindblock( inode->tind_block, inode, inode->mount->dir_storage + inode->mount->ind_storage + inode->mount->bind_storage );
+  if( block != NULL )
+    goto finalize;
 
   fprintf(stderr,"udbfslib: cannot extend inode, out of disk space or file too large.\n");
   return(NULL);
