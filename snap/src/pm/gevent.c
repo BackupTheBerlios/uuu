@@ -274,6 +274,8 @@ static int scaleJoyAxis(
 #endif
 #elif   defined(__BEOS__)
 #include "beos/event.c"
+#elif   defined(__UUU__)
+#include "uuu/event.c"
 #else
 #error  Event library not ported to this platform yet!
 #endif

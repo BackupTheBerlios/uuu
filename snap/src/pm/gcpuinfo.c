@@ -103,6 +103,8 @@ void ZTimerQuickInit(void);
 #include "qnx/cpuinfo.c"
 #elif   defined(__BEOS__)
 #include "beos/cpuinfo.c"
+#elif   defined(__UUU__)
+#include "uuu/cpuinfo.c"
 #else
 #error  CPU library not ported to this platform yet!
 #endif

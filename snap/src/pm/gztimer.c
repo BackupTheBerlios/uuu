@@ -83,6 +83,8 @@ ulong _ASMAPI _CPU_calcMicroSec(CPU_largeInteger *count,ulong freq);
 #include "qnx/ztimer.c"
 #elif   defined(__BEOS__)
 #include "beos/ztimer.c"
+#elif   defined(__UUU__)
+#include "uuu/ztimer.c"
 #else
 #error  Timer library not ported to this platform yet!
 #endif

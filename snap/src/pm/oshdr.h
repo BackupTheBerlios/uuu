@@ -72,6 +72,8 @@
 #endif
 #elif   defined(__BEOS__)
 #include "beos/oshdr.h"
+#elif   defined(__UUU__)
+#include "uuu/oshdr.h"
 #else
 #error  PM library not ported to this platform yet!
 #endif
