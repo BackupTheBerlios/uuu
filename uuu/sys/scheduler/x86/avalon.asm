@@ -70,6 +70,12 @@
 ;------------------------------------------------------------------------------
 ;
 ;
+; Initialisation Thread Priority: default 5
+;------------------------------------------------------------------------------
+%assign _INITIALISATION_THREAD_PRIORITY_	5
+;------------------------------------------------------------------------------
+;
+;
 ; Default time resolution (PIT/microseconds)
 ;------------------------------------------------------------------------------
 ; The default resolution influence the time between Timer IRQ, or the time
@@ -182,25 +188,6 @@
 %define io_delay        out 0x80, al
 ;%define io_delay       ;-no-delay-
 ;------------------------------------------------------------------------------
-;
-;
-;------------------------------------------------------------------------------
-; Sanity Checks.
-;
-; Enabling sanity checks causes additional code to be included to validate
-; pointers before following them, making sure every ring node member points
-; properly to valid members in both direction, etc.
-;
-; Keeping sanity checks enabled is a good idea and should be disabled only after
-; thorough testing of the scheduler.
-;
-; To disable sanity checks, comment the next line:
-%define SANITY_CHECKS
-;
-; Sanity check is performed the same under the dev bench as outside, but some
-; additional information is only provided inside the dev bench. Uncomment the
-; next line to enable that additional information.
-%define RT_SANITY_VERBOSE
 ;
 ; Those values are magic markers to help detect invalid pointers/corruption
 %define RT_THREAD_MAGIC		('thrm'+'agic')
@@ -691,6 +678,10 @@ __scheduler_init:
 						;------------------------------
   pop eax					; restore thread ID (pointer)
   mov [eax + _thread_t.execution_status], byte RT_SCHED_STATUS_RUNNING
+  mov ebx, _INITIALISATION_THREAD_PRIORITY_	;
+  mov [eax + _thread_t.execution_priority], ebx	;- execution priority
+  mov [TIMER_START_TIME(esi)], ebx		;/
+  mov [TIMER_START_TIME(esi) + 4], dword 0	;/
   mov [executing_thread], eax			;
 						;
 						; Activate its stack
@@ -1025,7 +1016,6 @@ gproc thread.acquire
   return 1					;
 						;
 %ifdef SANITY_CHECKS				;
- %ifdef RT_SANITY_VERBOSE
 [section .data]
 .sanity_eax:
   uuustring "rthrd_acquire: eax was modified - does not point to thread_pools_ring anymore", 0x0A
@@ -1051,14 +1041,6 @@ __SECT__
 .failed_sanity_check_thread_id:			;
  mov ebx, dword .sanity_id			;
 .failed_sanity_common:				;
- %else						;
-						;
-.failed_sanity_check_eax:			;
-.failed_sanity_check_ring:			;
-.failed_sanity_check_magic:			;
-.failed_sanity_check_thread_id:			;
- xor ebx, ebx					;
- %endif						;
  xor eax, eax					; TODO : set error code
  ret_other					;
 %endif						;
