@@ -1,4 +1,5 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/mkuuubimage.c,v 1.2 2003/11/03 15:54:58 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/mkuuubimage.c,v 1.3 2003/11/03 16:15:40 bitglue Exp $
+
 
 /* This program takes as input a single ELF file and produces a boot image for
    the Unununium OS.
@@ -237,7 +238,7 @@ int main( int argc, char *argv[] )
 	    break;
 
 	  case 'v':
-	    fprintf( stderr, "mkuuubimage $Revision: 1.2 $ $Date: 2003/11/03 15:54:58 $\ncompiled " __DATE__ " " __TIME__ "\n" );
+	    fprintf( stderr, "mkuuubimage $Revision: 1.3 $ $Date: 2003/11/03 16:15:40 $\ncompiled " __DATE__ " " __TIME__ "\n" );
 	    return 0;
 
 
@@ -487,7 +488,7 @@ void print_usage()
   fprintf( stderr, "\
 Usage: mkuuubimage OPTIONS INPUT-FILE\n\
 \n\
-  -1 to -9	adjust compression from fastest(1) to smallest(2)\n\
+  -1 to -9	adjust compression from fastest(1) to smallest(9)\n\
   -d		increase the verbosity of messages\n\
   -o FILE	set output filename to FILE\n\
   -v		print version information\n\
