@@ -267,6 +267,15 @@ int mkfs(
     allocate_bit( block_bitmap );
   }
 
+  printf(":. creating root hierarchy table\n");
+  root_table = create_table();
+  add_column( root_table, "id", DATATYPE_INT32, 1, 1, 0);
+  add_column( root_table, "table_id", DATATYPE_INT32, 1, 1, 0);
+  add_column( root_table, "name", DATATYPE_VARCHAR, 255, 1, 1);
+  add_column( root_table, "row_id", DATATYPE_INT32, 1, 1, 0);
+  add_column( root_table, "parents", DATATYPE_INT32, 1, 4, 0);
+  generate_table_definition( root_table, 2 );
+
   printf(":. creating maintenance files:\n\tbad blocks\n");
   tmp_file = create_file();
   superblock->bad_block_inode = tmp_file->inode_id;
@@ -276,16 +285,6 @@ int mkfs(
   tmp_file = create_file();
   superblock->journal_inode = tmp_file->inode_id;
   close_file( tmp_file );
-
-  printf(":. creating root hierarchy table\n");
-  root_table = create_table();
-  superblock->root_table_inode = root_table->file->inode_id;
-  add_column( root_table, "id", DATATYPE_INT32, 1, 1, 0);
-  add_column( root_table, "table_id", DATATYPE_INT32, 1, 1, 0);
-  add_column( root_table, "name", DATATYPE_VARCHAR, 255, 1, 1);
-  add_column( root_table, "row_id", DATATYPE_INT32, 1, 1, 0);
-  add_column( root_table, "parents", DATATYPE_INT32, 1, 4, 0);
-  generate_table_definition( root_table, 2 );
 
 
   // Save the superblock
