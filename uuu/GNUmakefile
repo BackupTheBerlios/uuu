@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.8 2004/01/01 02:17:46 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.9 2004/01/05 16:32:53 bitglue Exp $
 
 UUUROOT=$(CURDIR)
 
@@ -10,10 +10,16 @@ include $(UUUROOT)/sys/bimage/$(ARCH)/Make.config
 
 diskimage: boot.bimage
 
+.PHONY:
+lib/c/bin-i386/dietlibc.a:
+	$(entering) $(CURDIR)/lib/c
+	$(MAKE) -C lib/c
+	$(entering) $(CURDIR)
+
 .PHONY: boot.o
-boot.o: $(BIMAGE_OBJS)
-	$(linking) '$^  >  $@'
-	ld -static -s -o '$@' -T sys/bimage/$(ARCH)/bimage.ld $(BIMAGE_OBJS)
+boot.o: $(BIMAGE_OBJS) lib/c/bin-i386/dietlibc.a
+	$(linking) '$^ >  $@'
+	gcc -nostartfiles -static -s -o '$@' -Xlinker -T -Xlinker sys/bimage/$(ARCH)/bimage.ld $(BIMAGE_OBJS) lib/c/bin-i386/dietlibc.a
 
 boot.bimage: boot.o
 	$(MKUUUBIMAGE) -o '$@' '$<'
@@ -37,6 +43,8 @@ clean:
 	  $(cleaning) "$$dir"; \
 	  $(MAKE) -C "$$dir" clean; \
 	done
+	$(cleaning) '$(CURDIR)/lib/c'
+	$(MAKE) -C '$(CURDIR)/lib/c' clean
 	$(cleaning) '$(CURDIR)/uuudoc'
 	$(MAKE) -C '$(CURDIR)/uuudoc' clean
 	$(cleaning) '$(CURDIR)'

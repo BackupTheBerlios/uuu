@@ -1,3 +1,8 @@
+UUUROOT = ../../
+
+VERBOSE=off
+COLOR=on
+
 INSTALL=install
 prefix?=/opt/diet
 # Set the following to install to a different root
@@ -92,6 +97,8 @@ WHAT=	$(OBJDIR) $(OBJDIR)/start.o $(OBJDIR)/dyn_start.o $(OBJDIR)/dyn_stop.o \
 
 all: $(WHAT)
 
+include $(UUUROOT)/messages.make
+
 profiling: $(OBJDIR)/libgmon.a $(OBJDIR)/pstart.o
 
 CFLAGS=-pipe -nostdinc
@@ -149,16 +156,20 @@ $(OBJDIR) $(PICODIR):
 % :: %,v
 
 $(OBJDIR)/pstart.o: start.S
+	$(assembling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -DPROFILING -c $< -o $@
 
 $(OBJDIR)/%.o: %.S $(ARCH)/syscalls.h
+	$(assembling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -c $< -o $@
 
 $(OBJDIR)/pthread_%.o: libpthread/pthread_%.c
+	$(compiling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -c $< -o $@
 	$(COMMENT) -$(CROSS)strip -x -R .comment -R .note $@
 
 $(OBJDIR)/%.o: %.c
+	$(compiling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -c $< -o $@
 	$(COMMENT) -$(CROSS)strip -x -R .comment -R .note $@
 
@@ -169,34 +180,43 @@ $(OBJDIR)/__longjmp.o $(OBJDIR)/setjmp.o \
 $(OBJDIR)/clone.o
 
 $(OBJDIR)/dietlibc.a: $(DIETLIBC_OBJ) $(OBJDIR)/start.o
+	$(archiving) '$(DIETLIBC_OBJ)  >  $@'
 	$(CROSS)ar cru $@ $(DIETLIBC_OBJ)
 
 $(OBJDIR)/librpc.a: $(LIBRPCOBJ)
+	$(archiving) '$(LIBRPCOBJ)  >  $@'
 	$(CROSS)ar cru $@ $(LIBRPCOBJ)
 
 LIBLATIN1_OBJS=$(patsubst liblatin1/%.c,$(OBJDIR)/%.o,$(wildcard liblatin1/*.c))
 $(OBJDIR)/liblatin1.a: $(LIBLATIN1_OBJS)
+	$(archiving) '$^  >  $@'
 	$(CROSS)ar cru $@ $^
 
 $(OBJDIR)/libgmon.a: $(LIBGMON_OBJS)
+	$(archiving) '$^  >  $@'
 	$(CROSS)ar cru $@ $^
 
 $(OBJDIR)/libpthread.a: $(LIBPTHREAD_OBJS) dietfeatures.h
+	$(archiving) '$(LIBPTHREAD_OBJS)  >  $@'
 	$(CROSS)ar cru $@ $(LIBPTHREAD_OBJS)
 
 $(OBJDIR)/libcompat.a: $(LIBCOMPATOBJ)
+	$(archiving) '$(LIBCOMPATOBJ)  >  $@'
 	$(CROSS)ar cru $@ $(LIBCOMPATOBJ)
 
 $(OBJDIR)/libm.a: $(LIBMATHOBJ)
+	$(archiving) '$(LIBMATHOBJ)  >  $@'
 	$(CROSS)ar cru $@ $(LIBMATHOBJ)
 
 $(OBJDIR)/libdietc.so: $(OBJDIR)/dietlibc.a
+	$(generating) '$^  >  $@'
 	$(CROSS)ld -whole-archive -shared -o $@ $^
 
 dyn: dyn_lib
 
 # added dynamic linker
 $(OBJDIR)/libdl.a: $(LIBDLOBJ)
+	$(archiving) '$(LIBDLOBJ)  >  $@'
 	$(CROSS)ar cru $@ $(LIBDLOBJ)
 
 dyn_lib: $(PICODIR) $(PICODIR)/libc.so $(PICODIR)/dstart.o \
@@ -205,20 +225,25 @@ dyn_lib: $(PICODIR) $(PICODIR)/libc.so $(PICODIR)/dstart.o \
 	$(PICODIR)/diet-dyn $(PICODIR)/diet-dyn-i
 
 $(PICODIR)/%.o: %.S $(ARCH)/syscalls.h
+	$(assembling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -fPIC -D__DYN_LIB -c $< -o $@
 
 $(PICODIR)/pthread_%.o: libpthread/pthread_%.c
+	$(compiling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -fPIC -D__DYN_LIB -c $< -o $@
 	$(COMMENT) $(CROSS)strip -x -R .comment -R .note $@
 
 $(PICODIR)/%.o: %.c
+	$(compiling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -fPIC -D__DYN_LIB -c $< -o $@
 	$(COMMENT) $(CROSS)strip -x -R .comment -R .note $@
 
 $(PICODIR)/dstart.o: start.S
+	$(assembling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -fPIC -D__DYN_LIB -c $< -o $@
 
 $(PICODIR)/dyn_so_start.o: dyn_start.c
+	$(compiling) '$<  >  $@'
 	$(CROSS)$(CC) -I. -Iinclude $(CFLAGS) -fPIC -D__DYN_LIB -D__DYN_LIB_SHARED -c $< -o $@
 	$(COMMENT) $(CROSS)strip -x -R .comment -R .note $@
 
@@ -235,43 +260,52 @@ DYN_LIBDL_OBJS = $(patsubst $(OBJDIR)/%.o,$(PICODIR)/%.o,$(LIBDLOBJ))
 DYN_LIBCOMPAT_OBJS = $(patsubst $(OBJDIR)/%.o,$(PICODIR)/%.o,$(LIBCOMPATOBJ))
 
 $(PICODIR)/libc.so: $(PICODIR) $(DYN_LIBC_OBJ)
+	$(linking) '$<  >  $@'
 	$(CROSS)$(CC) -nostdlib -shared -o $@ $(CFLAGS) -fPIC $(DYN_LIBC_OBJ) -lgcc -Wl,-soname=libc.so
 
 $(PICODIR)/libpthread.so: $(DYN_PTHREAD_OBJS) dietfeatures.h
+	$(linking) '$<  >  $@'
 	$(CROSS)$(CC) -nostdlib -shared -o $@ $(CFLAGS) -fPIC $(DYN_PTHREAD_OBJS) -L$(PICODIR) -lc -Wl,-soname=libpthread.so
 
 $(PICODIR)/libdl.so: libdl/_dl_main.c dietfeatures.h
+	$(linking) '$<  >  $@'
 	$(CROSS)$(CC) -D__OD_CLEAN_ROOM -DNODIETREF -fPIC -nostdlib -shared -o $@ $(CFLAGS) -I. -Iinclude libdl/_dl_main.c -Wl,-soname=libdl.so
 
 #$(PICODIR)/libdl.so: $(DYN_LIBDL_OBJS) dietfeatures.h
 #	$(CROSS)$(CC) -nostdlib -shared -o $@ $(CFLAGS) -fPIC $(DYN_LIBDL_OBJS) -L$(PICODIR) -ldietc -Wl,-soname=libdl.so
 
 $(PICODIR)/libcompat.so: $(DYN_LIBCOMPAT_OBJS) dietfeatures.h
+	$(linking) '$<  >  $@'
 	$(CROSS)$(CC) -nostdlib -shared -o $@ $(CFLAGS) -fPIC $(DYN_LIBCOMPAT_OBJS) -L$(PICODIR) -lc -Wl,-soname=libcompat.so
 
 
 
 $(SYSCALLOBJ): syscalls.h
 
-$(OBJDIR)/elftrunc: $(OBJDIR)/diet contrib/elftrunc.c
+$(OBJDIR)/elftrunc: contrib/elftrunc.c $(OBJDIR)/diet
+	$(compiling) '$<  >  $@'
 	bin-$(MYARCH)/diet $(CROSS)$(CC) $(CFLAGS) -o $@ contrib/elftrunc.c
 
 VERSION=dietlibc-$(shell head -n 1 CHANGES|sed 's/://')
 CURNAME=$(notdir $(shell pwd))
 
 $(OBJDIR)/diet: diet.c
+	$(compiling) '$<  >  $@'
 	$(CROSS)$(CC) -o $@ $^ -DDIETHOME=\"$(HOME)\" -DVERSION=\"$(VERSION)\" -lgcc
 	$(CROSS)strip -R .comment -R .note $@
 
 $(OBJDIR)/diet-i: diet.c
+	$(compiling) '$<  >  $@'
 	$(CROSS)$(CC) -o $@ $^ -DDIETHOME=\"$(prefix)\" -DVERSION=\"$(VERSION)\" -DINSTALLVERSION -lgcc
 	$(CROSS)strip -R .comment -R .note $@
 
 $(PICODIR)/diet-dyn: $(PICODIR)/start.o $(PICODIR)/dyn_start.o diet.c
+	$(linking) '$<  >  $@'
 	$(CROSS)$(CC) -Iinclude $(CFLAGS) -fPIC -nostdlib -o $@ $^ -DDIETHOME=\"$(HOME)\" -D__DYN_LIB -DVERSION=\"$(VERSION)\" -L$(PICODIR) -lc -lgcc $(PICODIR)/dyn_stop.o -Wl,-dynamic-linker=$(HOME)/$(PICODIR)/libdl.so
 	$(CROSS)strip -R .command -R .note $@
 
 $(PICODIR)/diet-dyn-i: $(PICODIR)/start.o $(PICODIR)/dyn_start.o diet.c
+	$(linking) '$<  >  $@'
 	$(CROSS)$(CC) -Iinclude $(CFLAGS) -fPIC -nostdlib -o $@ $^ -DDIETHOME=\"$(prefix)\" -D__DYN_LIB -DVERSION=\"$(VERSION)\" -L$(PICODIR) -lc -lgcc $(PICODIR)/dyn_stop.o -Wl,-dynamic-linker=$(ILIBDIR)/libdl.so -DINSTALLVERSION
 	$(CROSS)strip -R .command -R .note $@
 
