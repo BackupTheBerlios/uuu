@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.4 2003/11/08 14:51:15 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.5 2003/11/18 18:35:18 bitglue Exp $
 
 %ifndef __STAGE2_CONFIG__
 %define __STAGE2_CONFIG__
@@ -63,9 +63,48 @@
 %define MBOOT_HDR_FLAGS		MBOOT_HDR_MEMINFO
 
 struc mboot_hdr
-.magic               resd 1
-.flags               resd 1
-.checksum            resd 1
+  .magic:	resd 1
+  .flags:	resd 1
+  .checksum:	resd 1
+endstruc
+
+
+struc mboot_info
+  .flags:	resd 1
+  .mem_lower:	resd 1
+  .mem_upper:	resd 1
+  .boot_device:	resd 1
+  .cmdline:	resd 1
+  .mods_count:	resd 1
+  .mods_addr:	resd 1
+  .syms:	resd 4
+  .mmap_length:	resd 1
+  .mmap_addr:	resd 1
+endstruc
+
+
+%define MBOOT_INFO_MEM		(1 << 0)
+%define MBOOT_INFO_BOOT_DEVICE	(1 << 1)
+%define MBOOT_INFO_CMDLINE	(1 << 2)
+%define MBOOT_INFO_MODULES	(1 << 3)
+%define MBOOT_INFO_AOUT_SYMS	(1 << 4)
+%define MBOOT_INFO_ELF_SYMS	(1 << 5)
+%define MBOOT_INFO_MMAP		(1 << 6)
+
+
+struc mboot_module
+  .mod_start:	resd 1
+  .mod_end:	resd 1
+  .string:	resd 1
+  .reserved:	resd 1
+endstruc
+
+struc mboot_mmap
+  .base_low:	resd 1
+  .base_high:	resd 1
+  .length_low:	resd 1
+  .length_high:	resd 1
+  .type:	resd 1
 endstruc
 
 

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.2 2003/11/10 15:23:07 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.3 2003/11/18 18:35:18 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; boot routines
@@ -26,7 +26,7 @@
 
 extern uncompress	; from zlib
 extern stack_top
-extern command_buffer
+extern boot_top
 extern print_string
 extern print_hex
 extern set_display_start
@@ -40,7 +40,7 @@ extern set_display_start
 global calloc
 global free
 global memcpy
-global builtin_boot
+global boot
 
 
 
@@ -82,7 +82,7 @@ global builtin_boot
   add eax, [memory_frame]
   mov [memory_frame], eax
 
-  cmp eax, command_buffer	; command_buffer is also the top of the boot code
+  cmp eax, boot_top
   jb .out_of_mem
 
   mov ebx, eax
@@ -126,13 +126,13 @@ global builtin_boot
 
 
 
-builtin_boot.invalid_format:
+boot.invalid_format:
   mov bl, VGA_RED
   printstr "invalid format for boot image",0xa
   retn
 
 ;-----------------------------------------------------------------------.
-						builtin_boot:		;
+						boot:			;
   mov ebp, boot_image
   cmp [ebp], dword "UnBI"
   jnz .invalid_format

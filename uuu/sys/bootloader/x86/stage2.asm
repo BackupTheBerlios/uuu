@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.8 2003/11/08 14:51:15 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.9 2003/11/18 18:35:18 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; misc. setup code
@@ -18,12 +18,6 @@
 
 %include "stage2-config.asm"
 
-; arbitrary number used to detect if we are restarting from a reboot or from
-; scratch
-
-%define INIT_MAGIC	0x1fe81f8c
-
-
 
 
 ;---------------===============\                /===============---------------
@@ -35,10 +29,7 @@ extern set_video_mode
 extern builtin_clear
 extern start_prompt
 extern print_string
-
-extern boot_source
-extern boot_dest
-extern boot_size
+extern multiboot_setup
 extern stack_top
 
 
@@ -65,12 +56,7 @@ _start:
   rep movsd				; move 'em
   lgdt [_gdtr]				; reload gdt
 
-relocate_boot_code:
-  mov esi, boot_source
-  mov edi, boot_dest
-  mov ecx, boot_size
-  shr ecx, 2
-  rep movsd
+  call multiboot_setup
 
   call builtin_clear
 
@@ -78,7 +64,7 @@ relocate_boot_code:
 get_to_business:			;---------------------------------
 
   mov bl, VGA_YELLOW
-  printstr "Unununium stage 2 bootloader version $Revision: 1.8 $",0x0a
+  printstr "Unununium stage 2 bootloader version $Revision: 1.9 $",0x0a
   mov bl, VGA_WHITE
   printstr "run ",0x27,"help",0x27," for a list of available commands.",0xa
   jmp start_prompt			;

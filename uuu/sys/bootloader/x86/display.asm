@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.11 2003/11/10 22:24:51 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.12 2003/11/18 18:35:18 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -37,6 +37,7 @@ global print_char
 global redraw_display
 global wait_vtrace
 global set_display_start
+global print_nul_string
 
 
 
@@ -169,6 +170,29 @@ global set_display_start
   retn
 
 
+
+;-----------------------------------------------------------------------.
+						print_nul_string:	;
+; prints a boring ascii nul terminated string
+;
+; ESI = ptr to string
+; BL = VGA color
+;
+; destroys EAX, ESI
+
+  movzx eax, byte[esi]
+  test eax, eax
+  jz .retn
+.do_byte:
+  call print_char
+  inc esi
+  movzx eax, byte[esi]
+  test eax, eax
+  jnz .do_byte
+.retn:
+  retn
+
+  
 
 ;-----------------------------------------------------------------------.
 						print_string_len:	;

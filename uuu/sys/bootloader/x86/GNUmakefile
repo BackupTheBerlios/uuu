@@ -1,8 +1,8 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.10 2003/11/12 15:51:16 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.11 2003/11/18 18:35:18 bitglue Exp $
 
 UUUROOT=../../..
 
-STAGE2_OBJS = stage2.o display.o command.o keyboard.o floppy.o ata.o boot.o
+STAGE2_OBJS = stage2.o display.o command.o keyboard.o floppy.o ata.o boot.o multiboot.o
 
 .PHONY: all
 all: stage1.bin stage2

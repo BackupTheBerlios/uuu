@@ -1,5 +1,5 @@
 /*
- * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.ld,v 1.4 2003/11/08 13:46:28 bitglue Exp $
+ * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.ld,v 1.5 2003/11/18 18:35:18 bitglue Exp $
  *
  * ld script for the stage2 bootloader
  */
@@ -51,12 +51,7 @@ SECTIONS
     *inffast.o(*)
 
     PROVIDE( boot_size = ALIGN(4) - boot_dest );
-
-    /* Unfortunately, as I read the multiboot standard it doesn't mention what
-     * memory is used by the bootloader, and what by the booted kernel, so this
-     * is put below 1M in hopes it won't get clobbered by a boot module. */
-
-    PROVIDE( command_buffer = . );
+    PROVIDE( boot_top = . );
   }
 
   /* set output to be fixed at 1M */
@@ -67,7 +62,9 @@ SECTIONS
 
   .data	: { stage2.o(multiboot) *(.data) }
   .text	: { *(.text) }
-  .bss	: { *(.bss)  }
+  .bss	: {
+    *(.bss)
+  }
 
   /* the boot section (defined above) follows .bss */
   PROVIDE( boot_source = . );

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.8 2003/11/10 18:21:25 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.9 2003/11/18 18:35:18 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; command parsing and builtin commands for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -17,6 +17,9 @@
 %assign THOD_GROUPS	4
 %assign THOD_GROUP_SIZE	4
 
+; Number of chars in the command buffer. Remember, each UCS4 char is 4 bytes ;)
+%define COMMAND_BUFFER_SIZE 512
+
 
 
 ;---------------===============\                /===============---------------
@@ -25,7 +28,6 @@
 
 ; defined by the linker script to be the end of the stage2 data, the buffer is
 ; unbounded on the top.
-extern command_buffer
 extern get_key
 extern print_char
 extern print_string
@@ -35,7 +37,11 @@ extern print_hex_len
 extern display_buffer
 extern screen_pos
 extern vram_offset
-extern builtin_boot
+extern boot
+extern builtin_mbinfo
+extern boot_source
+extern boot_dest
+extern boot_size
 
 extern ata_read_sector
 extern floppy_motor_on
@@ -122,6 +128,9 @@ start_prompt:
   jmp .get_key		; unknown control char; ignore
 
 .add_to_buffer:
+  cmp ebp, COMMAND_BUFFER_SIZE
+  jae .get_key
+
   mov bl, VGA_WHITE
   call print_char
 
@@ -368,6 +377,8 @@ builtin_thod.error:
   dd 0xa
   ucs4string "lba2chs - test LBA->CHS conversion for the floppy"
   dd 0xa
+  ucs4string "mbinfo - print information passed by a multiboot bootloader"
+  dd 0xa
   ucs4string "read-ata - read from the primary master ATA device"
   dd 0xa
   ucs4string "read-floppy - read sectors from the floppy"
@@ -377,16 +388,12 @@ builtin_thod.error:
   ucs4string "thod - dump memory contents"
   dd 0xa
   dd 0xa
-  ucs4string "Note: these commands are here for testing only. If"
+  ucs4string "Note: these commands are here for testing only. If you give them invalid inputs"
   dd 0xa
-  ucs4string "you give them invalid inputs and they crash, it is a"
-  dd 0xa
-  ucs4string "feature, not a bug :)"
+  ucs4string "and they crash, it is a feature, not a bug :)"
   dd 0xa
   dd 0xa
-  ucs4string "If you have problems with boot, look at ZLIB_LDFLAGS"
-  dd 0xa
-  ucs4string "in Make.config."
+  ucs4string "If you have problems with boot, look at ZLIB_LDFLAGS in Make.config."
   dd 0xa
 .end:
 __SECT__
@@ -602,6 +609,21 @@ __SECT__
   retn
 
 
+
+;-----------------------------------------------------------------------.
+						builtin_boot:		;
+  mov bl, VGA_CYAN
+  printstr "relocating boot code",0xa
+  mov esi, boot_source
+  mov edi, boot_dest
+  mov ecx, boot_size
+  shr ecx, 2
+  rep movsd
+
+  call boot
+
+
+
 ;---------------===============\             /===============---------------
 				section .data
 ;---------------===============/             \===============---------------
@@ -639,4 +661,15 @@ dd		builtin_clear
 uuustring	"boot"
 dd		builtin_boot
 
+uuustring	"mbinfo"
+dd		builtin_mbinfo
+
 dd		0
+
+
+
+;---------------===============\            /===============---------------
+				section .bss
+;---------------===============/            \===============---------------
+
+command_buffer: resd COMMAND_BUFFER_SIZE
