@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_table.c,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_table.c,v 1.2 2003/10/12 18:06:53 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -14,7 +14,7 @@
 
 UDBFSLIB_TABLE	*udbfs_open_table(
     UDBFSLIB_MOUNT	*mount,
-    uint32_t		inode_id ) {
+    uint64_t		inode_id ) {
 
   return(NULL);
 }

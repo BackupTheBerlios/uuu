@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_inode.c,v 1.2 2003/10/12 15:24:47 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/open_inode.c,v 1.3 2003/10/12 18:07:36 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -16,7 +16,7 @@
 
 UDBFSLIB_INODE *udbfs_open_inode(
     UDBFSLIB_MOUNT	*mount,
-    uint32_t		inode_id ) {
+    uint64_t		inode_id ) {
 
   UDBFS_INODE udbfs_inode;
 
@@ -32,12 +32,12 @@ UDBFSLIB_INODE *udbfs_open_inode(
   if( (lseek( mount->block_device, inode->physical_offset, SEEK_SET) != inode->physical_offset) ||
       (read( mount->block_device, &udbfs_inode, sizeof(UDBFS_INODE) ) != sizeof(UDBFS_INODE)) ) {
 
-    fprintf(stderr,"udbfslib: unable to acquire inode [%08X] data\n", inode_id );
+    fprintf(stderr,"udbfslib: unable to acquire inode [%016llX] data\n", inode_id );
     udbfs_close_inode( inode );
     return(NULL);
   }
 
-  printf("udbfs inode [%i] block [%016llX][%016llX][%016llX][%016llX]", inode_id, udbfs_inode.block[0], udbfs_inode.block[1], udbfs_inode.block[2], udbfs_inode.block[3]);
+  printf("udbfs inode [%016llX] block [%016llX][%016llX][%016llX][%016llX]\n", inode_id, udbfs_inode.block[0], udbfs_inode.block[1], udbfs_inode.block[2], udbfs_inode.block[3]);
 
   inode->size = udbfs_inode.size;
   if( (udbfslib_load_block( inode, udbfs_inode.block[0], 0, &inode->block[0] ) == 0) &&
@@ -49,6 +49,6 @@ UDBFSLIB_INODE *udbfs_open_inode(
     udbfslib_load_tind_block( inode, udbfs_inode.tind_block, inode->mount->dir_storage + inode->mount->ind_storage + inode->mount->bind_storage, &inode->tind_block );
   }
 
-  printf("udbfslib: inode [%i] size [%lli] opened\n", inode->id, inode->size );
+  printf("udbfslib: inode [%016llX] size [%016llX] opened\n", inode->id, inode->size );
   return( inode );
 }
