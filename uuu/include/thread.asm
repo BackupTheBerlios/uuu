@@ -4,6 +4,14 @@
 
 %include "ring_queue.asm"
 
+; Single processor critical section control
+%macro ENTER_CRITICAL_SECTION 0.nolist
+  pushfd
+  cli
+%endmacro
+%define LEAVE_CRITICAL_SECTION popfd
+
+
 struc _thread_timer_t
 .procedure	resd 1
 .execution_time	resd 2
