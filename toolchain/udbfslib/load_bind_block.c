@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.9 2003/10/12 21:29:00 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.10 2003/10/13 20:43:23 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -90,7 +90,7 @@ int		udbfslib_load_bind_block(
 	    offset_modifier,
 	    &bind_block->indblock[i] ) != 0 ) {
 
-	fprintf(stderr,"udbfslib: error happened while loading indirects of bi-indirect block [%016llX]\n", bind_block->id);
+	fprintf(stderr,"udbfslib: error happened while loading indirects of bi-indirect block [%016" UINT64_FORMAT "X]\n", bind_block->id);
 	return( -1 );
       }
     }

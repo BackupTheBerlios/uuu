@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.6 2003/10/13 00:38:16 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.7 2003/10/13 20:43:23 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -75,7 +75,7 @@ int		udbfs_write_to_inode(
 
     physical_offset = block->device_offset + (inode->cursor - block->offset_start);
 
-    printf("udbfslib: writing [%08X] bytes from file offset [%016llX] to disk physical offset [%016llX]\n", partial_write_size, inode->cursor, physical_offset); fflush(stdout);
+    printf("udbfslib: writing [%08X] bytes from file offset [%016" UINT64_FORMAT "X] to disk physical offset [%016" UINT64_FORMAT "X]\n", partial_write_size, inode->cursor, physical_offset); fflush(stdout);
  
 
     if( (lseek(inode->mount->block_device, physical_offset, SEEK_SET) != physical_offset ) ||
@@ -362,7 +362,7 @@ finalize:
   block->offset_end = block->offset_start + inode->mount->block_size;
   block->device_offset = block->id * inode->mount->block_size;
 
-  printf("udbfslib: block [%016llX] allocated to inode [%016llX] carrying offset [%016llX-%016llX] at device offset [%016llX]\n", block->id, inode->id, block->offset_start, block->offset_end, block->device_offset); fflush(stdout);
+  printf("udbfslib: block [%016" UINT64_FORMAT "X] allocated to inode [%016" UINT64_FORMAT "X] carrying offset [%016" UINT64_FORMAT "X-%016" UINT64_FORMAT "X] at device offset [%016" UINT64_FORMAT "X]\n", block->id, inode->id, block->offset_start, block->offset_end, block->device_offset); fflush(stdout);
   return(block);
 }
 

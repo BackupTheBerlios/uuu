@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/allocate_bit.c,v 1.4 2003/10/13 00:42:11 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/allocate_bit.c,v 1.5 2003/10/13 20:43:23 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -34,7 +34,7 @@ uint64_t		udbfslib_allocate_bit(
   uint8_t	bit;
 
   if( *free_count > (bitmap_size<<3) ) {
-    fprintf(stderr,"udbfslib: ERROR, udbfslib_allocate_bit reports higher free count than bitmap allows [%016llX:%016llX]\n", *free_count, bitmap_size<<3);
+    fprintf(stderr,"udbfslib: ERROR, udbfslib_allocate_bit reports higher free count than bitmap allows [%016" UINT64_FORMAT "X:%016" UINT64_FORMAT "X]\n", *free_count, bitmap_size<<3);
     return(0);
   }
 

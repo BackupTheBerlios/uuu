@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/close_inode.c,v 1.3 2003/10/12 21:32:19 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/close_inode.c,v 1.4 2003/10/13 20:43:23 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <malloc.h>
 
 #include "extralib.h"
 
@@ -25,7 +26,7 @@ int		udbfs_close_inode(
     return(0);
   }
 
-  printf("udbfslib: closing inode [%016llX] final size [%016llX]\n", inode->id, inode->size);
+  printf("udbfslib: closing inode [%016" UINT64_FORMAT "X] final size [%016" UINT64_FORMAT "X]\n", inode->id, inode->size);
   // remove inode from link_list
   udbfslib_unlink(
       &inode->mount->opened_inodes,

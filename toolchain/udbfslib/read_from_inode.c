@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/read_from_inode.c,v 1.3 2003/10/12 21:27:32 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/read_from_inode.c,v 1.4 2003/10/13 20:43:23 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -43,7 +43,7 @@ int		udbfs_read_from_inode(
 
     physical_offset = block->device_offset + inode->cursor - block->offset_start;
 
-    printf("reading %08X bytes to file offset %016llX from disk physical offset %016llX...\n", partial_read_size, inode->cursor, physical_offset);
+    printf("reading %08X bytes to file offset %016" UINT64_FORMAT "X from disk physical offset %016" UINT64_FORMAT "X...\n", partial_read_size, inode->cursor, physical_offset);
  
 
     if( (lseek(inode->mount->block_device, physical_offset, SEEK_SET) != physical_offset ) ||

@@ -31,7 +31,7 @@ int		udbfslib_load_block(
 
   UDBFSLIB_BLOCK *block;
 
-  printf("udblifsb: request to load block [%016llX] for inode [%016llX] offset [%016llX]\n", block_id, inode->id, file_offset); fflush(stdout);
+  printf("udblifsb: request to load block [%016" UINT64_FORMAT "X] for inode [%016" UINT64_FORMAT "X] offset [%016" UINT64_FORMAT "X]\n", block_id, inode->id, file_offset); fflush(stdout);
 
   block = udbfslib_allocate_memory_block(inode, block_hook);
 

@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/free_inode.c,v 1.4 2003/10/12 21:29:00 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/free_inode.c,v 1.5 2003/10/13 20:43:23 bitglue Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -30,7 +30,7 @@ int		udbfs_free_inode(
   inode = mount->opened_inodes;
   while( inode ) {
     if( inode->id == inode_id ) {
-      fprintf(stderr,"udbfslib: cannot free an opened inode! close it first! [%016llX]\n", inode_id);
+      fprintf(stderr,"udbfslib: cannot free an opened inode! close it first! [%016" UINT64_FORMAT "X]\n", inode_id);
       return(-1);
     }
     inode = inode->next;
@@ -61,14 +61,14 @@ static int		udbfslib_deallocate_bit(
   uint8_t	bit;
 
   if( (*free_count + 1) > (bitmap_size<<3) ) {
-    fprintf(stderr,"udbfslib: ERROR, udbfslib_deallocate_bit reports free count would be higher than bitmap allows, aborting [%016llX:%016llX]\n", *free_count + 1, bitmap_size<<3);
+    fprintf(stderr,"udbfslib: ERROR, udbfslib_deallocate_bit reports free count would be higher than bitmap allows, aborting [%016" UINT64_FORMAT "X:%016" UINT64_FORMAT "X]\n", *free_count + 1, bitmap_size<<3);
     return(-1);
   }
 
   byte = bit_id>>3;
   bit = bit_id & 0x03;
   if( (bitmap[byte] & (1<<bit)) != 0x00 ) {
-    fprintf(stderr,"udbfslib: ERROR, udbfslib_deallocate_bit was requested to free an already freed bit [%016llX]\n", bit_id);
+    fprintf(stderr,"udbfslib: ERROR, udbfslib_deallocate_bit was requested to free an already freed bit [%016" UINT64_FORMAT "X]\n", bit_id);
     return(-1);
   }
 
