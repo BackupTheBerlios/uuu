@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.2 2003/10/11 13:17:27 bitglue Exp $
 
 .PHONY: all clean test
 
@@ -37,4 +37,4 @@ test: test.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o test test.c -L. -ludbfs
 
 clean:
-	rm -f libudbfs.a *.o
+	rm -f libudbfs.a test
