@@ -55,6 +55,7 @@
  *  __OS2__         Compiling for OS/2
  *  __OS2_16__      Compiling for 16 bit OS/2
  *  __OS2_32__      Compiling for 32 bit OS/2
+ *  __UUU__         Compiling for the Unununium OS
  *  __UNIX__        Compiling for Unix
  *  __QNX__         Compiling for the QNX realtime OS (Unix compatible)
  *  __LINUX__       Compiling for the Linux OS (Unix compatible)
@@ -354,6 +355,19 @@ typedef unsigned int size_t;
 #ifndef __32BIT__
 #define __32BIT__
 #endif
+
+/* Unununium Compile Environment */
+#elif   defined(__UUU__)
+#ifndef __32BIT__
+#define __32BIT__
+#endif
+#ifndef __UNIX__
+#define __UNIX__
+#endif
+#ifdef  __GNUC__
+#define stricmp strcasecmp
+#endif
+
 
 /* 32-bit Linux compile environment */
 #elif   defined(__LINUX__) || defined(linux)

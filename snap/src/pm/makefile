@@ -142,6 +142,17 @@ OBJECTS         += _int64$O io$O
 .ENDIF
 DEPEND_SRC      := linux;common;codepage;tests;x11
 
+.ELIF $(USE_UUU)
+
+# Building for Unununium
+
+CFLAGS          += -DNO_THREADS
+SHOW_CFLAGS     += -DNO_THREADS
+LIBNAME         = pm
+OBJECTS         = pm$O gevent$O gztimer$O gcpuinfo$O pcilib$O \
+                  agp$O malloc$O vgastate$O gauuu$O mtrr$O _mtrr$O _cpuinfo$O _joy$O _int64$O _pcihelp$O
+DEPEND_SRC      := uuu;common;codepage;tests
+
 .ELIF $(USE_BEOS)
 
 # Building for BeOS GUI
