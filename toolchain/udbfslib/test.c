@@ -12,6 +12,8 @@ int main(int argc, char **argv) {
 
   UDBFSLIB_MOUNT *mount = udbfs_mount("disk.bin");
   UDBFSLIB_INODE *bootrecord_inode;
+
+  if( mount == NULL) return(-1);
   
   printf("app: mounted as [%p]\n", mount);
   
@@ -24,7 +26,7 @@ int main(int argc, char **argv) {
     char buffer[512];
     int length;
 
-    printf("inode %i created\n", bootrecord_inode->id);
+    printf("inode [%016llX] created\n", bootrecord_inode->id);
     fp_src = fopen("testfile.txt","rb");
     if(fp_src == NULL) {
       perror("testfile.txt");
