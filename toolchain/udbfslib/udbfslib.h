@@ -46,7 +46,6 @@ struct udbfslib_mount {
   uint64_t			inode_first_block,
   				unique_fs_signature,
 				bitmaps_block,
-				root_table_inode,
 				journal_inode,
 				bad_block_inode,
 				magic_number,

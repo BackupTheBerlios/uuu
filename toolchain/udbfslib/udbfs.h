@@ -37,19 +37,18 @@ struct udbfs_superblock {
 				free_block_count,	// 0x28
 				free_inode_count,	// 0x30
 				bitmaps_block,		// 0x38
-				root_table_inode,	// 0x40
-				journal_inode,		// 0x48
-				bad_block_inode,	// 0x50
-				magic_number;		// 0x58
-  udate				last_check,		// 0x60
-				max_interval,		// 0x68
-				last_mount;		// 0x70
-  uint8_t			mount_count,		// 0x78
-				max_mount_count,	// 0x79
-				creator_os,		// 0x7A
-				superblock_version,	// 0x7B
-				block_size,		// 0x7C
-				inode_format;		// 0x7D
+				journal_inode,		// 0x40
+				bad_block_inode,	// 0x48
+				magic_number;		// 0x50
+  udate				last_check,		// 0x58
+				max_interval,		// 0x60
+				last_mount;		// 0x68
+  uint8_t			mount_count,		// 0x70
+				max_mount_count,	// 0x71
+				creator_os,		// 0x72
+				superblock_version,	// 0x73
+				block_size,		// 0x74
+				inode_format;		// 0x75
 } PACKED;
 
 
