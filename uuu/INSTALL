@@ -1,0 +1,25 @@
+$Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/INSTALL,v 1.1 2003/12/23 20:48:59 bitglue Exp $
+
+Uuu build instructions
+----------------------
+
+If you have not done so, aquire the toolchain module from CVS. This contains
+tools required by the build environment of Uuu itself. At a minimum,
+mkuuubimage is required.
+
+If you would like to manipulate or install Uuu on udbfs (which is the default;
+the alternative is to use GRUB, described below), you will also need mkudbfs
+and udbfstools. Udbfslib need not be installed; the tool in the toolchain
+depend on it, but will find it in the CVS tree by default.
+
+
+Once the standard toolchain is installed, simply running 'make' should create a
+file 'diskimage' that is a 1.44MB floppy image. This can either be used as a
+disk image by bochs, or written to a disk like so:
+
+  dd if=diskimage of=/dev/FLOPPYDEVICE
+
+If you would like to use GRUB to boot unununium, run instead 'make grub'. This
+will create an ELF file sys/bootloader/x86/stage2 that is multiboot compliant
+and can be simply booted with GRUB with its 'kernel' command. This enables one
+to boot Unununium from any filesystem GRUB can read.

@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.4 2003/12/23 02:25:03 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.5 2003/12/23 20:48:59 bitglue Exp $
 
 UUUROOT=$(CURDIR)
 
@@ -21,6 +21,12 @@ boot.bimage: boot.o
 diskimage:
 	$(entering) $(CURDIR)/sys/bootloader
 	$(MAKE) -C sys/bootloader $(UUUROOT)/diskimage diskimage=$(UUUROOT)/diskimage
+	$(entering) $(CURDIR)
+
+.PHONY: grub
+grub: boot.bimage
+	$(entering) $(CURDIR)/sys/bootloader
+	$(MAKE) -C sys/bootloader stage2
 	$(entering) $(CURDIR)
 
 .PHONY: clean
