@@ -333,7 +333,7 @@ name : Log Block Size            size  : unsigned 8bit
     </programlisting>
     <para>
      Log base 2 of a block size in bytes.  This value is used to determine the block size used by the file system
-     using the formula: block_size = 2 ^ s_log_block_size
+     using: (2 ^ (7 + s_log_block_size))
     </para>
    </sect2>
    <sect2 id="s-magic-number"><title>Magic Number</title>
@@ -392,17 +392,59 @@ name : Unique FS Signature       size  : unsigned 64bit
    </sect2>
   </sect1>
 
-  <sect1 id="bad-block-file"><title>Bad Block File</title>
-   <para>todo</para>
-  </sect1>
   <sect1 id="block-allocation-bitmap"><title>Block Allocation Bitmap</title>
-   <para>todo</para>
+   <para>
+    Each bit represents the allocation status of a unique block on the file system.  A value of 1 indicates the block is
+    currently unallocated and available.  A value of 0 indicates the block is either allocated to a file or inaccessible (bad block,
+    reserved, past end of disk storage).
+   </para><para>
+    Block ID 0 is represented by bit 0 of byte 0; Block ID 1 by bit 1 of byte 0; ... Block ID 7 by bit 7 of byte 0; Block ID 8 by
+    bit 0 of byte 1; etc.
+   </para><para>
+    The Block Allocation Bitmap can be located using the <link linkend="s-bitmaps-block">s_bitmaps_block</link> value in the
+    <link linkend="superblock">Superblock</link>.
+   </para><para>
+    The size of the Block Allocation Bitmap can be determined using: ((<link linkend="s-block-count">s_block_count</> + 7 ) >> 3)
+   </para>
   </sect1>
   <sect1 id="inode-allocation-bitmap"><title>Inode Allocation Bitmap</title>
-   <para>todo</para>
+   <para>
+    Each bit represents the allocation status of a unique inode on the file system.  A value of 1 indicates the inode is
+    currently unallocated and available.  A value of 0 indicates the inode is either allocated or reserved.
+   </para><para>
+    Inode ID 0 is represented by bit 0 of byte 0; Inode ID 1 by bit 1 of byte 0; ... Inode ID 7 by bit 7 of byte 0; Inode ID 8 by
+    bit 0 of byte 1; etc.
+   </para><para>
+    The Inode Allocation Bitmap is located on the next byte boundary immediately after the
+    <link linkend="block-allocation-bitmap">Block Allocation Bitmap</link>.
+   </para><para>
+    The size of the Inode Allocation Bitmap can be determined using: ((<link linkend="s-inode-count">s_inode_count</> + 7 ) >> 3)
+   </para>
   </sect1>
+
   <sect1 id="inode-table"><title>Inode Table</title>
-   <para>todo</para>
+   <para>
+    The Inode Table is an array of <link linkend="inode">Inode</link> structures, each describing a different file in the file
+    system.  The <link linkend="inode-allocation-bitmap">Inode Allocation Bitmap</link> is used to indicate the status of each
+    entry of the Inode Table.
+   </para><para>
+    The table can be located using the <link linkend="s-inode-first-block">s_inode_first_block</link> value of the
+    <link linkend="superblock">Superblock</link>.
+   </para>
+
+   <sect2 id="inode"><title>Inode</title>
+    <para>todo</para>
+   </sect2>
+  </sect1>
+
+  <sect1 id="bad-block-file"><title>Bad Block File</title>
+   <para>
+    This file contains a list of 64bit unsigned Block ID values.  Each defined Block ID is marked as unuseable, probably due
+    to damaged physical storage.
+   </para><para>
+    You can locate this file by reading the Inode <link linkend="s-bad-block-inode">s_bad_block_inode</> as identified in
+    the <link linkend="superblock">Superblock</>.
+   </para>
   </sect1>
   <sect1 id="journal-file"><title>Journal File</title>
    <para>todo</para>
