@@ -25,35 +25,30 @@
 global ringqueue_prepend
 ringqueue_prepend:
 ;--------------------------------------------------------[ prepend to queue ]--
-;>
-;; Prepend a thread to a ring list queue.
-;;
-;; parameters:
-;;   eax = pointer to thread ring links
-;;   ebx = pointer to queue ring links
-;;
-;; returns:
-;;   -nothing-
-;<
+;!<proc brief="Prepend a thread to a ring queue">
+;! <p reg="eax" type="pointer" brief="pointer to node to prepend"/>
+;! <p reg="ebx" type="pointer" brief="pointer to ring queue"/>
+;! <ret fatal="0" brief="prepending successful"/>
+;!</proc>
 ;------------------------------------------------------------------------------
 %ifdef RT_SANITY_CHECKS				;-o
- cmp [eax + _rt_ring_links.next], eax		; thread points back to itself?
+ cmp [eax + _ring_queue_t.next], eax		; thread points back to itself?
  jnz short .failed_sanity			; no? failed
- cmp [eax + _rt_ring_links.previous], eax	; thread points back to itself?
+ cmp [eax + _ring_queue_t.previous], eax	; thread points back to itself?
  jnz short .failed_sanity			; no? failed
 %endif						;--o
 						;
-  mov ecx, [ebx + _rt_ring_links.next]		; Load first ring member
+  mov ecx, [ebx + _ring_queue_t.next]		; Load first ring member
 						;
 %ifdef RT_SANITY_CHECKS				;-o
- cmp [ecx + _rt_ring_links.previous], ebx	; Make sure member points back
+ cmp [ecx + _ring_queue_t.previous], ebx	; Make sure member points back
  jnz short .failed_sanity			; ZF=0? guess it doesn't, fail
 %endif						;--o
 						;
-  mov [eax + _rt_ring_links.next], ecx		; set thrd next to 1st member
-  mov [eax + _rt_ring_links.previous], ebx	; set thrd previous to head
-  mov [ebx + _rt_ring_links.next], eax		; head point to thread
-  mov [ecx + _rt_ring_links.previous], eax	; 1st member point to thread
+  mov [eax + _ring_queue_t.next], ecx		; set thrd next to 1st member
+  mov [eax + _ring_queue_t.previous], ebx	; set thrd previous to head
+  mov [ebx + _ring_queue_t.next], eax		; head point to thread
+  mov [ecx + _ring_queue_t.previous], eax	; 1st member point to thread
   return					; return to caller
 						;
 %ifdef RT_SANITY_CHECKS				;-o
@@ -83,30 +78,19 @@ __SECT__					; return to code section
 global ringqueue_link_ordered
 ringqueue_link_ordered:
 ;---------------------------------------------------[ link to ordered queue ]--
-;>
-;; Link a thread into a ordered ring list.  The ordering value for both the
-;; ring list members and the thread is a 64bit value located prior to the 
-;; ring links.
-;;
-;;
-;; parameters:
-;;   eax = pointer to thread ring links
-;;   ebx = pointer to queue ring links
-;;
-;; returns:
-;;   -nothing-
-;;
-;;
-;; IMPORTANT NOTE:
-;;
-;; This function expects a 64bit ordering value to be localized immediately
-;; prior to the thread ring links.
-;<
+;!<proc>
+;! Link a thread into a ordered ring list.  The ordering value for both the
+;! ring list members and the thread is a 64bit value located prior to the 
+;! ring links.
+;! <p reg="eax" type="pointer" brief="pointer to node to link"/>
+;! <p reg="ebx" type="pointer" brief="pointer to ring queue"/>
+;! <ret fatal="0" brief="linking succeeded"/>
+;!</proc>
 ;------------------------------------------------------------------------------
 %ifdef RT_SANITY_CHECKS				;-o
- cmp [eax + _rt_ring_links.next], eax		; thread points back to itself?
+ cmp [eax + _ring_queue_t.next], eax		; thread points back to itself?
  jnz short .failed_sanity			; no? failed
- cmp [eax + _rt_ring_links.previous], eax	; thread points back to itself?
+ cmp [eax + _ring_queue_t.previous], eax	; thread points back to itself?
  jnz short .failed_sanity			; no? failed
 %endif						;--o
 						;
@@ -119,12 +103,12 @@ ringqueue_link_ordered:
 						; ordering is decided.  Search
 						; for insertion point.
 						;
-  mov ecx, [ebx + _rt_ring_links.next]		; load first ring member
+  mov ecx, [ebx + _ring_queue_t.next]		; load first ring member
   mov edx, ebx					; set ref to previous member
 .check_complete_round:				;
 						;
 %ifdef RT_SANITY_CHECKS				;-o
- cmp [ecx + _rt_ring_links.previous], edx	; next member points back?
+ cmp [ecx + _ring_queue_t.previous], edx	; next member points back?
  jnz short .failed_sanity			; if not, invalid next member
 %endif						;--o
 						;
@@ -139,16 +123,16 @@ ringqueue_link_ordered:
 						; greater than current member
 						;
   mov edx, ecx					; update ref to previous member
-  mov ecx, [ecx + _rt_ring_links.next]		; move to next member
+  mov ecx, [ecx + _ring_queue_t.next]		; move to next member
   jmp short .check_complete_round		; attempt another cycle
 						;
 .insert_point_localized:			; insert between ecx and edx
   pop esi					; restore original esi
-  mov [eax + _rt_ring_links.next], ecx		; set thread ring next link
-  mov [eax + _rt_ring_links.previous], edx	; set thread ring previous link
+  mov [eax + _ring_queue_t.next], ecx		; set thread ring next link
+  mov [eax + _ring_queue_t.previous], edx	; set thread ring previous link
   pop edi					; restore original edi
-  mov [edx + _rt_ring_links.next], eax		; set ring next to thread
-  mov [ecx + _rt_ring_links.previous], eax	; set ring previous to thread
+  mov [edx + _ring_queue_t.next], eax		; set ring next to thread
+  mov [ecx + _ring_queue_t.previous], eax	; set ring previous to thread
   retn						; return to caller TODO
 						;
 %ifdef RT_SANITY_CHECKS				;-o
@@ -186,24 +170,24 @@ ringqueue_unlink:
 ;;   -nothing-
 ;<
 ;------------------------------------------------------------------------------
-  mov ebx, [eax + _rt_ring_links.next]		; load member after thread
-  mov ecx, [eax + _rt_ring_links.previous]	; load member previos to thread
+  mov ebx, [eax + _ring_queue_t.next]		; load member after thread
+  mov ecx, [eax + _ring_queue_t.previous]	; load member previos to thread
 						;
 %ifdef RT_SANITY_CHECKS				;-o
- cmp [ebx + _rt_ring_links.previous], eax	; next member points to thread?
+ cmp [ebx + _ring_queue_t.previous], eax	; next member points to thread?
  jnz short .failed_sanity			; no? well, invalid pointer
- cmp [ecx + _rt_ring_links.next], eax		; prev member points to thread?
+ cmp [ecx + _ring_queue_t.next], eax		; prev member points to thread?
  jnz short .failed_sanity			; no? well, invalid pointer
  cmp ebx, eax					; next member = thread?
  jz short .already_unlinked			; yes? oops, did it twice!
 %endif						;--o
 						;
-  mov [ebx + _rt_ring_links.previous], ecx	; close previous ring member
-  mov [ecx + _rt_ring_links.next], ebx		; close next ring member
+  mov [ebx + _ring_queue_t.previous], ecx	; close previous ring member
+  mov [ecx + _ring_queue_t.next], ebx		; close next ring member
 						;
 %ifdef RT_SANITY_CHECKS				;-o
- mov [eax + _rt_ring_links.next], eax		; loop back thread next link
- mov [eax + _rt_ring_links.previous], eax	; loop back thread previous lnk
+ mov [eax + _ring_queue_t.next], eax		; loop back thread next link
+ mov [eax + _ring_queue_t.previous], eax	; loop back thread previous lnk
 %endif						;--o
 						;
   return					; return to the caller
