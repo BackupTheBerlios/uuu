@@ -16,7 +16,7 @@ int memfs_init();
 
 unsigned screen_width = 80;
 unsigned screen_height = 25;
-unsigned long numfiles = 0;
+unsigned numfiles = 0;
 
 
 struct _memfs_fd
@@ -75,6 +75,7 @@ int write(int fd, const void *buf, size_t count)
   }
   return count;
 }
+int __libc_write(const char*fn,int flags,...) __attribute__((weak,alias("write")));
 
 
 
@@ -96,6 +97,7 @@ int read(int fd, void *buf, size_t count)
   errno = EINVAL;
   return -1;
 }
+int __libc_read(const char*fn,int flags,...) __attribute__((weak,alias("read")));
 
 
 
@@ -148,6 +150,7 @@ off_t lseek(int fd, off_t offset, int whence)
 
 int memfs_addfile (const char *filename, void *data, unsigned long filesize)
 {
+  printf( "adding file %s at %p, size %lu\n", filename, data, filesize );
   if (numfiles < memfs_limit_files)
   {
     strcpy(memfs_files[numfiles].filename, filename);
@@ -192,6 +195,7 @@ int close(int fd)
   errno = EBADF;
   return -1;
 }
+int __libc_close(const char*fn,int flags,...) __attribute__((weak,alias("close")));
 
 
 
@@ -199,8 +203,8 @@ int open(const char *pathname, int flags, ...)
 {
   int bUse = 0;
   int bVal = 0;
-  char bAvail = 0;
-  char bFound = 0;
+
+  printf( "open( %s, %x )\n", pathname, flags );
 
   if( (flags & O_ACCMODE) != O_RDONLY ) {
     errno = EROFS;
@@ -208,43 +212,34 @@ int open(const char *pathname, int flags, ...)
   }
 
   unsigned i;
-  for (i=0; i<numfiles; i++)
+  printf( "%u files exist\n", numfiles );
+  for( i=0; i < numfiles; i++ )
   {
+    printf( "looking for %s, found %s\n", pathname, memfs_files[i].filename );
     if (strcmp(pathname, memfs_files[i].filename) == 0)
     {
-      bFound = 1;
       bVal = i;
-      i = numfiles;
+      printf( "found file, bVal: %u\n", bVal );
+      for (i=0; i<memfs_limit_fds; i++)
+      {
+	if (memfs_fd[i].bInUse == 1)
+	  continue;
+	bUse = i;
+	printf( "found file descriptor, bUse: %u\n", bUse );
+	memfs_fd[bUse].bInUse = 1;
+	memfs_fd[bUse].data = memfs_files[bVal].data;
+	memfs_fd[bUse].file_pos_start = 0;
+	memfs_fd[bUse].file_pos_end = memfs_files[bVal].filesize;
+	memfs_fd[bUse].file_pos_cur = 0;
+	return bUse;
+      }
     }
   }
 
-  if (bFound == 1)
-  {
-    for (i=0; i<memfs_limit_fds; i++)
-    {
-      if (memfs_fd[i].bInUse == 1)
-	continue;
-      bUse = i;
-      bAvail = 1;
-      i = memfs_limit_fds;
-    }
-  }
 
-  if (bAvail == 1)
-  {
-    memfs_fd[bUse].bInUse = 1;
-    memfs_fd[bUse].data = memfs_files[bVal].data;
-    memfs_fd[bUse].file_pos_start = 0;
-    memfs_fd[bUse].file_pos_end = memfs_files[bVal].filesize;
-    memfs_fd[bUse].file_pos_cur = 0;
-    return bUse;
-  }
   errno = ENOENT;
   return -1;
 }
-
-
-
 int __libc_open(const char*fn,int flags,...) __attribute__((weak,alias("open")));
 
 
@@ -252,5 +247,56 @@ int __libc_open(const char*fn,int flags,...) __attribute__((weak,alias("open")))
 int rename(const char *oldpath, const char *newpath)
 {
   errno = EROFS;
+  return -1;
+}
+
+  //(*__errno_location())=ENOMEM;
+time_t time(time_t *t) {
+  static time_t fake_time = 1073591226;
+  fake_time += 1;	// my...time is odd around here!
+  if( t ) *t = fake_time;
+  return fake_time;
+}
+
+int access (const char *__name, int __type) {
+  return 0;
+}
+
+int unlink(const char *pathname) {
+  (*__errno_location()) = EROFS;
+  return -1;
+}
+
+int ioctl(int d, int request, ...) {
+  (*__errno_location()) = EINVAL;
+  return -1;
+}
+
+pid_t getpid(void) {
+  static pid_t pid = 2;
+  return pid++;
+}
+
+int kill(pid_t pid, int sig) {
+  return 0; // we arn't so violent here
+}
+
+int rmdir(const char *pathname) {
+  (*__errno_location()) = EROFS;
+  return -1;
+}
+
+pid_t fork(void) {
+  (*__errno_location()) = ENOMEM;
+  return -1; // yeah..out of memory! that's it!
+}
+
+pid_t waitpid(pid_t pid, int *status, int options) {
+  (*__errno_location()) = ECHILD;
+  return -1;
+}
+
+int execve(const char *filename, char *const argv [], char *const envp[]) {
+  (*__errno_location()) = EACCES;
   return -1;
 }
