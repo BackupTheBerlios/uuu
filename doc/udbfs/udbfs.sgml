@@ -1,0 +1,146 @@
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V3.1//EN"[]>
+
+<book id="Udbfs.Internals">
+ <bookinfo>
+  <title>The Unununium DataBase File System</title>
+  <subtitle>Internal Layout</>
+
+  <authorgroup>
+   <author>
+    <firstname>Dave</firstname>
+    <surname>Poirier</surname>
+    <affiliation>
+     <address>
+      <email>instinc@users.berlios.de</email>
+     </address>
+    </affiliation>
+   </author>
+
+  </authorgroup>
+
+  <copyright>
+   <year>2003</year>
+   <holder>Dave Poirier</holder>
+  </copyright>
+
+  <legalnotice>
+   <para>
+	Permission is granted to copy, distribute and/or modify this document
+	under the terms of the GNU Free Documentation License, Version 1.1
+	or any later version published by the Free Software Foundation;
+	with no Invariant Sections, with no Front-Cover Texts, and with no
+	Back-Cover Texts. A copy of the license can be acquired electronically
+	from http://www.fsf.org/licenses/fdl.html or by writing to 
+	59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+   </para>
+  </legalnotice>
+ </bookinfo>
+
+ 
+<toc></toc>
+
+ <preface>
+  <title>About this book</title>
+  <para>
+   The latest version of this document may be downloaded from http://uuu.berlios.de/
+  </para><para>
+   This document is intended as a guide to the internal layout and default allocation algorithms of the
+   Unununium Database File System. The reader should have a good understanding of the purpose of a file
+   system as well as the associated vocabulary (file, directory, partition, etc).
+  </para><para>
+   The Unununium Database File System was designed from the ground up as a solution to providing both
+   standard file services and common database services in a new insightful way.
+  </para><para>
+   This file system is, at the date of this writing, the base of the Unununium Operating System.
+  </para>
+ </preface>
+
+ <chapter id="design-origins">
+  <title>Design Origins</title>
+
+  <sect1 id="conventional-fs"><title>Conventional File Systems</title>
+   <para>
+    In current conventional operating systems, we find a 'file' based file system on top of which may be
+    stored a database. The two interfaces are independent of each other. In those systems, accessing the
+    database and the file system are done via two totally different API. The database engine does not know
+    the structure of the underlying file system; similarly the file system does not know the structures of the
+    database.
+   </para><para>
+    This abstraction causes a few problems. A conventional file system is very slow to traverse, such as when
+    searching for a file. The database cannot be accessed easily using the standard file system utilities (cat, ls,
+    cd, ...). File system information, such as total disk size, is not available using the database API.
+   </para><para>
+    Additionally, developing an application that requires to access both file and database means interfacing
+    to two separate API, thus resulting into a larger application. In the case where the application does use a
+    database, we are left with a dependency to yet another application.
+   </para>
+  </sect1>
+  <sect1 id="previous-dbfs-attempts"><title>Previous DataBase File Systems Attempts</title>
+   <sect2 id="ntfs"><title>NTFS</title>
+    <para>
+     This file system is developed by Microsoft and has been in use for a few years in the Windows NT/XP
+     operating systems. While originally not a database file system, Microsoft's latest development are to add
+     a SQL-like database on top of the file system that will be used to store attributes and generate indexes.
+    </para><para>
+     While having the benefit of being backward compatible, this approach does not solve application's
+     problems but rather add another layer of complexity with yet a larger API to access those extended
+     attributes. Applications still have to implement their own file management procedures or still have to
+     make use of an external database to store defined format records.
+    </para>
+   </sect2>
+   <sect2 id="bdbfs"><title>BDBFS</title>
+    <para>
+     The Berkeley DataBase File System is a file system developed to work entirely on top of a Berkeley
+     DataBase to provide a flexible/indexable file system.
+    </para><para>
+     Benefits of this approach are that the structures of the file system are not fixed. They can be resized,
+     columns added or removed, which provide the system administrator with great flexibility and the ability
+     to access any of this information using commonly available tools.
+    </para><para>
+     The downside is performance and ability to store and retrieve large files. Databases are known to be fast
+     at searching information, but not very space efficient in doing so. Most databases being on top of existing
+     file systems, therefore in order to write a file, you have to traverse the database layer and then traverse an
+     "os" file layer to finally find your way down to the disk. A few database interfaces also have limitations
+     on the amount of data that can be retrieved in a single query, limiting the maximum file size; as well as
+     providing no mechanisms to retrieve only a small part of that data.
+    </para>
+   </sect2>
+  </sect1>
+  <sect1 id="unununium-approach"><title>The Unununium Approach</title>
+   <para>
+    In our view, a perfect design is one that offers the best of both world, the fast and precise data retrieval of
+    a standard file system with the speed and flexibility of a database engine.
+   </para><para>
+    To achieve this, the Unununium Database File System has been built from the ground up with those
+    concepts in mind. We started with inode and block principles similar to those found in the Second
+    Extended File System, table and column descriptions standard in SQL and a myriad of small
+    improvements and additional features to simplify storage and retrieval of information in a common
+    unified API.
+   </para><para>
+    The resulting file system allow an application to create an SQL table as easily as creating a file, using the
+    same API; merges the concepts of listing a directory and performing a select on a few specific ordered
+    columns; pushes the concept of a symbolic link to not only point to a file but also point to either a table
+    or a table row; while keeping the storage effectiveness of a standard file system.
+   </para><para>
+    In the Unununium Database File System, a database is not a file on top of an existing file system, a file
+    not a restrained row in an overcrowded database table. We merge the two concepts to the very byte
+    layout on disk, pushing the limits of a file system to a whole new level.
+   </para>
+  </sect1>
+ </chapter>
+
+ <chapter id="disk-layout"><title>Disk Layout</title>
+  <para>
+   A Unununium Database File System spawns an entire partition or disk on which it is stored. The surface
+   covered is split into "blocks" of pre-determined sizes and a bitmap of the free and allocated blocks is
+   carefully located.
+  </para><para>
+   At the head of the storage space is a "superblock" containing information about the file system
+   properties, such as the size of each block, how many of them there are, where the allocation bitmap is
+   located, etc.
+  </para><para>
+   A group of inodes is further created, keeping track of the location and size on disk of the various files
+   and tables.
+  </para>
+ </chapter>
+</book>
