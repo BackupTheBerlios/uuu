@@ -48,9 +48,9 @@ struct udbfslib_inode {
 				size,
 				physical_offset;
   struct udbfslib_block		*block[4];
-  struct udbfslib_indblock	*ind_block,
-				*bind_block,
-				*tind_block;
+  struct udbfslib_indblock	*ind_block;
+  struct udbfslib_bindblock	*bind_block;
+  struct udbfslib_tindblock	*tind_block;
   struct udbfslib_mount		*mount;
 };
 
@@ -58,8 +58,21 @@ struct udbfslib_inode {
 
 
 struct udbfslib_indblock {
-  uint64_t			id;
-  struct udbfslib_block		*block;
+  uint64_t			id,
+				device_offset;
+  struct udbfslib_block		*block[0];
+};
+
+struct udbfslib_bindblock {
+  uint64_t			id,
+				device_offset;
+  struct udbfslib_indblock	*indblock[0];
+};
+
+struct udbfslib_tindblock {
+  uint64_t			id,
+				device_offset;
+  struct udbfslib_bindblock	*bindblock[0];
 };
 
 
@@ -70,9 +83,9 @@ struct udbfslib_block {
 				*previous;
   uint64_t			id,
 				offset_start,
-				offset_end;
-  uint8_t			*data;
-  struct udbfslib_mount		*mount;
+				offset_end,
+				device_offset;
+  struct udbfslib_inode		*inode;
 };
 
 
@@ -119,6 +132,8 @@ struct udbfslib_column {
 
 typedef struct udbfslib_block		UDBFSLIB_BLOCK;
 typedef struct udbfslib_indblock	UDBFSLIB_INDBLOCK;
+typedef struct udbfslib_bindblock	UDBFSLIB_BINDBLOCK;
+typedef struct udbfslib_tindblock	UDBFSLIB_TINDBLOCK;
 typedef struct udbfslib_inode		UDBFSLIB_INODE;
 typedef struct udbfslib_mount		UDBFSLIB_MOUNT;
 typedef struct udbfslib_table		UDBFSLIB_TABLE;
