@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.2 2003/10/12 15:33:40 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -29,7 +29,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     char		*block_device ) {
 
   int				mount_fd = 0;
-  UDBFSLIB_MOUNT		*mount;
+  UDBFSLIB_MOUNT		*mount = NULL;
 
   //.:  Create File Descriptor
   if( (mount_fd = open(
