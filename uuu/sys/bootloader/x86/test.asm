@@ -1,5 +1,5 @@
 ;; Hydro3d
-;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/Attic/test.asm,v 1.5 2003/11/16 15:01:17 bitglue Exp $
+;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/Attic/test.asm,v 1.6 2003/11/17 14:49:56 bitglue Exp $
 ;; Written in 2001 Phil Frost, who is playing with it still.
 
 
@@ -19,13 +19,15 @@
 %define CORNER_MAJOR_RADIUS	1.7320508
 ; the distance from the center of each triangle to the center of each corner
 %define TRIANGLE_MAJOR_RADIUS	3.0
+; how far each triangle is displaced from the center of all three triangles
+%define CENTER_DISPLACEMENT	4.375
 
 ; the "ambient light". This is added to the diffuse regions
 %define AMBIENT		0x0f
 ; size of the specular highlight
 %define SPEC_SIZE	6
 
-%define CAMERA_Z	20.0
+%define CAMERA_Z	30.0
 
 %define SC_INDEX	0x3c4
 %define MEMORY_MODE	4
@@ -41,10 +43,10 @@
 			; can support plain mode 0x13
 
 %ifndef VANILLA_0x13
-  %define XRES		360
-  %define YRES		480
-  %define F_HALF_XRES	180.0	; half of the res. as a float
-  %define F_HALF_YRES	240.0
+  %define XRES		320
+  %define YRES		400
+  %define F_HALF_XRES	160.0	; half of the res. as a float
+  %define F_HALF_YRES	200.0
   %define ASPECT_RATIO	0.5625	; a horizontal scale factor. Doesn't really
 				;work as an aspect ratio; i'll fix that later
 %endif
@@ -166,7 +168,9 @@ struc vect4			; 4 dimentional vector (homogenous)
 endstruc
 
 struc scene
-  .objects:	resd 1		;pointer to object list (an ICS channel)
+  .object1:	resd 1
+  .object2:	resd 1
+  .object3:	resd 1
   .camera:	resd 1		;pointer to current camera
   .lights:	resd 1		;pointer to lights
   .res_x:	resw 1          ;X resloution
@@ -352,7 +356,6 @@ one_point_five:	dd 1.5
 data.minor_radius: dd MINOR_RADIUS
 data.corner_major_radius: dd CORNER_MAJOR_RADIUS
 data.triangle_major_radius: dd TRIANGLE_MAJOR_RADIUS
-fu: dd 2.0943951023931953
 
 global _start
 _start:
@@ -487,10 +490,7 @@ _start:
   mov ebp, 2
 
 .rotate_major2:
-  ;fldpi					; pi
-  ;fdivr dword[one_point_five]		; 2pi/3
-
-  fld dword[fu]
+  fld dword[data.two_third_pi]
   lea edx, [esp+matrix44.xx]
   lea ebx, [esp+matrix44.yx]
   call _rotate_matrix
@@ -503,6 +503,23 @@ _start:
   jnz .rotate_major2
 
   add esp, byte matrix44_size
+
+
+  mov esi, test_verts
+  mov ecx, TOTAL_POINTS
+
+  fld dword[data.center_displacement]
+.displace:
+  fld dword[esi+vect3.z]
+  fadd st1
+  fstp dword[esi+vect3.z]
+
+  add esi, byte vect3_size
+  dec ecx
+  jnz .displace
+
+  fstp st0
+  
 
 
 
@@ -670,10 +687,58 @@ create_mesh:
 create_objects:
 ;-------------------------------------------------------------------------------
   mov esi, edi					;
-  ;push edi
-  call _create_object	;
+  push edi
+  call _create_object
   mov [data.object1], edi			;
 
+  fld dword[data.three_half_pi]
+  fadd dword[data.sixth_pi]
+  lea edx, [edi+object.omatrix+matrix44.zx]
+  lea ebx, [edi+object.omatrix+matrix44.xx]
+  call _rotate_matrix
+
+
+  mov esi, [esp]
+  call _create_object
+  mov [data.object2], edi
+
+  fld dword[data.three_half_pi]
+  lea edx, [edi+object.omatrix+matrix44.zx]
+  lea ebx, [edi+object.omatrix+matrix44.xx]
+  call _rotate_matrix
+
+  fld dword[data.two_third_pi]
+  fchs
+  lea edx, [edi+object.omatrix+matrix44.yx]
+  lea ebx, [edi+object.omatrix+matrix44.zx]
+  call _rotate_matrix
+
+  fld dword[data.sixth_pi]
+  lea edx, [edi+object.omatrix+matrix44.zx]
+  lea ebx, [edi+object.omatrix+matrix44.xx]
+  call _rotate_matrix
+
+
+  mov esi, [esp]
+  call _create_object
+  mov [data.object3], edi
+
+  fld dword[data.three_half_pi]
+  lea edx, [edi+object.omatrix+matrix44.zx]
+  lea ebx, [edi+object.omatrix+matrix44.xx]
+  call _rotate_matrix
+
+  fld dword[data.two_third_pi]
+  lea edx, [edi+object.omatrix+matrix44.yx]
+  lea ebx, [edi+object.omatrix+matrix44.zx]
+  call _rotate_matrix
+
+  fld dword[data.sixth_pi]
+  lea edx, [edi+object.omatrix+matrix44.zx]
+  lea ebx, [edi+object.omatrix+matrix44.xx]
+  call _rotate_matrix
+
+  pop edi
 
 
 create_camera:
@@ -710,7 +775,11 @@ add_objects_to_scene:
   ; edi = pointer to scene			;
   ;push edi
   mov esi, [data.object1]			;
-  call _add_object_to_scene
+  mov [edi+scene.object1], esi
+  mov esi, [data.object2]			;
+  mov [edi+scene.object2], esi
+  mov esi, [data.object3]			;
+  mov [edi+scene.object3], esi
 
 
 
@@ -755,11 +824,11 @@ set_palette:
 
 set_sane_floating_precision:
 ;-------------------------------------------------------------------------------
-;  push eax
-;  fstcw [esp]
-;  and word[esp], 0xfcff	; clear bits 8 and 9 for single precision
-;  fldcw [esp]
-;  pop eax
+  push eax
+  fstcw [esp]
+  and word[esp], 0xfcff	; clear bits 8 and 9 for single precision
+  fldcw [esp]
+  pop eax
 
 
 ;; Init stuff is done. We have the whole scene set up and a pointer to it
@@ -966,6 +1035,10 @@ rotate_n_translate:
 
 rotate:
   mov eax, [data.object1]			;
+  call _rotate_object
+  mov eax, [data.object2]			;
+  call _rotate_object
+  mov eax, [data.object3]			;
   call _rotate_object
 						;
   jmp frame	; go do another frame
@@ -1264,7 +1337,9 @@ hex_conv:
   xor ebx, ebx
   pop edi
   pop esi
-  mov [edi+scene.objects], ebx		; put the pointer in the scene
+  mov [edi+scene.object1], ebx
+  mov [edi+scene.object2], ebx
+  mov [edi+scene.object3], ebx
   mov [edi+scene.buffer], eax
   mov [edi+scene.camera], esi
 
@@ -1288,15 +1363,11 @@ hex_conv:
 ;; EDI = pointer to object
 ;<
 
-;; because we are using ICS channels to keep track of the objects we need 8
-;; bytes before the object. Remember to sub 8 when deallocing this memory :)
-
   push esi
   
-  mov ecx, object_size+8		; ATM we need 8 bytes before the
-  xor edx, edx				; object because of the ICS channels.
-  call mem.alloc		; In the future I will add ICS
-  add edi, byte 8			; functions that don't require this
+  mov ecx, object_size
+  xor edx, edx
+  call mem.alloc
 
   push edi
   %if object_size % 4
@@ -1379,28 +1450,6 @@ hex_conv:
   call _calc_normals
   popad
   
-  retn
-
-
-
-;-----------------------------------------------------------------------.
-						_add_object_to_scene:	;
-;>
-;; This adds the object pointed to by ESI to the scene pointed to by EDI. It's
-;; the program's responsibility to make sure objects are not added twice.
-;;
-;; parameters:
-;; -----------
-;; EDI = pointer to scene
-;; ESI = pointer to object
-;;
-;; returned values:
-;; ----------------
-;; none
-;<
-
-  mov [edi+scene.objects], esi
-
   retn
 
 
@@ -1538,30 +1587,15 @@ __SECT__
 ;; returned values:
 ;; ----------------
 ;; none
-;;
-;; Here we have 2 loops. One loops over each object, the other loops over the
-;; faces of each object until we have a seperate function to do that.
-;;
-;; Throughout the function the camera distance sits on the fpu stack and is
-;; popped off at the end. EAX is also used to store the resloution, and it
-;; sits on the stack durring the face drawing. The resloution is divided by
-;; 2 so it can be added to the points as they are calculated to bring them
-;; to the center of the screen.
 ;<
 
 ; get a list of the objects ---===---
 
-  push dword [edi+scene.objects]	; get pointer to object channel |
-  mov ecx, 1
-  ; stack now has the objects on it, ECX has the number of them |
-
-; load the camera distance and put the resloution in EAX ---===---
-
-  mov edx, [edi+scene.camera]	; EDX = pointer to camera
-  mov eax, 0x00c80140		; XXX: use the real resloution
-  ;mov eax, [edi+scene.res_x]
-  ;fld dword[edx+camera.dis]	; load this for __calc_points
-  shr eax, 1			; this is for __calc_points too
+  push dword [edi+scene.object3]
+  push dword [edi+scene.object2]
+  push dword [edi+scene.object1]
+  mov ecx, 3
+  ; stack now has the objects on it, ECX has the number of them
 
 ; clear the buffer ---===---
 
@@ -1661,7 +1695,6 @@ __SECT__
   ;; EAX = resloutions, we need to save this
   ;; EDI = pointer to scene
 
-  push eax			; save those resloutions
   push edi			; save the pointer to the scene
 
   mov ecx, [esi+object.mesh]
@@ -1715,7 +1748,6 @@ __SECT__
 ;; loop:
 
   pop edi		; pointer to scene
-  pop eax		; the resloutions
   pop ecx		; the number of objects.
   dec ecx
   jnz .object
@@ -1748,7 +1780,7 @@ __SECT__
 ;<
 
   %if vect4_size <> 16
-  %error "vect4_size was assumed to be 16 and it wasn't"
+    %error "vect4_size was assumed to be 16 and it wasn't"
   %endif
   shl eax, 4
   add eax, ebp			; EAX = offset to first vector of the triangle
@@ -2190,26 +2222,18 @@ __SECT__
 ;;
 ;;
 ;;
-;; About the planar VGA memory implementation:
-;; -------------------------------------------
-;; Currently I'm playing with tweaked VGA modes, which have the funny property
-;; of being a royal pain in the ass. Right now I use a resloution of 320x400,
-;; which is basicly 0x13 without the doubled scanlines. In this mode the memory
-;; is planar. There are 4 planes. Using the notation plane:byte_in_plane, the
-;; pixels across the screen go like this:
-;;
-;; 0:0  1:0  2:0  3:0  0:1  1:1  2:1  3:1  0:2  1:2  3:2  4:2 ...
-;;  ^                   ^                   ^
-;; 
-;; If I were to just write 3 bytes to 0xa0000 they would show up at the '^'
-;; above.
+;; About planar VGA memory:
+;; ------------------------
+;; Unless VANILLA_0x13 is defined, hydro3d uses VGA modes with a planar memory
+;; layout. This means that memory is divided between four planes. Rather than
+;; each byte coresponding directly to each pixel on the raster, each plane hold
+;; each fourth pixel.
 ;;
 ;; As you can imagine, it's quite a nightmare if I draw the scene to a buffer
-;; in a linear manner and then want to copy it do display memory. So, I draw to
-;; the buffer in a nonlinear manner. By grouping all the pixels that will go in
-;; each plane (in other words every 4th pixel) together I can avoid all the
-;; messy unpacking and make use of rep movsd to copy rather than do it byte per
-;; byte.
+;; in a linear manner and then want to copy it do display memory.  By grouping
+;; all the pixels that will go in each plane (in other words every 4th pixel)
+;; together I can avoid all the messy unpacking and make use of rep movsd to
+;; copy rather than do it byte per byte.
 ;;
 ;; If i grouped all of the bytes for each plane together and then copied each
 ;; plane sequentially to the screen, I would get funny stripes at the top of
@@ -2225,10 +2249,6 @@ __SECT__
 ;; INC alone would generate the sequence {0, 1, 2, 3, 4 ... 319} but because of
 ;; the planar layout I need {0, 80, 160, 240, 1, 81, 161, 241, ..} The macro
 ;; inc_x does that. There is also a dec_x, which decrements the same sequence.
-;;
-;; Lastly, the parameters are provided in a linear domain, not my planar one,
-;; so I need to convert. If I am given 2 as a parameter, I need to convert that
-;; to 160. The macro x_to_planar does this.
 ;<
 
 ; perhaps a better line drawing from vulture that could do antialiasing:
@@ -2998,6 +3018,8 @@ alignb 4
 data:
   .scene:	resd 1		; pointer to scene
   .object1:	resd 1
+  .object2:	resd 1
+  .object3:	resd 1
   .Xrot_amount:	resd 1
   .Yrot_amount:	resd 1
   .Zrot_amount:	resd 1
@@ -3012,12 +3034,18 @@ data:
 
 ; misc. data ---===---
 
-  .rot_accel:	dd 0.0008
-  .rot_decel:	dd 0.999
-  .far_clip:	dd CAMERA_Z	; far clip plane
-  .near_clip:	dd 1.0		; near clip plane
-  .fov:		dd 0.6		; FOV, in radians
-  .aspect_ratio:dd ASPECT_RATIO	; aspect ratio (gee!)
+  .rot_accel:		dd 0.0008
+  .rot_decel:		dd 0.999
+  .far_clip:		dd CAMERA_Z	; far clip plane
+  .near_clip:		dd 1.0		; near clip plane
+  .fov:			dd 0.6		; FOV, in radians
+  .aspect_ratio:	dd ASPECT_RATIO	; aspect ratio (gee!)
+  .half_pi:		dd 1.57079632679
+  .third_pi:		dd 1.0471975512
+  .sixth_pi:		dd 0.523598775598
+  .two_third_pi:	dd 2.09439510239
+  .three_half_pi:	dd 4.71238898038
+  .center_displacement:	dd CENTER_DISPLACEMENT
 
 
 mcga_mode: db 0x13, 40		;BIOS mode num, and num columns
