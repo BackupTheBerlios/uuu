@@ -4,6 +4,9 @@ uint64_t		udbfslib_allocate_bit(
     uint64_t			bitmap_size,
     uint64_t			*free_count );
 
+uint64_t	udbfslib_allocate_inode_id(
+    UDBFSLIB_MOUNT	*mount );
+
 
 UDBFSLIB_INODE	*udbfslib_allocate_memory_inode(
     UDBFSLIB_MOUNT		*mount );
