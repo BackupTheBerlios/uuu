@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/create_inode.c,v 1.2 2003/10/12 21:31:42 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/create_inode.c,v 1.3 2003/10/13 00:36:35 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -24,7 +24,7 @@ UDBFSLIB_INODE	*udbfs_create_inode(
   if( inode == NULL ) return( inode );
 
   //.:  Allocate inode ID
-  inode->id = udbfslib_allocate_bit( mount->inode_bitmap, mount->inode_bitmap_size, &mount->free_inode_count );
+  inode->id = udbfslib_allocate_inode_id( mount );
   if( inode->id == 0 ) {
     fprintf(stderr, "udbfslib: no free inode\n");
     free( inode );
