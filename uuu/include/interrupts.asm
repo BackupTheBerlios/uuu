@@ -3,7 +3,7 @@
 
 %include "ring_queue.asm"
 
-%define __IRQ_CLIENT_MAGIC__	'irqmagic'
+%define __IRQ_CLIENT_MAGIC__	('irqm'+'agic')
 
 struc _irq_client_t
 .ring		resb _ring_queue_t_size
@@ -14,10 +14,11 @@ endstruc
 
 
 %macro irq_client 1.nolist
-  def_ring_queue
-  dd %1
-  dd __IRQ_CLIENT_MAGIC__
 %1:
+  def_ring_queue
+  dd %%procedure
+  dd __IRQ_CLIENT_MAGIC__
+%%procedure:
 %endmacro
 
 
