@@ -1454,6 +1454,40 @@ gproc system_time.get_uuutime
 
 
 
+gproc system_time.set_uuutime
+;-----------------------------------------------[ system time: set uuu time ]--
+;!<proc>
+;! <p reg="eax" type="pointer" brief="64bit uuutime to set as current time"/>
+;! <ret fatal="0" brief="time adjusted successfully"/>
+;! <ret brief="other"/>
+;!</proc>
+;------------------------------------------------------------------------------
+  push eax					;
+  sub esp, byte 8				;
+  mov eax, esp					;
+  ecall system_time.get_uuutime, CONT, .unexpected
+						;
+  pop eax					;
+  pop edx					;
+  pop ecx					;
+  mov ebx, [ecx]				;
+  mov ecx, [ecx + 4]				;
+  sub ebx, eax					;
+  sbb ecx, edx					;
+  add [system_time_adjustment], ebx		;
+  adc [system_time_adjustment + 4], ecx		;
+						;
+  return					;
+						;
+.unexpected:					;
+  add esp, byte 12				;
+  ret_other					;
+;-----------------------------------------------[/system time: set uuu time ]--
+
+
+
+
+
 
 gproc system_time.correct_tick_drift
 ;-----------------------------------------[ system time: correct tick drift ]--
