@@ -101,7 +101,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
 	  O_RDWR | O_LARGEFILE )
 	) == -1 ) {
     
-    perror("udbfslib: unable to open block device");
+    perror(block_device);
     goto failed_mount;
   }
 
@@ -161,6 +161,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     free( superblock );
   }
 
+  printf("inode bitmap size: %lli inode count: %i\n", mount->inode_bitmap_size, mount->inode_count);
   
   //.:  Load block and inode bitmaps
   if( ((mount->block_bitmap = (uint8_t *)malloc(mount->block_bitmap_size)) == NULL) ||
@@ -174,6 +175,12 @@ UDBFSLIB_MOUNT	*udbfs_mount(
       (read( mount_fd, mount->block_bitmap, mount->block_bitmap_size ) != mount->block_bitmap_size ) ) {
 
     fprintf(stderr, "udbfslib: unable to load block bitmap\n");
+    goto failed_mount;
+  }
+  if( (lseek( mount_fd, mount->inode_bitmap_offset, SEEK_SET ) != mount->inode_bitmap_offset ) ||
+      (read( mount_fd, mount->inode_bitmap, mount->inode_bitmap_size ) != mount->inode_bitmap_size ) ) {
+
+    fprintf(stderr,"udbfslib: unable to load inode bitmap\n");
     goto failed_mount;
   }
 
@@ -336,6 +343,7 @@ int		udbfs_regenerate_table(
 
 UDBFSLIB_INODE	*udbfs_create_inode(
     UDBFSLIB_MOUNT	*mount ) {
+
 
   //.:  Allocate inode memory entry
   UDBFSLIB_INODE *inode = udbfslib_allocate_memory_inode( mount );
@@ -688,6 +696,8 @@ static uint64_t		udbfslib_allocate_bit(
 
   uint64_t	byte;
   uint8_t	bit;
+
+printf("allocate bit map size [%lli] free count [%lli]\n", bitmap_size, *free_count );
 
   if( *free_count > (bitmap_size<<3) ) {
     fprintf(stderr,"udbfslib: ERROR, udbfslib_allocate_bit reports higher free count than bitmap allows [%016llX:%016llX]\n", *free_count, bitmap_size<<3);
