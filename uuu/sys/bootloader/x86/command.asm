@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.11 2003/12/22 23:47:15 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.12 2003/12/26 21:32:55 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; command parsing and builtin commands for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -42,6 +42,7 @@ extern builtin_mbinfo
 extern boot_source
 extern boot_dest
 extern boot_size
+extern redraw_display
 
 extern ata_read_sector
 extern floppy_motor_on
@@ -614,6 +615,7 @@ __SECT__
 						builtin_boot:		;
   mov bl, VGA_CYAN
   printstr "relocating boot code",0xa
+  call redraw_display
   mov esi, boot_source
   mov edi, boot_dest
   mov ecx, boot_size

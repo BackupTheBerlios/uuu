@@ -1,5 +1,5 @@
 /*
- * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bimage/x86/bimage.ld,v 1.1 2003/12/23 02:25:03 bitglue Exp $
+ * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bimage/x86/bimage.ld,v 1.2 2003/12/26 21:32:55 bitglue Exp $
  *
  * ld script for x86 boot image
  */
@@ -21,4 +21,7 @@ SECTIONS
   .data	: { *(.data) }
   .text	: { *(.text) }
   .bss	: { *(.bss) }
+
+  PROVIDE( memory_bottom = 3M );
+  PROVIDE( memory_top = 4M );
 }

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.6 2003/12/24 04:51:18 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.7 2003/12/26 21:32:55 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; boot routines
@@ -30,6 +30,7 @@ extern boot_top
 extern print_string
 extern print_hex
 extern set_display_start
+extern redraw_display
 
 
 
@@ -170,6 +171,7 @@ boot.invalid_format:
 .end:
   mov bl, VGA_WHITE
   printstr "image looks good",0xa
+  call redraw_display
   xor ebx, ebx
   call set_display_start
   pop eax
@@ -178,6 +180,7 @@ boot.invalid_format:
 .zspan:
   mov bl, VGA_WHITE
   printstr "processing zspan section",0xa
+  call redraw_display
 
   push ebp	; we can be sure C will klobber this...stupid stack frames
   push dword [ebp+16]	; will be our *destLen
@@ -213,6 +216,7 @@ boot.invalid_format:
 .fillspan:
   mov bl, VGA_WHITE
   printstr "processing fillspan section",0xa
+  call redraw_display
 
   mov edi, [ebp+8]
   mov ecx, [ebp+12]
