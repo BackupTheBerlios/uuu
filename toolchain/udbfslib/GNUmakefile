@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.6 2003/10/12 22:32:33 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.7 2003/10/13 00:46:09 instinc Exp $
 
 PREFIX = /usr/local
 LIBDIR = $(PREFIX)/lib
@@ -37,12 +37,6 @@ OBJS=\
 
 
 libudbfs.a: libudbfs.a($(OBJS)) private.h
-
-test2: test2.c libudbfs.a
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o test2 test2.c -L. -ludbfs
-
-test: test.c libudbfs.a
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o test test.c -L. -ludbfs
 
 clean:
 	rm -f libudbfs.a test
