@@ -47,6 +47,17 @@ global __interrupt_init
 __interrupt_init:
 
 ;----------------------------------------------------------------[ _start ]--
+					; setup GDT
+					;------------------------------------
+  mov edi, 0x30 * 8			; size of IDT
+  mov esi, gdt				;
+  times 4 movsd				;
+  sub edi, (gdt.end - gdt) + 8		;
+  push edi				;
+  push word (gdt.end - gdt) + 7		;
+  lgdt [esp]				;
+  add esp, byte 6			;
+					;
   mov eax, 0x20	-1			; 32 reserved interrupts by Intel
 .set_unhandled:				;--
   push eax
@@ -56,10 +67,11 @@ __interrupt_init:
   dec eax				; select previous interrupt number
   jnl .set_unhandled			; loop for all reserved interrupts
 					;--
-  mov esi, 0x00000010			; number of IRQ supported by chipset
+  mov esi, 0x0000000F			; number of IRQ supported by chipset
 .set_irq_handlers:			;--
-  lea eax, [esi + 0x20 - 1]		; get int number associated to IRQ
+  lea eax, [esi + 0x20]			; get int number associated to IRQ
   lea ebx, [esi*4 + _irq_0]		; get last IRQ handler's address
+  mov ecx, _irq_0
   ecall int.set_handler, CONT, CONT	; set the interrupt handler
   dec esi				;
   jns short .set_irq_handlers		;
@@ -86,6 +98,12 @@ pic.sequence.master:			;-----------------------------------
 db 0x11, 0x20, 0x04, 0x1D, 0xFB		; Master PIC
 pic.sequence.slave:			;
 db 0x11, 0x28, 0x02, 0x19, 0xFF		; Slave PIC
+					;
+					; Default Initial GDT
+gdt:					;-------------------------------------
+dd 0x0000FFFF, 0x00CF9B00		; code segment, 4GB r/x
+dd 0x0000FFFF, 0x00CF9300		; data segment, 4GB r/w
+.end:					;
 					;
 send_pic_sequence:			;
   lodsb					; load icw0
@@ -192,11 +210,11 @@ gproc irq.connect
 %endif						;
 						; link irq client to irq ring
 						;------------------------------
+ENTER_CRITICAL_SECTION				;
   push eax					; save irq number
   lea edx, [eax*8 + irq_clients]		;
   mov eax, ebx					;
-  mov ebx, [edx]				;
-ENTER_CRITICAL_SECTION				;
+  mov ebx, edx					;
   ecall ring_queue.prepend, CONT, .unexpected	;
 						;
 						; set PIC port and irq mask
@@ -406,6 +424,7 @@ _unhandled_interrupt:
 ;-------------------------------------------[ Unhandled Interrupt Handlers ]--
   mov eax, 0xEEEE0006			; set error code, YAY Bochs!
   mov [0xB809C], dword 0x04210421	; display some indication on screen
+  BOCHS_prompt
   jmp short $				; for now just lock
 ;-----------------------------------------------------------------------------
 
