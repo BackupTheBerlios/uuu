@@ -821,9 +821,14 @@ name : Type                      size  : unsigned 8bit</programlisting>
        <row><entry>CT_DATA32</><entry>5</><entry>unsigned 32bit</></>
        <row><entry>CT_DATA64</><entry>6</><entry>unsigned 64bit</></>
        <row><entry>CT_DATA128</><entry>7</><entry>unsigned 128bit</></>
+       <row><entry>CT_FLOAT32</><entry>64</><entry>32bit IEEE Float</></>
+       <row><entry>CT_FLOAT64</><entry>65</><entry>64bit IEEE Float</></>
+       <row><entry>CT_FLOAT80</><entry>66</><entry>80bit IEEE Float</></>
        <row><entry>CT_UCS4</><entry>128</><entry>UCS-4 (Unicode)</></>
        <row><entry>CT_SEQUENCE</><entry>129</><entry>subtable/sequence</></>
        <row><entry>CT_FILE</><entry>130</><entry>file</></>
+       <row><entry>CT_DATETIME</><entry>131</><entry>UUU-Date/Time</></>
+       <row><entry>CT_MD5</><entry>132</><entry>MD5 hash value</></>
       </tbody>
      </tgroup>
     </table>
