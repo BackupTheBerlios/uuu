@@ -22,28 +22,27 @@
 
 
 struct __udbfs_superblock {
-  
-  uint32_t	magic_number,		// 0x00
-		boot_loader_inode;	// 0x04
-  uint64_t	inode_first_block,	// 0x08
-		unique_fs_signature,	// 0x10
-		block_count,		// 0x18
-		free_block_count,	// 0x20
-		bitmaps_block;		// 0x28
-  udate		last_check,		// 0x30
-		max_interval,		// 0x38
-		last_mount;		// 0x40
-  uint32_t	inode_count,		// 0x48
-		free_inode_count,	// 0x4c
-		root_table_inode,	// 0x50
-		bad_block_inode,	// 0x54
-		journal_inode;		// 0x58
-  uint8_t	mount_count,		// 0x5c
-		max_mount_count,	// 0x5d
-		creator_os,		// 0x5e
-		superblock_version,	// 0x5f
-		block_size,		// 0x60
-		inode_format;		// 0x61
+  uint64_t			boot_loader_inode,	// 0x00
+  				inode_first_block,	// 0x08
+				unique_fs_signature,	// 0x10
+				block_count,		// 0x18
+				inode_count,		// 0x20
+				free_block_count,	// 0x28
+				free_inode_count,	// 0x30
+				bitmaps_block,		// 0x38
+				root_table_inode,	// 0x40
+				journal_inode,		// 0x48
+				bad_block_inode,	// 0x50
+				magic_number;		// 0x58
+  udate				last_check,		// 0x60
+				max_interval,		// 0x68
+				last_mount;		// 0x70
+  uint8_t			mount_count,		// 0x78
+				max_mount_count,	// 0x79
+				creator_os,		// 0x7A
+				superblock_version,	// 0x7B
+				block_size,		// 0x7C
+				inode_format;		// 0x7D
 };
 
 struct __udbfs_inode {
@@ -96,7 +95,7 @@ struct _udbfs_block {
 
 struct _udbfs_file {
   struct _udbfs_block *blocks, *current_block;
-  uint32_t inode_id;
+  uint64_t inode_id;
   int current_offset, file_size, block_count;
 };
 
