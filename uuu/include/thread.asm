@@ -63,4 +63,20 @@ struc _thread_t			; ----- ; -------------------------------------
 endstruc                        ; ----- ; -------------------------------------
 ;------------------------------------------------------------------------------
 
+
+; Mutex
+;------------------------------------------------------------------------------
+; This is the structure used for mutexes, which are dynamically allocated 
+; unless fine-tuning is done by a third-party in a fixed version development
+; environment.
+;
+;------------------------------------------------------------------------------
+struc _rt_mutex_t		; ----- ; -------------------------------------
+.holding_thread	resd 1		;   -   ; thread currently holding the lock
+.magic		resd 1		;   -   ;
+.wait_queue	resb _rt_ring_links_size;
+endstruc			; ----- ; -------------------------------------
+;------------------------------------------------------------------------------
+
+
 %endif
