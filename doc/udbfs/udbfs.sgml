@@ -490,6 +490,170 @@ name : Tri-Indirect Block        size  : unsigned 64bit</programlisting>
     The Journal File format has yet to be specified.  All we know is that we eventually want to have both structure and data journalled.
    </para>
   </sect1>
+ </chapter>
+
+ <chapter id="database"><title>Database Layout</title>
+  <para>
+   The database is an integral part of the file system meta-data.  Database tables are stored as raw files on disk, having a unique Inode
+   describing its physical storage on the medium.  Each table file is constructed out of a standard table header, column descriptions and a
+   checksum followed by the rows data.
+  </para>
+  <sect1 id="table-header"><title>Table Header</title>
+   <figure><title>table header structure</title><programlisting>
+offset  size    description
+------- ------- -----------
+      0       8 <link linkend="t-magic-number">t_magic_number</link>
+      8       8 <link linkend="t-last-id">t_last_id</link>
+     16       8 <link linkend="t-row-count">t_row_count</link>
+     24       8 <link linkend="t-first-free-row">t_first_free_row</link>
+     32       4 <link linkend="t-row-size">t_row_size</link>
+     36       4 <link linkend="t-acl-index">t_acl_index</link>
+     40       8 <link linkend="t-owner">t_owner</link>
+     48       2 <link linkend="t-column-count">t_column_count</link>
+     50       1 <link linkend="t-properties">t_properties</link>
+     51       1 reserved
+---------------------------
+total size: 52 bytes</programlisting></figure>
+   <sect2 id="t-magic-number"><title>Magic Number</title>
+    <programlisting>
+label: t_magic_number            offset: 00 (0x00)
+name : Magic Number              size  : unsigned 64bit</programlisting>
+    <para>
+     Magic number identifying the raw file as a UDBFS Table.  The current signature value is
+     0x454C424154424455 or "UDBTABLE" in ASCII.
+    </para>
+   </sect2>
+   <sect2 id="t-last-id"><title>Last ID</title>
+    <programlisting>
+label: t_last_id                 offset: 08 (0x08)
+name : Last ID                   size  : unsigned 64bit</programlisting>
+    <para>
+     Highest Unique ID key assigned.  Everytime a row is inserted with an undefined
+     numeric primary key, the <structfield>t_last_id</> value is incremented by 1
+     and its new value is assigned as primary key.
+    </para>
+   </sect2>
+   <sect2 id="t-row-count"><title>Row Count</title>
+    <programlisting>
+label: t_row_count               offset: 16 (0x10)
+name : Row Count                 size  : unsigned 64bit</programlisting>
+    <para>
+     Number of defined rows in the table.  This value is incremented for every inserted row and
+     decremented everytime a row is removed.
+    </para>
+   </sect2>
+   <sect2 id="t-first-free-row"><title>First Free Row</title>
+    <programlisting>
+label: t_first_free_row          offset: 24 (0x18)
+name : First Free Row            size  : unsigned 64bit</programlisting>
+    <para>
+     Physical index of the first empty row.  This value is used as the head of a chained list
+     of free rows within the table.  A value of 0 means there is no empty row.
+    </para>
+   </sect2>
+   <sect2 id="t-row-size"><title>Row Size</title>
+    <programlisting>
+label: t_row_size                offset: 32 (0x20)
+name : Row Size                  size  : unsigned 32bit</programlisting>
+    <para>
+     Size in bytes +8 reserved in the table for the storage of each row.  A value of 0 means each row is 8 bytes in size.
+     This additional space is to make sure the chained list of free rows have enough space to store a physical row index.
+    </para>
+   </sect2>
+   <sect2 id="t-acl-index"><title>ACL Index</title>
+    <programlisting>
+label: t_acl_index               offset: 36 (0x24)
+name : ACL Index                 size  : unsigned 32bit</programlisting>
+    <para>
+     Access Control List index.  A value of 0 means any access is denied.
+    </para>
+   </sect2>
+   <sect2 id="t-owner"><title>Table Owner</title>
+    <programlisting>
+label: t_owner                   offset: 40 (0x28)
+name : Table Owner               size  : unsigned 64bit</programlisting>
+    <para>
+     User ID of the owner of table (who has access to changing the ACL Index).
+    </para>
+   </sect2>
+   <sect2 id="t-column-count"><title>Column Count</title>
+    <programlisting>
+label: t_column_count            offset: 48 (0x30)
+name : Column Count              size  : unsigned 16bit</programlisting>
+    <para>
+     Number of column descriptions.
+    </para>
+   </sect2>
+   <sect2 id="t-properties"><title>Table Properties</title>
+    <programlisting>
+label: t_properties              offset: 50 (0x32)
+name : Table Properties          size  : unsigned 8bit</programlisting>
+    <para>
+     Bitfield of properties.
+    </para><figure><title>table properties bitfield</title><programlisting>
+bit description
+--- -----------
+  0 <link linkend="tp-per-row-acl">tp_per_row_acl</link>
+  1 <link linkend="tp-per-column-acl">tp_per_column_acl</link>
+  2 <link linkend="tp-journal-data">tp_journal_data</link>
+  3 <link linkend="tp-auto-reindex">tp_auto_reindex</link>
+  4 <link linkend="tp-auto-pack">tp_auto_pack</link>
+5-7 reserved</programlisting></figure>
+    <sect3 id="tp-per-row-acl"><title>Per Row ACL</title>
+     <programlisting>
+label: tp_per_row_acl            offset: 0.0
+name : Per Row ACL               size  : 1bit</programlisting>
+     <para>
+      Enable(1)/Disable(0) per row ACL check.  When enabled a column '.acl' is created
+      and acl ownership for individual rows is stored/checked against.
+     </para>
+    </sect3>
+    <sect3 id="tp-per-column-acl"><title>Per Column ACL</title>
+     <programlisting>
+label: tp_per_column_acl         offset: 0.1
+name : Per Column ACL            size  : 1bit</programlisting>
+     <para>
+      Enable(1)/Disable(0) per column ACL check.  When enabled access to a column information
+      will be checked against the stored ACL of the column.
+     </para>
+    </sect3>
+    <sect3 id="tp-journal-data"><title>Force Data Journaling</title>
+     <programlisting>
+label: tp_journal_data           offset: 0.2
+name : Force Data Journaling     size  : 1bit</programlisting>
+     <para>
+      Force(1)/Use Default(0) table data journaling.  When set to 0, data will be journaled
+      according to the default system setting.  When set to 1, table data will be journaled
+      no matter the default system setting.
+     </para>
+    </sect3>
+    <sect3 id="tp-auto-reindex"><title>Automatic ReIndexing</title>
+     <programlisting>
+label: tp_auto-reindex           offset: 0.3
+name : Automatic ReIndexing      size  : 1bit</programlisting>
+     <para>
+      Enable(1)/Disable(0) automatic re-indexing during system maintenance.  When set to 1,
+      all the row indexes will be compacted into a contiguous sequence during the next
+      system maintenance.  When set to 0, re-indexing will be done only on direct request.
+     </para>
+    </sect3>
+    <sect3 id="tp-auto-pack"><title>Automatic Packing</title>
+     <programlisting>
+label: tp_auto-pack              offset: 0.4
+name : Automatic Packing         size  : 1bit</programlisting>
+     <para>
+      Enable(1)/Disable(0) automatic packing during system maintenance.  When set to 1,
+      all the data within the file will be packed automatically during system maintenance so
+      as to have no free rows and cut down on file size and the data will be re-ordered
+      according to the primary key for faster retrieval.  When set to 0, packing will be done
+      only on direct request.
+     </para>
+    </sect3>
+   </sect2>
+  </sect1>
+ </chapter>
+
+ <chapter id="other"><title>Other...</title>
   <sect1 id="uuu-time"><title>UUU-Time</title>
    <para>todo</para>
   </sect1>
