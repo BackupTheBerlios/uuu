@@ -1,5 +1,5 @@
 ;; Hydro3d
-;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/Attic/test.asm,v 1.6 2003/11/17 14:49:56 bitglue Exp $
+;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/Attic/test.asm,v 1.7 2003/11/17 23:47:27 bitglue Exp $
 ;; Written in 2001 Phil Frost, who is playing with it still.
 
 
@@ -47,7 +47,7 @@
   %define YRES		400
   %define F_HALF_XRES	160.0	; half of the res. as a float
   %define F_HALF_YRES	200.0
-  %define ASPECT_RATIO	0.5625	; a horizontal scale factor. Doesn't really
+  %define ASPECT_RATIO	0.6	; a horizontal scale factor. Doesn't really
 				;work as an aspect ratio; i'll fix that later
 %endif
 
@@ -215,6 +215,13 @@ struc face
   .norY:	resd 1    ;The normal vector (from __calc_normals, in object space)
   .norZ:	resd 1    ;
 endstruc					
+
+struc span
+  .p0:		resw 1
+  .p1:		resw 1
+  .depth0:	resw 1
+  .depth1:	resw 1
+endstruc
 
 
 
@@ -852,7 +859,6 @@ frame:
 
 
 %ifdef _RDTSC_
-jmp $
   xor eax, eax
   cpuid			; serialize
   rdtsc
@@ -1811,8 +1817,7 @@ __SECT__
 
 _draw_face.flat_bottom:
   pushad
-  jmp _draw_face.flat_bottom_return
-
+  jmp near _draw_face.flat_bottom_return
 
 _draw_face.out16:
   add esp, byte 8
@@ -1821,53 +1826,6 @@ _draw_face.out8:
 _draw_face.out0:
   popad
   retn
-
-
-;_draw_face.left_right_ambiguity:
-;  ; Which lines are on the left, and which are on the right of the triangle
-;  ; must be determined. The trouble is if we have something like this:
-;  ;
-;  ; 1 ---___
-;  ;    \   | 2
-;  ;     \  |
-;  ;      \ |
-;  ;     3 \|
-;  ;
-;  ; we can't decide which is on the left and which is on the right.
-;  ;
-;  ; Note that if the top line is horizontal, either point 1 or 2 could be
-;  ; picked as the "top" point, depending on the order in which they came. If
-;  ; point 2 is chosen, that case will be handled as all the rest and this
-;  ; routine won't be called.
-;  
-;  cmp ebx, ecx		; cmp x1, x0
-;  jb .x1_left_of_x0
-;
-;.x1_left_of_x0:
-;  cmp edi, ecx		; cmp x2, x0
-;  jb .x1_and_x2_left_of_x0
-;
-;.x1_and_x2_left_of_x0:
-;  
-;
-;  cmp edi, ecx		; cmp x2, x0
-;  jbe near _draw_face.left_right_return
-;
-;  cmp esi, edx		; cmp y2, y1
-;  jbe near _draw_face.left_right_return
-;  xchg edi, ebx
-;  xchg esi, edx
-;  jmp near _draw_face.left_right_return
-;
-;.top_on_left:
-;  cmp ecx, edi		; cmp x0, x2
-;  jbe near _draw_face.left_right_return
-;
-;  cmp edx, esi		; cmp y1, y2
-;  jbe near _draw_face.left_right_return
-;  xchg edi, ebx
-;  xchg esi, edx
-;  jmp near _draw_face.left_right_return
 
 ;-----------------------------------------------------------------------.
 						_draw_face:		;
@@ -1961,7 +1919,7 @@ _draw_face.out0:
   cmp edx, esi
   jb .on_left
   je .flat_bottom
-  add ebp, byte 2
+  add ebp, byte span.p1
 .on_left:
   ; ebp = 2 if on right, 0 if on left.
 
@@ -1977,7 +1935,7 @@ _draw_face.out0:
  
   mov edi, [esp+20]	;
   sub edi, [esp+28]	; deltax of the shorter of the two first lines
-  lea edi, [edi*4+ebp+.span_buffer]
+  lea edi, [edi*span_size+ebp+.span_buffer]
 
   lea eax, [esp+16]
   mov ebx, esp
@@ -2012,7 +1970,7 @@ _draw_face.out0:
   add edi, [esp+32]
 
 .do_line:
-  movzx eax, word[esi]
+  movzx eax, word[esi+span.p0]
 %ifndef VANILLA_0x13
   mov ebp, eax
   and eax, 3
@@ -2033,8 +1991,8 @@ _draw_face.out0:
   add eax, ebp
 %endif
 
-  movzx ebx, word[esi+2]
-  movzx ebp, word[esi]
+  movzx ebx, word[esi+span.p1]
+  movzx ebp, word[esi+span.p0]
   sub ebx, ebp
   jz .next_scanline
   js .draw_backwards
@@ -2052,7 +2010,7 @@ _draw_face.out0:
 
 .next_scanline:
   add edi, XRES
-  add esi, byte 4
+  add esi, byte span_size
   dec ecx
   jnz .do_line
 
@@ -2073,7 +2031,7 @@ _draw_face.out0:
   jnz .fill_line_backwards
 
   add edi, XRES
-  add esi, byte 4
+  add esi, byte span_size
   dec ecx
   jnz .do_line
 
@@ -2115,7 +2073,7 @@ _draw_face.out0:
 
 
 [section .bss]
-.span_buffer:	resd YRES
+.span_buffer:	resb YRES * span_size
 __SECT__
 
 
@@ -2144,7 +2102,7 @@ __SECT__
 .render_loop:
   fist word[edi]
   fadd st1		; next x	(x1-x0)/ysteps
-  add edi, byte 4
+  add edi, byte span_size
   dec ecx
   jnz .render_loop
 
