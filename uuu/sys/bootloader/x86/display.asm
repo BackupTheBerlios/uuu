@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.13 2003/12/11 16:21:41 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.14 2003/12/25 01:38:26 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -283,7 +283,6 @@ global print_nul_string
   shr eax, 4
   sub esi, eax
   sub esi, CHAR_PER_COL		; ESI = number of whole lines to scroll
-  mov [0x500], eax
   jbe short .done
 
   push edi
