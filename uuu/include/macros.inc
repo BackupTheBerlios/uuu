@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.6 2003/12/31 04:35:26 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.7 2003/12/31 18:34:44 bitglue Exp $
 ;
 ; Unununium Operating Engine
 ; Distributed under the BSD License
@@ -105,8 +105,8 @@
   pushad
   mov edx, %{1}
   mov edi, 0xB8000
-  extern diable_word_out
-  call diable_dword_out
+  extern diable.word_out
+  call diable.dword_out
   popad
   popfd
 %endmacro
@@ -116,8 +116,8 @@
   pushad
   mov edx, %{1}
   mov edi, 0xB80A0
-  extern diable_dword_out_wait
-  call diable_dword_out_wait
+  extern diable.dword_out_wait
+  call diable.dword_out_wait
   popad
   popfd
 %endmacro
@@ -127,8 +127,8 @@
   pushad
   mov edx, %{1}
   mov edi, 0xB80A0
-  extern diable_dword_out
-  call diable_dword_out
+  extern diable.dword_out
+  call diable.dword_out
   popad
   popfd
   cli

@@ -16,11 +16,11 @@ print "<?xml version=\"1.0\" ?>\n<uuudoc>\n";
 
 while( <> )
 {
-  $last_label = $1 if /^\s*(\w*)\s*:/;
+  $last_label = $1 if /^\s*([\w\.\@]*)\s*:/;
 
   next unless s/^\s*;!//;
 
-  s/\<($auto_name_tags)(.*?)\>/<$1 name="$last_label" file="$ARGV" line="$."$2>/g;
+  s/\<\s*($auto_name_tags)(?![^\>]*name\s*\=)(.*?)\>/<$1 name="$last_label" file="$ARGV" line="$."$2>/g;
   print;
 }
 

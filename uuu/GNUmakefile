@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.6 2003/12/31 03:22:44 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.7 2003/12/31 18:34:44 bitglue Exp $
 
 UUUROOT=$(CURDIR)
 
@@ -59,7 +59,7 @@ uuudoc/uuudoc.xml: $(SOURCEFILES)
 sourcefiles: $(SOURCEFILES)
 	$(generating) '$@'
 	echo 'SOURCEFILES = \' > '$@'
-	for file in `find '$(UUUROOT)' -name '*.asm'`; do echo "$$file \\" >> '$@'; done
+	for file in `find $(addprefix $(UUUROOT)/,$(SOURCE_DIRS)) -name '*.asm'`; do echo "$$file \\" >> '$@'; done
 	echo >> '$@'
 
 include/ret_counts.asm: uuudoc/ret_counts.xsl uuudoc/uuudoc.xml

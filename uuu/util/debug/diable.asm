@@ -11,15 +11,15 @@
 ; <enter> key to be pressed and released.
 
 
-global diable_dword_out
-global diable_dword_out_wait
-global diable_wait
-global diable_print_string_wait
-global diable_print_string
-global diable_print_regs_wait
-global diable_print_regs
-global diable_print_stack
-global diable_print_stack_wait
+global diable.dword_out
+global diable.dword_out_wait
+global diable.wait
+global diable.print_string_wait
+global diable.print_string
+global diable.print_regs_wait
+global diable.print_regs
+global diable.print_stack
+global diable.print_stack_wait
 
 
 
@@ -28,7 +28,7 @@ global diable_print_stack_wait
 ;---------------===============/             \===============---------------
 
 ;-----------------------------------------------------------------------.
-						diable_dword_out:	;
+						diable.dword_out:	;
 ;>
 ;; This function will display the content of the 'EDX' register on screen at
 ;; the indicated offset in 'EDI'. The content will be displayed using 8
@@ -78,7 +78,7 @@ global diable_print_stack_wait
 
 
 ;-----------------------------------------------------------------------.
-						diable_dword_out_wait:	;
+						diable.dword_out_wait:	;
 ;>
 ;; Same as __dword_out, but wait for the keyboard "Enter" key to be pressed and
 ;; released before resuming.
@@ -100,14 +100,14 @@ global diable_print_stack_wait
 ;; ebp = (unmodified)
 ;; eflags = (unmodified)
 ;<
-  call diable_dword_out				;
-  call diable_wait				;
+  call diable.dword_out				;
+  call diable.wait				;
   retn						;
 
 
 
 ;-----------------------------------------------------------------------.
-						diable_wait:		;
+						diable.wait:		;
 ;>
 ;; Waits until the user press and release enter, then return control
 ;;
@@ -165,19 +165,19 @@ global diable_print_stack_wait
 
 
 ;-----------------------------------------------------------------------.
-						diable_print_string_wait:
+						diable.print_string_wait:
 ;>
 ;; Displays a null terminated string at esi in the video buffer starting at edi
 ;; no registers modified, waits for enter to be pressed
 ;<
-  call diable_print_string			;
-  call diable_wait				;
+  call diable.print_string			;
+  call diable.wait				;
   retn						;
 
 
 
 ;-----------------------------------------------------------------------.
-						diable_print_string:	;
+						diable.print_string:	;
 ;>
 ;; Displays a null terminated string at esi in the video buffer starting at edi
 ;; no registers modified
@@ -206,15 +206,15 @@ global diable_print_stack_wait
 
 
 ;-----------------------------------------------------------------------.
-						diable_print_regs_wait:	;
+						diable.print_regs_wait:	;
 ;>
 ;; Displays eax,ebx,ecx,edx, esi, edi to the screen and waits for [enter]
 ;;
 ;; out :
 ;; NO registers modified
 ;<
-  call diable_print_regs			;
-  call diable_wait				;
+  call diable.print_regs			;
+  call diable.wait				;
   retn						;
 
 [section .data]
@@ -232,7 +232,7 @@ __SECT__
 
 
 ;-----------------------------------------------------------------------.
-						diable_print_regs:	;
+						diable.print_regs:	;
 ;>
 ;; Displays eax,ebx,ecx,edx, esi, edi to the screen
 ;;
@@ -247,59 +247,59 @@ __SECT__
 	mov edi, dword 0xb8000			;
 						;
 	mov esi, _sr_eax			; Print EAX
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword eax			;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 152				; EBX
 	mov esi, _sr_ebx			;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword ebx			;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 152				; ECX
 	mov esi, _sr_ecx			;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword ecx			;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 152				; EDX
 	mov esi, _sr_edx			;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword [ss:esp]			;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 152				; ESI
 	mov esi, _sr_esi			;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword [ss:esp + 8]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 152				; EDI
 	mov esi, _sr_edi			;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword [ss:esp + 4]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 152				; EBP
 	mov esi, _sr_ebp			;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword ebp			;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 152				; ESP
 	mov esi, _sr_esp			;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 8				;
 	mov edx, dword esp			;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	pop edx					;
 	pop edi 				;
@@ -311,7 +311,7 @@ __SECT__
 
 
 ;-----------------------------------------------------------------------.
-						diable_print_stack:	;
+						diable.print_stack:	;
 ;>
 ;; Displays last 8 dwords pushed on stack.
 ;; no regs destroyed
@@ -324,63 +324,63 @@ __SECT__
 	mov edi, 0xb8000			;
 						;
 	mov esi, _sr_stack_border		; esp+4*4
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*4]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				; esp+4*5
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*5]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				; esp+4*6
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*6]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				; esp+4*7
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*7]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				; esp+4*8
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*8]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				; esp+4*9
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*9]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				; esp+4*10
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*10]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				; esp+4*11
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 	add edi, 160				;
 	mov edx, dword [ss:esp+ 4*11]		;
-	call diable_dword_out			;
+	call diable.dword_out			;
 						;
 	add edi, 160				;
 	mov esi, _sr_stack_border		;
-	call diable_print_string		;
+	call diable.print_string		;
 						;
 	pop edx					;
 	pop edi 				;
@@ -391,11 +391,11 @@ __SECT__
 
 
 ;-----------------------------------------------------------------------.
-						diable_print_stack_wait:;
+						diable.print_stack_wait:;
 ;>
 ;; Displays last 8 dwords pushed on stack and waits for enter
 ;; no regs destroyed
 ;<
-	call diable_print_stack			;
-	call diable_wait			;
+	call diable.print_stack			;
+	call diable.wait			;
  	retn					;
