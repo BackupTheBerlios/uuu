@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.2 2003/10/31 22:37:25 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.3 2003/11/01 00:46:37 bitglue Exp $
 
 %ifndef __STAGE2_CONFIG__
 %define __STAGE2_CONFIG__
@@ -70,6 +70,31 @@
 %elifidn BOOT_CONSOLE,textual
   %assign VIDEO_RAM	0xb8000
 %endif
+
+
+;-----------------------------------------------------------------------.
+;							multiboot stuffs;
+
+; in EAX if loaded from multiboot loader
+%define MULTIBOOTED	0x2BADB002
+
+
+; magic number that goes in the header
+%define MBOOT_HDR_MAGIC	0x1BADB002
+
+; possible flags...
+%define MBOOT_HDR_MODULE_ALIGN	1	; align modules on page boundries
+%define MBOOT_HDR_MEMINFO	2	; ask for memory information
+%define MBOOT_HDR_NOT_ELF	0x1000	; don't use this; we use ELF ;)
+
+; ...and the flags we actually want
+%define MBOOT_HDR_FLAGS		MBOOT_HDR_MEMINFO
+
+struc mboot_hdr
+.magic               resd 1
+.flags               resd 1
+.checksum            resd 1
+endstruc
 
 
 

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.5 2003/10/31 22:32:06 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.6 2003/11/01 00:46:37 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; central file
@@ -70,7 +70,7 @@ _start:					;--------------------
 get_to_business:			;---------------------------------
 
   mov bl, VGA_YELLOW
-  printstr "Unununium stage 2 bootloader version $Revision: 1.5 $",0x0a
+  printstr "Unununium stage 2 bootloader version $Revision: 1.6 $",0x0a
   mov bl, VGA_WHITE
   printstr "run ",0x27,"help",0x27," for a list of available commands.",0xa
   jmp start_prompt			;
@@ -86,6 +86,19 @@ get_to_business:			;---------------------------------
   call print_string	;
   cli			;
   jmp $			;
+
+
+
+;---------------===============\                 /===============---------------
+				section multiboot	noalloc align=4
+;---------------===============/                 \===============---------------
+
+; the multiboot header -- this is placed at the start of the binary by the
+; linker script
+
+dd MBOOT_HDR_MAGIC
+dd MBOOT_HDR_FLAGS
+dd - MBOOT_HDR_MAGIC - MBOOT_HDR_FLAGS
 
 
 

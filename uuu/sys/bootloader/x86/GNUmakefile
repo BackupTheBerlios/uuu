@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.5 2003/10/31 22:32:06 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.6 2003/11/01 00:46:37 bitglue Exp $
 
 UUUROOT=../../..
 
@@ -24,7 +24,7 @@ font.inc: font.src
 
 stage2: stage2.ld $(STAGE2_OBJS)
 	$(generating) "$@"
-	ld -o '$@' -s -Ttext=0x100000 stage2.ld $(STAGE2_OBJS)
+	ld -o '$@' -s -T stage2.ld $(STAGE2_OBJS)
 
 include $(UUUROOT)/Make.config
 

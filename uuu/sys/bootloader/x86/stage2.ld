@@ -1,5 +1,5 @@
 /*
- * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.ld,v 1.1 2003/10/31 22:32:06 bitglue Exp $
+ * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.ld,v 1.2 2003/11/01 00:46:37 bitglue Exp $
  *
  * ld script for the stage2 bootloader
  */
@@ -20,12 +20,16 @@ SECTIONS
   . = 1M;
 
 
-  .text : { *(.text) }
-  .data : { *(.data) }
-  .bss  : { *(.bss)  }
+  /* make sure the multiboot header comes first */
+
+  .data	: { stage2.o(multiboot) *(.data) }
+  .text	: { *(.text) }
+  .bss	: { *(.bss)  }
 
 
-  /* this is used to store keyboard input to be parsed. */
+  /* this is used to store keyboard input to be parsed. This must be changed,
+   * to support multiboot, because the bootloader wouldn't know this space is
+   * reserved. */
 
   PROVIDE( command_buffer = . );
 }
