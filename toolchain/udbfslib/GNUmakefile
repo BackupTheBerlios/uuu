@@ -1,0 +1,40 @@
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+
+.PHONY: all clean test
+
+OBJS=\
+ add_column.o\
+ allocate_bit.o\
+ allocate_block_id.o\
+ allocate_inode_id.o\
+ allocate_memory_inode.o\
+ close_inode.o\
+ create_inode.o\
+ create_table.o\
+ eoi.o\
+ free_inode.o\
+ link.o\
+ load_bind_block.o\
+ load_block.o\
+ load_ind_block.o\
+ load_tind_block.o\
+ mount.o\
+ open_inode.o\
+ open_table.o\
+ read_from_inode.o\
+ regenerate_table.o\
+ select_active_inode_block.o\
+ set_boot_loader_inode.o\
+ unlink.o\
+ unload_block.o\
+ write_to_inode.o
+ 
+
+
+libudbfs.a: libudbfs.a($(OBJS))
+
+test: test.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o test test.c -L. -ludbfs
+
+clean:
+	rm -f libudbfs.a *.o
