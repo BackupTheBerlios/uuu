@@ -196,17 +196,25 @@
 ; thorough testing of the scheduler.
 ;
 ; To disable sanity checks, comment the next line:
-%define RT_SANITY_CHECKS
+%define SANITY_CHECKS
 ;
 ; Sanity check is performed the same under the dev bench as outside, but some
 ; additional information is only provided inside the dev bench. Uncomment the
 ; next line to enable that additional information.
-%define RT_SANITY_DEVBENCH
+%define RT_SANITY_VERBOSE
 ;
 ; Those values are magic markers to help detect invalid pointers/corruption
 %define RT_THREAD_MAGIC		'thrmagic'
 %define RT_THREAD_POOL_MAGIC	'thpomagi'
 ;------------------------------------------------------------------------------
+
+
+
+
+%include "ring_queue.asm"
+%include "thread.asm"
+
+
 
 
 
@@ -231,86 +239,6 @@
 
 
 
-; Ring Links
-;------------------------------------------------------------------------------
-; This structure describe the expected order for the next/previous links used
-; in the ring lists.  It is used in the _rt_thread_t and _rt_mutex_t structures
-;
-;------------------------------------------------------------------------------
-struc _rt_ring_links		; ----- ;
-.next		resd 1		; 00-03 ;
-.previous	resd 1		; 04-07 ;
-endstruc			; ----- ;
-;------------------------------------------------------------------------------
-
-
-
-
-; Realtime Thread Header
-;------------------------------------------------------------------------------
-; This structure is created for every realtime thread in the system and is
-; located at the top of a thread's stack.
-;
-; The '*_link' are used to chain the thread header in both the timer queue or
-; the priority execution queue.
-;
-; The execution 'start' and 'end' times are specified in unadjusted Uuu-Time
-; difference since the scheduler initialization.
-;
-; The 'event notifier' is a callback function used to receive various
-; notification about the execution of the thread, such as:
-;   - execution start was delayed by other threads
-;   - execution aborted - would go above execution end
-;   - mutex lock required time lending
-;   - thread was preempted at least once
-;   - invalid processor instruction caught
-;   - invalid co-processor usage
-;   - and more, see official documentation (if any.. )
-;
-; The 'event mask' is used to control filtering of the above events.
-;
-; The 'execution priority' is the priority associated to the thread.  It may
-; or may not be at all time the currently executing priority, if for example
-; a higher priority thread is lending time until a mutex is unlocked.
-;
-; The 'locked mutexes' is a count of locked mutexes, mostly used in deadlock
-; prevention and help programmers in the development of their software.
-;
-; The 'execution status' indicate one of the following state:
-%define RT_SCHED_STATUS_UNSCHEDULED	0x00
-%define RT_SCHED_STATUS_SLEEPING	0x01
-%define RT_SCHED_STATUS_RUNNING		0x02
-%define RT_SCHED_STATUS_WAITING		0x03
-;
-; The 'flags' are used by the scheduler for various tracking functions:
-;   bit	description
-;     0	lended time run (0=no, 1=running under lended time)
-;     1 realtime thread select (0=non-rt, 1=realtime)
-;     2	initialized status (0=unitialized, 1=initialized)
-;   3-7	reserved
-;------------------------------------------------------------------------------
-struc _rt_thread_t              ; ----- ; -------------------------------------
-.execution_start	resd 2	; 00-07 ; start time
-.start_ring		resb _rt_ring_links_size
-.execution_end		resd 2	; 10-17 ; number of microseconds of execution
-.end_ring		resb _rt_ring_links_size
-.top_of_stack           resd 1	; 20-23 ; active TOS (ESP)
-.bottom_of_stack	resd 1	; 24-27 ; Lowest allowed ESP
-.process_id             resd 1	; 28-2B ; ID of parent process
-.event_notifier         resd 1	; 2C-2F ; callback for event forwarding
-.event_mask		resd 1	; 30-33 ; mask some event types
-.thread_pool		resd 1	; 34-37 ;
-.execution_priority	resb 1	; 38-38 ; selected execution priority
-.locked_mutexes		resb 1	; 39-39 ; number of locked mutexes
-.execution_status	resb 1	; 3A-3A ; execution status
-.flags			resb 1	; 3B-3B ; thread flags
-%ifdef RT_SANITY_CHECKS		; -- -- ;
-.magic			resd 1	; 3C-3F ;
-%endif				; -- -- ;
-endstruc                        ; ----- ; -------------------------------------
-;------------------------------------------------------------------------------
-
-
 
 ; Thread Pools
 ;------------------------------------------------------------------------------
@@ -321,30 +249,14 @@ endstruc                        ; ----- ; -------------------------------------
 ; pools have been searched.
 ;------------------------------------------------------------------------------
 struc _rt_thread_pool_t		; ----- ; -------------------------------------
-.ring		resb _rt_ring_links_size; ring to other thread pools
+.ring		resb _ring_queue_t_size	; ring to other thread pools
 .bitmap		resd 1		;   -   ; thread allocation bitmap
-%ifdef RT_SANITY_CHECKS
 .magic		resd 1		;   -   ; magic thread pool identifier
-%endif
 .threads	resb _STACK_SIZE_ * 32	; thread headers and stacks
 endstruc			; ----- ; -------------------------------------
 ;------------------------------------------------------------------------------
 
 
-
-
-; Mutex
-;------------------------------------------------------------------------------
-; This is the structure used for mutexes, which are dynamically allocated 
-; unless fine-tuning is done by a third-party in a fixed version development
-; environment.
-;
-;------------------------------------------------------------------------------
-struc _rt_mutex_t		; ----- ; -------------------------------------
-.holding_thread	resd 1		;   -   ; thread currently holding the lock
-.magic		resd 1		;   -   ;
-.wait_queue	resb _rt_ring_links_size;
-endstruc			; ----- ; -------------------------------------
 ;------------------------------------------------------------------------------
 ;
 ; IMPORTANT NOTE:
@@ -353,7 +265,7 @@ endstruc			; ----- ; -------------------------------------
 ; the mutex is acting as a valid thread header member in a ring.  It is of
 ; the utmost importance that '.next_link' and '.previous_link' are exactly at
 ; the same offset within the _rt_mutex_t structure as their equivalent in the
-; _rt_thread_t structure.
+; _thread_t structure.
 ;
 ;
 ; Unlocking procedure:
@@ -362,10 +274,10 @@ endstruc			; ----- ; -------------------------------------
 ; their priorities, then set the .holding_thread value to 0.  From this
 ; point the mutex is marked as unlocked.
 ;
-; Once completed, the '.locked_mutexes' count in the _rt_thread_t header should
+; Once completed, the '.locked_mutexes' count in the _thread_t header should
 ; be decremented.
 ;
-; If the thread was running on lended time (see '.flags' in _rt_thread_t) the
+; If the thread was running on lended time (see '.flags' in _thread_t) the
 ; thread should be prempted with the highest priority thread in the system.
 ;
 ;
@@ -416,13 +328,10 @@ section .data
 ; time.  This list is used to determine when to move a thread from scheduled
 ; to executing status and queue them for execution.
 ;
-; This ring list uses the _rt_thread_t members '.next_link' and
+; This ring list uses the _thread_t members '.next_link' and
 ; '.previous_link'.
 queue:
-.start_run_timers:	istruc _rt_ring_links
-		at _rt_ring_links.next,		dd queue.start_run_timers
-		at _rt_ring_links.previous,	dd queue.start_run_timers
-			iend
+.start_run_timers:	def_ring_queue
 ;
 ; End run timers
 ;------------------------------------------------------------------------------
@@ -431,22 +340,16 @@ queue:
 ; thread event notifier callbacks to notice when a thread execution could not
 ; be finished before its set deadline.
 ;
-; This ring list uses the _rt_thread_t members '.endrun_next_link' and
+; This ring list uses the _thread_t members '.endrun_next_link' and
 ; '.endrun_previous_link'.
-.end_run_timers:	istruc _rt_ring_links
-		at _rt_ring_links.next,		dd queue.end_run_timers
-		at _rt_ring_links.previous,	dd queue.end_run_timers
-			iend
+.end_run_timers:	def_ring_queue
 ;------------------------------------------------------------------------------
 
 
 
 ; Thread Pools Ring
 ;------------------------------------------------------------------------------
-thread_pools_ring:	istruc _rt_ring_links
-		at _rt_ring_links.next,		dd thread_pools_ring
-		at _rt_ring_links.previous,	dd thread_pools_ring
-			iend
+thread_pools_ring:	def_ring_queue
 ;------------------------------------------------------------------------------
 
 
@@ -518,46 +421,6 @@ pre_allocated_thread_pools:			;
 section .text
 
 
-
-;----------------------------------------------------------[ SANITY CONTROL ]--
-; This function only purpose is to handle sanity checks during development
-; and test phases.
-;
-%ifdef RT_SANITY_CHECKS
- %ifdef RT_SANITY_DEVBENCH
-sanity_check_failed:
-[section .data]
- .string: dd 0
- .eax: dd 0
- .ecx: dd 0
- .edx: dd 0
- .ebx: dd 0
- .esp: dd 0
- .ebp: dd 0
- .esi: dd 0
- .edi: dd 0
-__SECT__
-  mov [.eax], eax
-  mov [.ecx], ecx
-  mov [.edx], edx
-  mov [.ebx], ebx
-  mov [.esp], esp
-  mov [.ebp], ebp
-  mov [.esi], esi
-  mov [.edi], edi
-  mov eax, [.string]
-  mov ebx, .dump_registers
-  extern _display_string
-  jmp _display_string
-.dump_registers:
-  mov eax, .eax
-  extern _emergency_exit
-  mov ebx, _emergency_exit
-  extern _dump_registers
-  jmp _dump_registers
- %endif
-%endif
-;------------------------------------------------------------------------------
 
 
 
@@ -661,226 +524,6 @@ __set_timer:
 
 
 
-__prepend_to_queue:
-;--------------------------------------------------------[ prepend to queue ]--
-;>
-;; Prepend a thread to a ring list queue.
-;;
-;; parameters:
-;;   eax = pointer to thread ring links
-;;   ebx = pointer to queue ring links
-;;
-;; returns:
-;;   -nothing-
-;<
-;------------------------------------------------------------------------------
-%ifdef RT_SANITY_CHECKS				;-o
- cmp [eax + _rt_ring_links.next], eax		; thread points back to itself?
- jnz short .failed_sanity			; no? failed
- cmp [eax + _rt_ring_links.previous], eax	; thread points back to itself?
- jnz short .failed_sanity			; no? failed
-%endif						;--o
-						;
-  mov ecx, [ebx + _rt_ring_links.next]		; Load first ring member
-						;
-%ifdef RT_SANITY_CHECKS				;-o
- cmp [ecx + _rt_ring_links.previous], ebx	; Make sure member points back
- jnz short .failed_sanity			; ZF=0? guess it doesn't, fail
-%endif						;--o
-						;
-  mov [eax + _rt_ring_links.next], ecx		; set thrd next to 1st member
-  mov [eax + _rt_ring_links.previous], ebx	; set thrd previous to head
-  mov [ebx + _rt_ring_links.next], eax		; head point to thread
-  mov [ecx + _rt_ring_links.previous], eax	; 1st member point to thread
-  retn						; return to caller TODO
-						;
-%ifdef RT_SANITY_CHECKS				;-o
- %ifdef RT_SANITY_DEVBENCH
-[section .data]					; declare some data
-.str:						;
- db .str_end - $ - 1				;
- db "sanity check failed in __prepend_to_queue", 0x0A
- .str_end:					;
-__SECT__					; return to code section
-.failed_sanity:					;
- mov [sanity_check_failed.string], dword .str	; error message to display
- jmp sanity_check_failed			; go display it
- %else
-.failed_sanity:
-  %error "return macro not yet included!"	; TODO
- %endif
-%endif						;--o
-;------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-__link_to_ordered_queue:
-;---------------------------------------------------[ link to ordered queue ]--
-;>
-;; Link a thread into a ordered ring list.  The ordering value for both the
-;; ring list members and the thread is a 64bit value located prior to the 
-;; ring links.
-;;
-;;
-;; parameters:
-;;   eax = pointer to thread ring links
-;;   ebx = pointer to queue ring links
-;;
-;; returns:
-;;   -nothing-
-;;
-;;
-;; IMPORTANT NOTE:
-;;
-;; This function expects a 64bit ordering value to be localized immediately
-;; prior to the thread ring links.
-;<
-;------------------------------------------------------------------------------
-%ifdef RT_SANITY_CHECKS				;-o
- cmp [eax + _rt_ring_links.next], eax		; thread points back to itself?
- jnz short .failed_sanity			; no? failed
- cmp [eax + _rt_ring_links.previous], eax	; thread points back to itself?
- jnz short .failed_sanity			; no? failed
-%endif						;--o
-						;
-  push edi					; back up current edi
-  push esi					; back up current esi
-  mov edi, [byte eax - 4]			; load high 32bits
-  mov esi, [byte eax - 8]			; complete edi:esi 64bit value
-  						;
-						; edi:esi is the value by which
-						; ordering is decided.  Search
-						; for insertion point.
-						;
-  mov ecx, [ebx + _rt_ring_links.next]		; load first ring member
-  mov edx, ebx					; set ref to previous member
-.check_complete_round:				;
-						;
-%ifdef RT_SANITY_CHECKS				;-o
- cmp [ecx + _rt_ring_links.previous], edx	; next member points back?
- jnz short .failed_sanity			; if not, invalid next member
-%endif						;--o
-						;
-  cmp ecx, ebx					; did we do a complete round?
-  jz short .insert_point_localized		; yes, insert as last member
-						;
-  cmp edi, [byte ecx - 4]			; compare high 32bits
-  jb short .insert_point_localized		; value is lower, insert prior
-  cmp esi, [byte ecx - 8]			; compare low 32bits
-  jbe short .insert_point_localized		; value is lower or equal
-						;
-						; greater than current member
-						;
-  mov edx, ecx					; update ref to previous member
-  mov ecx, [ecx + _rt_ring_links.next]		; move to next member
-  jmp short .check_complete_round		; attempt another cycle
-						;
-.insert_point_localized:			; insert between ecx and edx
-  pop esi					; restore original esi
-  mov [eax + _rt_ring_links.next], ecx		; set thread ring next link
-  mov [eax + _rt_ring_links.previous], edx	; set thread ring previous link
-  pop edi					; restore original edi
-  mov [edx + _rt_ring_links.next], eax		; set ring next to thread
-  mov [ecx + _rt_ring_links.previous], eax	; set ring previous to thread
-  retn						; return to caller TODO
-						;
-%ifdef RT_SANITY_CHECKS				;-o
- %ifdef RT_SANITY_DEVBENCH
-[section .data]					; declare some data
-.str:						;
- db .str_end - $ - 1				;
- db "failed sanity check in __link_to_ordered_queue", 0x0A
- .str_end:					;
-__SECT__					; select back the code section
-.failed_sanity:					;
- mov [sanity_check_failed.string], dword .str	; error message to display
- jmp sanity_check_failed			; display it
- %else
-.failed_sanity:
-  %error "return macro not yet included!"	; TODO
- %endif
-%endif						;--o
-;------------------------------------------------------------------------------
-
-
-
-
-
-__unlink_from_queue:
-;-------------------------------------------------------[ unlink from queue ]--
-;>
-;; Unlink a thread from a ring list.
-;;
-;;
-;; parameters:
-;;   eax = pointer to thread ring links
-;;
-;; returns:
-;;   -nothing-
-;<
-;------------------------------------------------------------------------------
-  mov ebx, [eax + _rt_ring_links.next]		; load member after thread
-  mov ecx, [eax + _rt_ring_links.previous]	; load member previos to thread
-						;
-%ifdef RT_SANITY_CHECKS				;-o
- cmp [ebx + _rt_ring_links.previous], eax	; next member points to thread?
- jnz short .failed_sanity			; no? well, invalid pointer
- cmp [ecx + _rt_ring_links.next], eax		; prev member points to thread?
- jnz short .failed_sanity			; no? well, invalid pointer
- cmp ebx, eax					; next member = thread?
- jz short .already_unlinked			; yes? oops, did it twice!
-%endif						;--o
-						;
-  mov [ebx + _rt_ring_links.previous], ecx	; close previous ring member
-  mov [ecx + _rt_ring_links.next], ebx		; close next ring member
-						;
-%ifdef RT_SANITY_CHECKS				;-o
- mov [eax + _rt_ring_links.next], eax		; loop back thread next link
- mov [eax + _rt_ring_links.previous], eax	; loop back thread previous lnk
-%endif						;--o
-						;
-  return					; return to the caller
-						;
-%ifdef RT_SANITY_CHECKS				;-o
- %ifdef RT_SANITY_DEVBENCH			;
-[section .data]					; declare some data
-.str_failed:					;
- db .end_failed - $ - 1				;
- db "failed sanity check in __unlink_from_queue", 0x0A
- .end_failed:					;
-.str_unlinked:					;
- db .end_unlinked - $ - 1			;
- db "thread already unlinked in __unlink_from_queue", 0x0A
- .end_unlinked:					;
-__SECT__					; select back the code section
-						;
-.failed_sanity:					;
- mov [sanity_check_failed.string], dword .str_failed	; error message to display
- jmp sanity_check_failed			; display it
-						;
-.already_unlinked:				;
- mov [sanity_check_failed.string], dword .str_unlinked	; error message to display
- jmp sanity_check_failed			; display it
- %else						;
-.failed_sanity:					;
-.already_unlinked:				;
- %endif						;
- return 2					;
-%endif						;--o
-;------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
 
 
 
@@ -908,8 +551,8 @@ section .text
 
 
 ;-------------------------------------------------[ realtime thread acquire ]--
-global rthrd_acquire
-rthrd_acquire:
+global thrd_acquire
+thrd_acquire:
 ;!<proc>
 ;! <ret fatal="0" brief="allocation succesfull">
 ;!  <r reg="eax" brief="pointer to allocated thread"/>
@@ -923,23 +566,23 @@ rthrd_acquire:
   mov	ebx, eax				;
 						;
 .attempt_next_pool:				;
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  mov ecx, ebx					;
 %endif						;--o
 						;
-  mov	ebx, [byte ebx + _rt_ring_links.next]	;
+  mov	ebx, [byte ebx + _ring_queue_t.next]	;
 						;
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  cmp eax, thread_pools_ring			;
  jnz .failed_sanity_check_eax			;
- cmp ecx, [byte ebx + _rt_ring_links.previous]	;
+ cmp ecx, [byte ebx + _ring_queue_t.previous]	;
  jnz .failed_sanity_check_ring			;
 %endif						;--o
 						;
   cmp	ebx, eax				;
   jz	short .out_of_thread			;
 						;
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  cmp dword [byte ebx + _rt_thread_pool_t.magic], RT_THREAD_POOL_MAGIC
  jnz .failed_sanity_check_magic			;
 %endif						;--o
@@ -956,48 +599,48 @@ rthrd_acquire:
 						;
   inc	ecx					; adjust to top of thread
   shl	ecx, _LOG_STACK_SIZE_			; multiply by the stack size
-  lea	eax, [byte ecx + ebx + (_rt_thread_pool_t.threads - _rt_thread_t_size)]
+  lea	eax, [byte ecx + ebx + (_rt_thread_pool_t.threads - _thread_t_size)]
 						; add thread pool base address
 						; add offset to first thread
-						; remove size of _rt_thread_t
+						; remove size of _thread_t
 ; additional information:
 ;------------------------
 ; The thread ID should now point to the TOS (Top Of Stack) for that thread.
 ; The space above this address is the thread header, and below is the stack.
 ;
 ; Therefore the upper limit of the thread reserved space should match
-; the sum of the thread ID + the size of the _rt_thread_t structure.
+; the sum of the thread ID + the size of the _thread_t structure.
 ;
 ; The lower limit should equal (upper limit - _STACK_SIZE_)
 ;
 						;} compute stack bottom address
 						;
-  lea	edx, [ebx + (_rt_thread_t_size - _STACK_SIZE_ )]
-  mov	[eax + _rt_thread_t.bottom_of_stack], edx
+  lea	edx, [ebx + (_thread_t_size - _STACK_SIZE_ )]
+  mov	[eax + _thread_t.bottom_of_stack], edx
 						;
-  mov	[eax + _rt_thread_t.thread_pool], ebx	;
+  mov	[eax + _thread_t.thread_pool], ebx	;
 						;
-%ifdef RT_SANITY_CHECKS				;
+%ifdef SANITY_CHECKS				;
  cmp	eax, ebx				;
  jb	short .failed_sanity_check_thread_id	;
- add	ebx, (_STACK_SIZE_ * 32) + _rt_thread_pool_t_size - _rt_thread_t_size
+ add	ebx, (_STACK_SIZE_ * 32) + _rt_thread_pool_t_size - _thread_t_size
  cmp	eax, ebx				;
  ja	short .failed_sanity_check_thread_id	;
- mov	[eax + _rt_thread_t.start_ring + _rt_ring_links.next], eax
- mov	[eax + _rt_thread_t.start_ring + _rt_ring_links.previous], eax
- mov	[eax + _rt_thread_t.end_ring + _rt_ring_links.next], eax
- mov	[eax + _rt_thread_t.end_ring + _rt_ring_links.previous], eax
- mov	[eax + _rt_thread_t.magic], dword RT_THREAD_MAGIC
+ mov	[eax + _thread_t.start_ring + _ring_queue_t.next], eax
+ mov	[eax + _thread_t.start_ring + _ring_queue_t.previous], eax
+ mov	[eax + _thread_t.end_ring + _ring_queue_t.next], eax
+ mov	[eax + _thread_t.end_ring + _ring_queue_t.previous], eax
+ mov	[eax + _thread_t.magic], dword RT_THREAD_MAGIC
 %endif						;
-  mov	[eax + _rt_thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
-  mov	[eax + _rt_thread_t.flags], byte 0	;
+  mov	[eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
+  mov	[eax + _thread_t.flags], byte 0	;
   return					;
 						;
 .out_of_thread:					;
   return 1					;
 						;
-%ifdef RT_SANITY_CHECKS				;
- %ifdef RT_SANITY_DEVBENCH
+%ifdef SANITY_CHECKS				;
+ %ifdef RT_SANITY_VERBOSE
 [section .data]
 .sanity_eax:
   db .sanity_eax_end - $ - 1
@@ -1046,8 +689,8 @@ __SECT__
 
 
 ;-------------------------------------------------[ realtime thread release ]--
-global rthrd_release
-rthrd_release:
+global thrd_release
+thrd_release:
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="pointer to thread to release"/>
 ;! <ret fatal="0" brief="deallocation succesfull"/>
@@ -1055,19 +698,19 @@ rthrd_release:
 ;! <ret fatal="2" brief="scheduler sanity failure"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
-%ifdef RT_SANITY_CHECKS				;
- cmp	[eax + _rt_thread_t.magic], dword RT_THREAD_MAGIC
+%ifdef SANITY_CHECKS				;
+ cmp	[eax + _thread_t.magic], dword RT_THREAD_MAGIC
  jnz	short .failed_sanity_check_magic	;
 %endif						;
 						;
-  cmp	[eax + _rt_thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
+  cmp	[eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
   jnz	short .thread_is_in_use			;
 						;
 .thread_is_in_use:				;
 						;
 						;
-%ifdef RT_SANITY_CHECKS				;
- %ifdef RT_SANITY_DEVBENCH			;
+%ifdef SANITY_CHECKS				;
+ %ifdef RT_SANITY_VERBOSE			;
 [section .data]					;
 .sanity_magic:					;
   db .sanity_magic_end - $ - 1			;
@@ -1121,10 +764,6 @@ __SECT__					;
 
 
 
-
-global _test_sequence
-_test_sequence:
-  retn
 
 
 
