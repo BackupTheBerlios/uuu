@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.3 2003/10/12 15:17:13 instinc Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.4 2003/10/12 20:12:41 instinc Exp $
 
 .PHONY: all clean test
 
@@ -35,10 +35,10 @@ OBJS=\
 libudbfs.a: libudbfs.a($(OBJS)) private.h
 
 test2: test2.c libudbfs.a
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o test2 test2.c -L. -ludbfs
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o test2 test2.c -L. -ludbfs -lefence
 
 test: test.c libudbfs.a
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o test test.c -L. -ludbfs
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o test test.c -L. -ludbfs -g
 
 clean:
 	rm -f libudbfs.a test

@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.5 2003/10/12 20:06:25 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.6 2003/10/12 20:12:41 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -42,8 +42,6 @@ int		udbfslib_load_ind_block(
   }
 
   if( block_id == 0 ) return(0);
-
-  printf("udbfslib: request to load IND block [%016llX] for inode [%016llX] offset [%016llX]\n", block_id, inode->id, offset_modifier); fflush(stdout);
 
   ind_links = inode->mount->block_size>>3;
 
@@ -102,6 +100,5 @@ int		udbfslib_load_ind_block(
   }
   free(tmp_block);
 
-  printf("udbfslib: ind block [%016llX] OK!\n", ind_block->id); fflush(stdout);
   return(0);
 }
