@@ -19,7 +19,13 @@ struct udbfslib_mount {
   int				block_device;
 
   uint8_t			*block_bitmap,
-				*inode_bitmap;
+				*inode_bitmap,
+				mount_count,
+				max_mount_count,
+				creator_os,
+				superblock_version,
+				log_block_size,
+				inode_format;
 
   uint64_t			block_size,
 				block_count,
@@ -36,6 +42,16 @@ struct udbfslib_mount {
 				bind_storage,
 				tind_storage,
 				boot_loader_inode;
+
+  uint64_t			inode_first_block,
+  				unique_fs_signature,
+				bitmaps_block,
+				root_table_inode,
+				journal_inode,
+				bad_block_inode,
+				magic_number,
+				last_check,
+				last_mount;
 
   struct udbfslib_inode		*opened_inodes;
 };
