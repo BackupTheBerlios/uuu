@@ -78,7 +78,7 @@ endstruc                        ; ----- ; -------------------------------------
 struc _rt_mutex_t		; ----- ; -------------------------------------
 .holding_thread	resd 1		;   -   ; thread currently holding the lock
 .magic		resd 1		;   -   ;
-.wait_queue	resb _rt_ring_links_size;
+.wait_queue	resb _ring_queue_t_size	;
 endstruc			; ----- ; -------------------------------------
 ;------------------------------------------------------------------------------
 
