@@ -557,10 +557,8 @@ gproc thrd.acquire
 ;!  <r reg="eax" brief="pointer to allocated thread"/>
 ;! </ret>
 ;! <ret fatal="1" brief="allocation failed - out of thread"/>
-;! <ret fatal="2" brief="scheduler sanity failure"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
-
   mov	eax, thread_pools_ring			;
   mov	ebx, eax				;
 						;
@@ -686,7 +684,6 @@ gproc thrd.release
 ;! <p reg="eax" type="pointer" brief="pointer to thread to release"/>
 ;! <ret fatal="0" brief="deallocation succesfull"/>
 ;! <ret fatal="1" brief="allocation failed - thread is being used"/>
-;! <ret fatal="2" brief="scheduler sanity failure"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
 %ifdef SANITY_CHECKS				;
@@ -720,6 +717,67 @@ __SECT__					;
 
 
 
+gproc thrd.initialize
+;----------------------------------------------[ realtime thread initialize ]--
+;!<proc>
+;! <p reg="eax" type="pointer" brief="pointer to thread to initialize"/>
+;! <p reg="ebx" type="pointer" brief="callback to use for event notification"/>
+;! <p reg="ecx" type="pointer" brief="pointer to give as parameter to the thread"/>
+;! <p reg="edx" type="pointer" brief="address at which to start thread execution"/>
+;! <ret fatal="0" brief="initialization completed"/>
+;! <ret fatal="1" brief="initialization failed - thread is being used"/>
+;!</proc>
+;----------------------------------------------[/realtime thread initialize ]--
+						; validate thread pointer
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp dword [eax + _thread_t.magic], RT_THREAD_MAGIC
+ jnz short .sanity_check_failed_magic		;
+%endif						;
+						; make sure the thread is
+						; not currently scheduled
+						;------------------------------
+  cmp byte [eax + _thread_t.status], byte RT_SCHED_STATUS_UNSCHEDULED 
+  jz short .thread_in_use			;
+						;
+; TODO:
+; - set ESP to thread id
+; - validate .bottom_of_stack (sanity)
+; - make sure the thread is unlinked (sanity)
+; - push on the stack (moving esp) the registers, flags, etc & parameter pointer
+; - set event notification handler
+; - set the initialized flag
+						;
+.thread_in_use:					;
+  return 1					;
+						;
+%ifdef SANITY_CHECKS				; Sanity Handlers
+[section .data]					;------------------------------
+.sanity_magic:					;
+  uuustring "thrd.initialize thread pointer failed magic check", 0x0A
+__SECT__					;
+.sanity_check_failed_magic:			;
+  mov ebx, .sanity_magic			;
+  xor eax, eax					;
+  ret_other					;
+%endif						;
+
+
+
+
+gproc thrd.schedule
+;------------------------------------------------[ realtime thread schedule ]--
+;!<proc>
+;! <p reg="eax" type="pointer" brief="pointer to thread to schedule"/>
+;! <p reg="ebx" type="uinteger32" brief="inverse priority to set"/>
+;! <p reg="ecx" type="pointer" brief="pointer to uuutime start time"/>
+;! <p reg="edx" type="pointer" brief="pointer to uuutime deadline"/>
+;! <ret fatal="0" brief="thread scheduled"/>
+;! <ret fatal="1" brief="deadline already expired"/>
+;! <ret fatal="2" brief="failed to scheduled - thread is being used"/>
+;! <ret fatal="3" brief="thread not properly initialized"/>
+;!</proc>
+;------------------------------------------------[/realtime thread schedule ]--
+  ret_other
 
 
 
