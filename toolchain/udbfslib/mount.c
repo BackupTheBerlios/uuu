@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.6 2003/10/12 23:23:45 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.7 2003/10/13 00:35:49 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -93,6 +93,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     mount->log_block_size	= superblock->block_size;
     mount->block_count		= superblock->block_count;
     mount->free_block_count	= superblock->free_block_count;
+    mount->bitmaps_block	= superblock->bitmaps_block;
     mount->block_bitmap_offset	= superblock->bitmaps_block * mount->block_size;
     mount->block_bitmap_size	= (mount->block_count + 7)>>3;
     mount->inode_bitmap_offset	= mount->block_bitmap_offset + ((mount->block_count + 7)>>3);
