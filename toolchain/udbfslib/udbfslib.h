@@ -51,7 +51,8 @@ struct udbfslib_mount {
 				bad_block_inode,
 				magic_number,
 				last_check,
-				last_mount;
+				last_mount,
+				max_interval;
 
   struct udbfslib_inode		*opened_inodes;
 };
