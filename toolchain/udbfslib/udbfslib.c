@@ -772,6 +772,7 @@ static int		udbfslib_deallocate_bit(
  */
 static UDBFSLIB_BLOCK *udbfslib_allocate_memory_block(
     UDBFSLIB_INODE *inode, UDBFSLIB_BLOCK **linkpoint ) {
+  UDBFSLIB_BLOCK *block;
 
   if( inode == NULL ) {
     fprintf(stderr,"udbfslib: cannot allocate memory block to NULL inode\n");
@@ -783,8 +784,7 @@ static UDBFSLIB_BLOCK *udbfslib_allocate_memory_block(
   }
 
   //.:  Allocate memory for block memory structure
-  UDBFSLIB_BLOCK *block =
-    (UDBFSLIB_BLOCK *)malloc(sizeof(UDBFSLIB_BLOCK));
+  block = (UDBFSLIB_BLOCK *)malloc(sizeof(UDBFSLIB_BLOCK));
 
   if( block == NULL ) {
     perror("udbfslib: unable to allocate memory for block storage");
