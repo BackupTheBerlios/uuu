@@ -1,63 +1,19 @@
+#ifndef _UDBFSLIB_H_
+#define _UDBFSLIB_H_
+
 #include <inttypes.h>
-#include <fcntl.h>
-#include <unistd.h>
 
-typedef uint64_t		udate;
-
-#define UDBFS_MAGIC		0x75646221
-#define DATATYPE_INT1           0x01
-#define DATATYPE_INT2           0x02
-#define DATATYPE_INT4           0x03
-#define DATATYPE_INT8           0x04
-#define DATATYPE_INT16          0x05
-#define DATATYPE_INT32          0x06
-#define DATATYPE_INT64          0x07
-#define DATATYPE_INT128         0x08
-#define DATATYPE_CHAR           0xF0
-#define DATATYPE_VARCHAR        0xF1
-#define DATATYPE_FLOAT          0xE0
-#define DATATYPE_DATA           0xD0
-#define DATATYPE_SHAREDDATA     0xC1
-#define DATATYPE_DATETIME       0xB0
-#define DATATYPE_ENUMERATION    0xA0
-
-
-struct udbfs_mount_struct;
-struct udbfs_inode_struct;
-struct udbfs_table_struct;
+struct udbfslib_mount;
+struct udbfslib_inode;
+struct udbfslib_block;
+struct udbfslib_indblock;
+struct udbfslib_table;
+struct udbfslib_column;
 
 
 
-
-struct udbfs_superblock {
-  uint32_t			magic_number,
-  				boot_loader_inode;
-  uint64_t			inode_first_block,
-				unique_fs_signature,
-				block_count,
-				free_block_count,
-				bitmaps_block;
-  udate				last_check,
-				max_interval,
-				last_mount;
-  uint32_t			inode_count,
-				free_inode_count,
-				root_table_inode,
-				bad_block_inode,
-				journal_inode;
-  uint8_t			mount_count,
-				max_mount_count,
-				creator_os,
-				superblock_version,
-				block_size,
-				inode_format;
-};
-
-
-
-
-struct udbfs_mount_struct {
-  struct udbfs_mount_struct	*next,
+struct udbfslib_mount {
+  struct udbfslib_mount		*next,
 				*previous;
 
   int				block_device;
@@ -65,27 +21,169 @@ struct udbfs_mount_struct {
   uint8_t			*block_bitmap,
 				*inode_bitmap;
 
-  struct udbfs_superblock	superblock;
+  uint32_t			inode_count,
+				boot_loader_inode;
+
+  uint64_t			block_size,
+				block_count,
+				free_block_count,
+				free_inode_count,
+				block_bitmap_offset,
+				block_bitmap_size,
+				inode_bitmap_offset,
+				inode_bitmap_size,
+				inode_table_offset;
+
+  struct udbfslib_inode		*opened_inodes;
 };
 
 
 
 
-struct udbfs_inode_struct {
-  struct udbfs_inode_struct	*next,
-  				*previous;
+struct udbfslib_inode {
+  struct udbfslib_inode		*next,
+				*previous;
   uint32_t			id;
-  uint64_t			file_size,
-  				current_offset;
-  struct udbfs_block_struct	*blocks,
-  				*current_block;
+  uint64_t			cursor,
+				size,
+				physical_offset;
+  struct udbfslib_block		*block[4];
+  struct udbfslib_indblock	*ind_block,
+				*bind_block,
+				*tind_block;
+  struct udbfslib_mount		*mount;
 };
 
 
-typedef struct udbfs_inode_struct UDBFS_INODE;
-typedef struct udbfs_mount_struct UDBFS_MOUNT;
-typedef struct udbfs_superblock UDBFS_SUPERBLOCK;
 
 
-UDBFS_MOUNT *udbfs_mount( char *block_device );
-void udbfs_unmount( UDBFS_MOUNT *mount );
+struct udbfslib_indblock {
+  uint64_t			id;
+  struct udbfslib_block		*block;
+};
+
+
+
+
+struct udbfslib_block {
+  struct udbfslib_block		*next,
+				*previous;
+  uint64_t			id,
+				offset_start,
+				offset_end;
+  uint8_t			*data;
+  struct udbfslib_mount		*mount;
+};
+
+
+
+
+struct udbfslib_table {
+  struct udbfslib_table		*next,
+  				*previous;
+
+  struct udbfslib_column	*columns;
+  
+  uint32_t			record_size;
+
+  uint64_t			offset_to_data,
+				last_id,
+				row_count,
+				first_free_record,
+				acl_index,
+				owner;
+
+  uint8_t			properties;
+};
+
+
+struct udbfslib_column {
+  struct udbfslib_column	*next,
+  				*previous;
+
+  uint32_t			name_length,
+  				name[31],
+				count,
+				size,
+				compression,
+				encryption,
+				sequence,
+				offset;
+  uint8_t			list_index,
+				properties,
+				type,
+				shift;
+};
+
+
+
+typedef struct udbfslib_block		UDBFSLIB_BLOCK;
+typedef struct udbfslib_indblock	UDBFSLIB_INDBLOCK;
+typedef struct udbfslib_inode		UDBFSLIB_INODE;
+typedef struct udbfslib_mount		UDBFSLIB_MOUNT;
+typedef struct udbfslib_table		UDBFSLIB_TABLE;
+typedef struct udbfslib_column		UDBFSLIB_COLUMN;
+
+
+
+
+
+
+UDBFSLIB_MOUNT	*udbfs_mount(
+    char		*block_device );
+
+
+void		udbfs_unmount(
+    UDBFSLIB_MOUNT	*mount );
+
+
+uint32_t	udbfs_allocate_inode_id(
+    UDBFSLIB_MOUNT	*mount );
+
+
+uint64_t	udbfs_allocate_block_id(
+    UDBFSLIB_MOUNT	*mount );
+
+
+UDBFSLIB_TABLE	*udbfs_create_table(
+    UDBFSLIB_MOUNT	*mount );
+
+
+UDBFSLIB_TABLE	*udbfs_open_table(
+    UDBFSLIB_MOUNT	*mount,
+    uint32_t		inode_id);
+
+
+int		udbfs_add_column(
+    UDBFSLIB_TABLE	*table,
+    char		*name,
+    uint8_t		datatype,
+    uint32_t		size,
+    uint32_t		count,
+    uint32_t		compression,
+    uint32_t		encryption );
+
+
+int		udbfs_regenerate_table(
+    UDBFSLIB_TABLE	*table );
+
+
+UDBFSLIB_INODE	*udbfs_create_file(
+    UDBFSLIB_MOUNT	*mount);
+
+
+
+UDBFSLIB_INODE	*udbfs_open_inode(
+    UDBFSLIB_MOUNT	*mount,
+    uint32_t		inode_id);
+
+
+int		udbfs_close_inode(
+    UDBFSLIB_INODE	*inode);
+
+
+int		udbfs_free_inode(
+    UDBFSLIB_MOUNT	*mount,
+    uint32_t		inode_id);
+
+#endif
