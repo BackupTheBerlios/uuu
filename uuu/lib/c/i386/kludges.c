@@ -110,17 +110,14 @@ off_t lseek(int fd, off_t offset, int whence)
   switch( whence )
   {
     case SEEK_SET:
-      printf("\nlseek(%u,%lu,SEEK_SET)\n",fd,offset);
       memfs_fd[fd].file_pos_cur = offset;
       break;
 
     case SEEK_CUR:
-      printf("\nlseek(%u,%lu,SEEK_CUR)\n",fd,offset);
       memfs_fd[fd].file_pos_cur += offset;
       break;
 
     case SEEK_END:
-      printf("\nlseek(%u,%lu,SEEK_END)\n",fd,offset);
       memfs_fd[fd].file_pos_cur = memfs_fd[fd].file_pos_end + offset;
       break;
 
@@ -133,7 +130,6 @@ off_t lseek(int fd, off_t offset, int whence)
   // just not today.
   if (memfs_fd[fd].file_pos_cur > memfs_fd[fd].file_pos_end)
   {
-    printf("sought past end of file;");
     errno = EINVAL;
     return (off_t)-1;
   }
@@ -141,7 +137,6 @@ off_t lseek(int fd, off_t offset, int whence)
   // prevent seeking before start of file
   if (memfs_fd[fd].file_pos_cur < memfs_fd[fd].file_pos_start)
   {
-    printf("sought before start of file;");
     errno = EINVAL;
     return (off_t)-1;
   }
@@ -247,6 +242,10 @@ int open(const char *pathname, int flags, ...)
   errno = ENOENT;
   return -1;
 }
+
+
+
+int __libc_open(const char*fn,int flags,...) __attribute__((weak,alias("open")));
 
 
 
