@@ -4,6 +4,14 @@
 
 %include "ring_queue.asm"
 
+struc _thread_timer_t
+.procedure	resd 1
+.execution_time	resd 2
+.ring		resb _ring_queue_t_size
+endstruc
+
+
+
 ; Realtime Thread Header
 ;------------------------------------------------------------------------------
 ; This structure is created for every realtime thread in the system and is
@@ -56,10 +64,8 @@
 ;   3-7	reserved
 ;------------------------------------------------------------------------------
 struc _thread_t			; ----- ; -------------------------------------
-.execution_start	resd 2	; 00-07 ; start time
-.start_ring		resb _ring_queue_t_size
-.execution_end		resd 2	; 10-17 ; number of microseconds of execution
-.end_ring		resb _ring_queue_t_size
+.start_timer		resb _thread_timer_t_size
+.end_timer		resb _thread_timer_t_size
 .resources_ring		resb _ring_queue_t_size
 .top_of_stack           resd 1	; 20-23 ; active TOS (ESP)
 .bottom_of_stack	resd 1	; 24-27 ; Lowest allowed ESP
