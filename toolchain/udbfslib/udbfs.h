@@ -27,27 +27,27 @@ typedef uint64_t		udate;
 
 
 struct udbfs_superblock {
-  uint32_t			magic_number,
-  				boot_loader_inode;
-  uint64_t			inode_first_block,
-				unique_fs_signature,
-				block_count,
-				free_block_count,
-				bitmaps_block;
-  udate				last_check,
-				max_interval,
-				last_mount;
-  uint32_t			inode_count,
-				free_inode_count,
-				root_table_inode,
-				bad_block_inode,
-				journal_inode;
-  uint8_t			mount_count,
-				max_mount_count,
-				creator_os,
-				superblock_version,
-				block_size,
-				inode_format;
+  uint32_t			magic_number,		// 0x00
+  				boot_loader_inode;	// 0x04
+  uint64_t			inode_first_block,	// 0x08
+				unique_fs_signature,	// 0x10
+				block_count,		// 0x18
+				free_block_count,	// 0x20
+				bitmaps_block;		// 0x28
+  udate				last_check,		// 0x30
+				max_interval,		// 0x38
+				last_mount;		// 0x40
+  uint32_t			inode_count,		// 0x48
+				free_inode_count,	// 0x4C
+				root_table_inode,	// 0x50
+				bad_block_inode,	// 0x54
+				journal_inode;		// 0x58
+  uint8_t			mount_count,		// 0x5C
+				max_mount_count,	// 0x5D
+				creator_os,		// 0x5E
+				superblock_version,	// 0x5F
+				block_size,		// 0x60
+				inode_format;		// 0x61
 };
 
 
