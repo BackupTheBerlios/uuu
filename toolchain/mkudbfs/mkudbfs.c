@@ -206,11 +206,6 @@ int mkfs(
   superblock->bad_block_inode = tmp_file->inode_id;
   close_file( tmp_file );
 
-  printf("\tpersistence\n");
-  tmp_file = create_file();
-  superblock->persistence_inode = tmp_file->inode_id;
-  close_file( tmp_file );
-
   printf("\tboot loader\n");
   tmp_file = create_file();
   superblock->boot_loader_inode = tmp_file->inode_id;
@@ -220,11 +215,6 @@ int mkfs(
   printf("\tjournal\n");
   tmp_file = create_file();
   superblock->journal_inode = tmp_file->inode_id;
-  close_file( tmp_file );
-
-  printf("\terror log\n");
-  tmp_file = create_file();
-  superblock->error_inode = tmp_file->inode_id;
   close_file( tmp_file );
 
   printf(":. creating root hierarchy table\n");
