@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.9 2004/01/05 16:32:53 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.10 2004/01/06 02:39:12 bitglue Exp $
 
 UUUROOT=$(CURDIR)
 
@@ -10,7 +10,7 @@ include $(UUUROOT)/sys/bimage/$(ARCH)/Make.config
 
 diskimage: boot.bimage
 
-.PHONY:
+.PHONY: lib/c/bin-i386/dietlibc.a
 lib/c/bin-i386/dietlibc.a:
 	$(entering) $(CURDIR)/lib/c
 	$(MAKE) -C lib/c
