@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.9 2003/12/31 19:58:19 instinc Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.10 2004/01/01 01:59:03 instinc Exp $
 ;
 ; Unununium Operating Engine
 ; Distributed under the BSD License
@@ -50,7 +50,7 @@
 ;                                         global procedure declaration  ;
 
 %macro gproc 1
-%define CURPROCEDURE_%1
+%define CURPROCEDURE %1
 global %1
 %1:
 %endmacro
@@ -89,7 +89,7 @@ global %1
 ; any parameter.
 
 %macro ret_other 0
- return edx, CURPROCEDURE %+ __ret_count
+ return CURPROCEDURE %+ __ret_count, edx
 %endmacro
 
 
@@ -99,7 +99,7 @@ global %1
 ;
 
 %macro ret_other 1
-  return %{1}, CURPROCEDURE %+ __ret_count
+  return CURPROCEDURE %+ __ret_count, %{1}
 %endmacro
 
 
