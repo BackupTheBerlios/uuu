@@ -252,7 +252,7 @@ cprocnear   PM_readMSR
 cprocend
 
 ;----------------------------------------------------------------------------
-; void PM_writeMSR(uong reg, ulong eax, ulong edx);
+; void PM_writeMSR(ulong reg, ulong eax, ulong edx);
 ;----------------------------------------------------------------------------
 ; Writes the specific Machine Status Register used on the newer Intel
 ; Pentium Pro and Pentium II motherboards.
