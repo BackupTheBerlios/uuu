@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <write12.h>
 
 #include "dietfeatures.h"
 
@@ -18,6 +17,15 @@
  *   exec
  * "sparc-linux-gcc -nostdlib -static -o t t.o /path/to/dietlibc/bin-sparc/start.o /path/to/dietlibc/bin-sparc/dietlibc.a"
 */
+
+int __write1 (const char* s) {
+    return write(1, s, strlen(s));
+}
+
+int __write2 (const char* s) {
+    return write(2, s, strlen(s));
+}
+
 
 static void error(const char *message) {
   __write2(message);
