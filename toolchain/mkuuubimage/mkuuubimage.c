@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/mkuuubimage.c,v 1.1 2003/11/03 14:49:39 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/mkuuubimage.c,v 1.2 2003/11/03 15:54:58 bitglue Exp $
 
 /* This program takes as input a single ELF file and produces a boot image for
    the Unununium OS.
@@ -36,7 +36,8 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define DEBUG
+// default suffix for output files
+#define OUTPUT_SUFFIX	".bimage"
 
 // size of buffers to be used for compression. One for input, one for output.
 #define INPUT_BUFFER_SIZE	0x1000
@@ -76,11 +77,14 @@ typedef struct
 
 
 
-char const *input_filename;
+char const *input_filename = NULL;
 FILE *input_file;
 
-char const *output_filename = "out";
+char *output_filename = NULL;
 FILE *output_file;
+char output_filename_malloced = 0;
+
+char debug_level = 0;
 
 int compression_level = Z_DEFAULT_COMPRESSION;
 
@@ -138,23 +142,142 @@ void bug();
 int main( int argc, char *argv[] )
 {
   unsigned i, j;
+  unsigned next_arg;
   unsigned load_sections;	// the number of sections without NOLOAD; the size of the section_order array
   Elf32_Shdr *sort_index;
   z_stream stream;
   int flush;			// used in communication with zlib
   long file_pos;
+  char const *str_pos;
 
   // parse arguements
 
-  if( argc != 2 )
+  if( argc < 2 )
   {
     print_usage();
     return -1;
   }
 
-  // open input file
+  next_arg = 1;
 
-  input_filename = argv[1];
+  for( i = 1 ; i < argc ; i += next_arg )
+  {
+    if( argv[i][0] == '-' )
+    {
+      for( j = 1 ; j < strlen(argv[i]) ; ++j )
+      {
+	switch( argv[i][j] )
+	{
+	  case '-':
+	    if( argv[i+next_arg] == NULL ) {
+	      fprintf( stderr, "-- requires an arguement\n" );
+	      return -1;
+	    }
+	    input_filename = argv[i+next_arg];
+	    ++next_arg;
+
+	    break;
+
+
+	  case 'h':
+	    print_usage();
+	    return 0;
+
+
+	  case 'o':
+	    if( argv[i+next_arg] == NULL ) {
+	      fprintf( stderr, "-o requires an arguement\n" );
+	      return -1;
+	    }
+	    output_filename = argv[i+next_arg];
+	    ++next_arg;
+
+	    break;
+
+
+	  case 'd':
+	    ++debug_level;
+	    break;
+
+
+	  case '1':
+	    compression_level = 1;
+	    break;
+
+	  case '2':
+	    compression_level = 2;
+	    break;
+
+	  case '3':
+	    compression_level = 3;
+	    break;
+
+	  case '4':
+	    compression_level = 4;
+	    break;
+
+	  case '5':
+	    compression_level = 5;
+	    break;
+
+	  case '6':
+	    compression_level = 6;
+	    break;
+
+	  case '7':
+	    compression_level = 7;
+	    break;
+
+	  case '8':
+	    compression_level = 8;
+	    break;
+
+	  case '9':
+	    compression_level = 9;
+	    break;
+
+	  case 'v':
+	    fprintf( stderr, "mkuuubimage $Revision: 1.2 $ $Date: 2003/11/03 15:54:58 $\ncompiled " __DATE__ " " __TIME__ "\n" );
+	    return 0;
+
+
+	  default:
+	    fprintf( stderr, "unknown option -%c; -h prints usage help\n", argv[i][j] );
+	    return -1;
+	}
+      }
+    }
+    else
+    {
+      if( input_filename != NULL ) {
+	print_usage();
+	return -1;
+      }
+      input_filename = argv[i];
+    }
+  }
+
+  if( input_filename == NULL )
+  {
+    fprintf( stderr, "exactly one input file must be specified\n" );
+    return -1;
+  }
+
+  if( output_filename == NULL )
+  {
+    output_filename = get_memory( strlen(input_filename) + strlen(OUTPUT_SUFFIX) + 1 );
+    output_filename_malloced = 1;
+
+    str_pos = strrchr( input_filename, '.' );
+    if( !str_pos ) str_pos = &input_filename[strlen(input_filename)];
+    i = str_pos - input_filename;
+
+    memcpy( output_filename, input_filename, i );
+    memcpy( &output_filename[i], OUTPUT_SUFFIX, strlen(OUTPUT_SUFFIX) );
+    output_filename[i+strlen(OUTPUT_SUFFIX)] = '\0';
+  }
+
+  // open input file
 
   input_file = fopen( input_filename, "rb" );
   if( !input_file ) {
@@ -245,9 +368,8 @@ int main( int argc, char *argv[] )
   for( i = 0 ; i < load_sections ; ++i )
   {
     if( section_order[i]->sh_size == 0 ) {
-#ifdef DEBUG
-      fprintf( stderr, "skipping zero sized section\n" );
-#endif
+      if( debug_level )
+	fprintf( stderr, "skipping zero sized section\n" );
       break;
     }
 
@@ -255,9 +377,8 @@ int main( int argc, char *argv[] )
     {
 
       case SHT_PROGBITS:
-#ifdef DEBUG
-	fprintf( stderr, "processing progbits section\n" );
-#endif
+	if( debug_level )
+	  fprintf( stderr, "processing progbits section\n" );
 
 	write_output( BIMAGE_ZSPAN, 4 );
 	file_pos = ftell( output_file );
@@ -265,9 +386,8 @@ int main( int argc, char *argv[] )
 	write_output_word( sizeof(zspan_section) + 8 );
 	write_output_word( section_order[i]->sh_addr );
 	write_output_word( section_order[i]->sh_size );
-#ifdef DEBUG
-	fprintf( stderr, "input size: 0x%x\n", section_order[i]->sh_size );
-#endif
+	if( debug_level )
+	  fprintf( stderr, "input size: 0x%x\n", section_order[i]->sh_size );
 
 	if( fseek( input_file, section_order[i]->sh_offset, SEEK_SET ) ) read_error();
 
@@ -323,9 +443,8 @@ int main( int argc, char *argv[] )
 
 
 	if( fseek( output_file, file_pos, SEEK_SET ) ) read_error();
-#ifdef DEBUG
-	fprintf( stderr, "output size: 0x%lx\n", stream.total_out );
-#endif
+	if( debug_level )
+	  fprintf( stderr, "output size: 0x%lx\n", stream.total_out );
 	write_output_word( stream.total_out + sizeof(zspan_section) + 8 );
 	if( fseek( output_file, 0, SEEK_END ) ) read_error();
 
@@ -337,9 +456,8 @@ int main( int argc, char *argv[] )
 
       case SHT_NOBITS:
 
-#ifdef DEBUG
-	fprintf( stderr, "processing nobits section\n" );
-#endif
+	if( debug_level )
+	  fprintf( stderr, "processing nobits section\n" );
 
 	write_output( BIMAGE_FILLSPAN, 4 );
 	write_output_word( sizeof(fillspan_section) + 8 );
@@ -366,7 +484,15 @@ int main( int argc, char *argv[] )
 
 void print_usage()
 {
-  fprintf( stderr, "learn to use your own programs, dummy!\n" );
+  fprintf( stderr, "\
+Usage: mkuuubimage OPTIONS INPUT-FILE\n\
+\n\
+  -1 to -9	adjust compression from fastest(1) to smallest(2)\n\
+  -d		increase the verbosity of messages\n\
+  -o FILE	set output filename to FILE\n\
+  -v		print version information\n\
+  -- FILE	set input filename to FILE\n\
+" );
 }
 
 
@@ -418,6 +544,8 @@ void clean( int err )
     case 1:
       fclose( input_file );
   }
+
+  if( output_filename_malloced ) free(output_filename);
 
   exit( err );
 }
