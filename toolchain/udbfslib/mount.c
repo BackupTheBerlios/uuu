@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.2 2003/10/12 15:33:40 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.3 2003/10/12 18:23:43 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -101,7 +101,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     free( superblock );
   }
 
-  printf("inode bitmap size: %lli inode count: %i\n", mount->inode_bitmap_size, mount->inode_count);
+  printf("inode bitmap size: %lli inode count: %lli\n", mount->inode_bitmap_size, mount->inode_count);
   
   //.:  Load block and inode bitmaps
   if( ((mount->block_bitmap = (uint8_t *)malloc(mount->block_bitmap_size)) == NULL) ||
@@ -164,7 +164,7 @@ void		udbfs_unmount(
     inode = mount->opened_inodes;
     while( inode ) {
       
-      fprintf( stderr, "udbfslib: WARNING: inode [%08X] left open, closing it\n", inode->id );
+      fprintf( stderr, "udbfslib: WARNING: inode [%016llX] left open, closing it\n", inode->id );
 
       next_inode = inode->next;
       udbfs_close_inode( inode );
@@ -243,7 +243,7 @@ static UDBFS_SUPERBLOCK	*udbfslib_validate_superblock(
   
   //..: Make sure the information is valid
   if( superblock->magic_number != UDBFS_MAGIC ) {
-    fprintf(stderr,"udbfslib: failed to locate superblock signature: [%08X] found instead.\n", superblock->magic_number);
+    fprintf(stderr,"udbfslib: failed to locate superblock signature: [%016llX] found instead.\n", superblock->magic_number);
     goto failed_validation;
   }
   switch( superblock->superblock_version ) {
@@ -259,7 +259,7 @@ static UDBFS_SUPERBLOCK	*udbfslib_validate_superblock(
 
       //...:  Check if the free inode/block count is above the inode/block count
       if( superblock->free_inode_count > superblock->inode_count ) {
-	fprintf(stderr,"udbfslib: invalid free/total inode count relationship [%08X/%08X]\n", superblock->free_inode_count, superblock->inode_count );
+	fprintf(stderr,"udbfslib: invalid free/total inode count relationship [%016llX/%016llX]\n", superblock->free_inode_count, superblock->inode_count );
 	goto failed_validation;
       }
       if( superblock->free_block_count > superblock->block_count ) {

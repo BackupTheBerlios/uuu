@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/free_inode.c,v 1.2 2003/10/12 18:10:39 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/free_inode.c,v 1.3 2003/10/12 18:24:32 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -29,7 +29,7 @@ int		udbfs_free_inode(
   inode = mount->opened_inodes;
   while( inode ) {
     if( inode->id == inode_id ) {
-      fprintf(stderr,"udbfslib: cannot free an opened inode! close it first! [%i]\n", inode_id);
+      fprintf(stderr,"udbfslib: cannot free an opened inode! close it first! [%016llX]\n", inode_id);
       return(-1);
     }
     inode = inode->next;
