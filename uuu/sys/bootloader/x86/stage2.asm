@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.1 2003/09/23 03:46:22 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.2 2003/10/03 19:41:45 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; central file
@@ -13,7 +13,6 @@
 bits 32
 org 0x100000
 
-%include "ubf.inc"
 
 
 ;---------------===============\             /===============---------------
@@ -112,7 +111,7 @@ start:					;--------------------
 get_to_business:			;---------------------------------
 
   mov bl, VGA_YELLOW
-  printstr 0xa,"Unununium stage 2 bootloader version $Revision: 1.1 $",0x0a
+  printstr 0xa,"Unununium stage 2 bootloader version $Revision: 1.2 $",0x0a
   mov bl, VGA_WHITE
   printstr "run ",0x27,"help",0x27," for a list of available commands.",0xa
   jmp start_prompt			;

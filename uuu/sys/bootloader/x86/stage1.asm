@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.1 2003/09/23 03:46:22 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.2 2003/10/03 19:41:45 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -13,7 +13,7 @@
 org 0x7C00
 bits 16
 
-%include "udbfs.inc"
+%include "../../../include/udbfs.inc"
 
 %assign LOAD_ADDR	0x100000	; address to which to load flat binaries
 

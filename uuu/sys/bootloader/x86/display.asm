@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.1 2003/09/23 03:46:22 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.2 2003/10/03 19:41:45 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -696,9 +696,9 @@ pcx:
 %endif
 
 %if SCREEN_WIDTH = 360
-incbin "stage2/logo-360x240.pcx"
+incbin "logo-360x240.pcx"
 %elif SCREEN_WIDTH = 320
-incbin "stage2/logo-320x240.pcx"
+incbin "logo-320x240.pcx"
 %else
   %error "no background image available for SCREEN_WIDTH"
 %endif
