@@ -30,6 +30,10 @@ static uint64_t		udbfslib_allocate_bit(
     uint64_t			bitmap_size,
     uint64_t			*free_count );
 
+static UDBFSLIB_BLOCK	*udbfslib_allocate_memory_block(
+    UDBFSLIB_INODE		*inode,
+    UDBFSLIB_BLOCK		**linkpoint);
+
 static UDBFSLIB_INODE	*udbfslib_allocate_memory_inode(
     UDBFSLIB_MOUNT		*mount );
 
@@ -51,21 +55,33 @@ static int		udbfslib_load_block(
 static int		udbfslib_load_ind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-    UDBFSLIB_INDBLOCK		**ind_block );
+    UDBFSLIB_INDBLOCK		**linkpoint );
 
 static int		udbfslib_load_bind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-    UDBFSLIB_INDBLOCK		**ind_block );
+    UDBFSLIB_BINDBLOCK		**linkpoint );
 
 static int		udbfslib_load_tind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-    UDBFSLIB_INDBLOCK		**ind_block );
+    UDBFSLIB_TINDBLOCK		**linkpoint );
 
 static void		udbfslib_unlink(
     void			*root,
     void			*node_to_remove );
+
+static void		udbfslib_unload_block(
+    UDBFSLIB_BLOCK		**block_hook );
+
+static void		udbfslib_unload_ind_block(
+    UDBFSLIB_INDBLOCK		**indblock_hook );
+
+static void		udbfslib_unload_bind_block(
+    UDBFSLIB_BINDBLOCK		**bindblock_hook );
+
+static void		udbfslib_unload_tind_block(
+    UDBFSLIB_TINDBLOCK		**tindblock_hook );
 
 
 
@@ -379,15 +395,67 @@ UDBFSLIB_INODE *udbfs_open_inode(
 int		udbfs_close_inode(
     UDBFSLIB_INODE	*inode ) {
 
+  UDBFS_INODE physical_inode;
+
   if( inode == NULL ) {
     fprintf(stderr,"udbfslib: WARNING: udbfs_close_inode called with NULL pointer\n");
     return(0);
   }
 
-  
+  // remove inode from link_list
+  udbfslib_unlink(
+      &inode->mount->opened_inodes,
+      inode );
 
-  return(-1);
+  // flush all UDBFSLIB_BLOCK structures and fill in the physical_inode
+  physical_inode.size		= inode->size;
+  physical_inode.block[0]	= 0;
+  physical_inode.block[1]	= 0;
+  physical_inode.block[2]	= 0;
+  physical_inode.block[3]	= 0;
+  physical_inode.ind_block	= 0;
+  physical_inode.bind_block	= 0;
+  physical_inode.tind_block	= 0;
+
+  if( inode->block[0] != NULL ) {
+    physical_inode.block[0]	= inode->block[0]->id;
+    udbfslib_unload_block( &inode->block[0] );
+  }
+  
+  if( inode->block[1] != NULL ) {
+    physical_inode.block[1]	= inode->block[1]->id;
+    udbfslib_unload_block( &inode->block[1] );
+  }
+  
+  if( inode->block[2] != NULL ) {
+    physical_inode.block[2]	= inode->block[2]->id;
+    udbfslib_unload_block( &inode->block[2] );
+  }
+  
+  if( inode->block[3] != NULL ) {
+    physical_inode.block[3]	= inode->block[3]->id;
+    udbfslib_unload_block( &inode->block[3] );
+  }
+
+  if( inode->ind_block != NULL ) {
+    physical_inode.ind_block	= inode->ind_block->id;
+    udbfslib_unload_ind_block( &inode->ind_block );
+  }
+
+  if( inode->bind_block != NULL ) {
+    physical_inode.bind_block	= inode->bind_block->id;
+    udbfslib_unload_bind_block( &inode->bind_block );
+  }
+
+  if( inode->tind_block != NULL ) {
+    physical_inode.tind_block	= inode->tind_block->id;
+    udbfslib_unload_tind_block( &inode->tind_block );
+  }
+
+  return(0);
 }
+
+
 
 
 
@@ -395,14 +463,57 @@ int		udbfs_free_inode(
     UDBFSLIB_MOUNT	*mount,
     uint32_t		inode_id ) {
 
+  UDBFSLIB_INODE	*inode;
+
+  inode = mount->opened_inodes;
+  while( inode ) {
+    if( inode->id == inode_id ) {
+      fprintf(stderr,"udbfslib: cannot free an opened inode! close it first! [%i]\n", inode_id);
+      return(-1);
+    }
+    inode = inode->next;
+  }
+
   return(udbfslib_deallocate_bit( mount->inode_bitmap, mount->inode_bitmap_size, &mount->free_inode_count, inode_id ));
 }
 
 
 
 
-/* .    .   .  . .. ..... PRIVATE FUNCTIONS ..... .. .  .   .     . */
 
+
+/* .    .   .  . .. ..... PRIVATE FUNCTIONS ..... .. .  .   .     . 
+ 
+   1.)	udbfslib_validate_superblock
+   2.)	udbfslib_link
+   3.)	udbfslib_unlink
+   4.)	udbfslib_allocate_bit
+   5.)  udbfslib_deallocate_bit
+   6.)	udbfslib_allocate_memory_block
+   7.)	udbfslib_allocate_memory_inode
+   8.)	udbfslib_load_block
+   9.)	udbfslib_load_ind_block
+   10)	udbfslib_load_bind_block
+   11)	udbfslib_load_tind_block
+   12)	udbfslib_unload_block
+   13)	udbfslib_unload_ind_block
+   14)	udbfslib_unload_bind_block
+   15)	udbfslib_unload_tind_block
+
+ */
+
+
+
+/* 1.) udbfslib_validate_superblock
+
+   Validate the superblock structure for known symbols and limits.
+
+   On Success:
+   	pointer to a UDBFS_SUPERBLOCK is returned
+
+   On Failure:
+   	a NULL pointer is returned
+ */
 static UDBFS_SUPERBLOCK	*udbfslib_validate_superblock(
     UDBFSLIB_MOUNT 	*mount ) {
   
@@ -445,6 +556,7 @@ static UDBFS_SUPERBLOCK	*udbfslib_validate_superblock(
 	fprintf(stderr,"udbfslib: invalid free/total block count relationship [%016llX/%016llX]\n", superblock->free_block_count, superblock->block_count );
 	goto failed_validation;
       }
+      break;
 
     default:
       fprintf(
@@ -471,6 +583,10 @@ failed_validation:
 
 
 
+/* 2.) udbfslib_link
+
+   Link a node in a chained link list.
+ */
 static void udbfslib_link(
     void *root,
     void *new_node ) {
@@ -480,20 +596,31 @@ static void udbfslib_link(
     				*previous;
   } *link_node, **link_root;
 
-  link_root = root;
-  link_node = new_node;
+  link_root			= root;
+  link_node			= new_node;
 
-  link_node->next = *link_root;
-  *link_root = link_node;
+  if( (link_node->previous != NULL) || (link_node->next != NULL) ) {
+    fprintf(stderr,"udbfslib: attempting to link an already linked node\n");
+    return;
+  }
+
+  link_node->next		= *link_root;
+  link_node->previous		= NULL;
+  *link_root			= link_node;
 
   if( link_node->next != NULL ) {
-    link_node->next->previous = link_node;
+    link_node->next->previous	= link_node;
   }
 }
 
 
 
 
+
+/* 3.) udbfslib_unlink
+
+   Unlink a node from a chained link list.
+ */
 
 static void udbfslib_unlink(
     void *root,
@@ -504,31 +631,34 @@ static void udbfslib_unlink(
     				*previous;
   } *link_node, **link_root;
 
+  link_node			= (struct linked_node *)node_to_remove;
+  link_root			= (struct linked_node **)root;
+
   if( link_node->previous == NULL ) {
 
     if( *link_root != link_node )
       goto list_out_of_sync;
 
-    *link_root = link_node->next;
-    link_node->next = NULL;
+    *link_root			= link_node->next;
+    link_node->next		= NULL;
 
   } else {
 
     if( link_node->previous->next != link_node )
       goto list_out_of_sync;
 
-    link_node->previous = link_node->next;
+    link_node->previous		= link_node->next;
 
     if( link_node->next != NULL ) {
 
       if( link_node->next->previous != link_node )
 	goto list_out_of_sync;
       
-      link_node->next->previous = link_node->previous;
+      link_node->next->previous	= link_node->previous;
     }
   }
-  link_node->next = NULL;
-  link_node->previous = NULL;
+  link_node->next		= NULL;
+  link_node->previous		= NULL;
   return;
 
 list_out_of_sync:
@@ -537,6 +667,19 @@ list_out_of_sync:
 
 
 
+
+
+/* 4.) udbfslib_allocate_bit
+
+   Allocate a bit from a provided bitmap.  This function assumes bit ID 0
+   cannot be allocated and uses it as Failure Notice.
+
+   On Success:
+   	returns the 64bit ID of the allocate bit
+
+   On Failure:
+   	returns 0
+ */
 
 static uint64_t		udbfslib_allocate_bit(
     uint8_t			*bitmap,
@@ -566,13 +709,27 @@ static uint64_t		udbfslib_allocate_bit(
   while( ((1<<bit) & bitmap[byte]) == 0x00 )
     bit++;
 
-  bitmap[byte] = bitmap[byte] ^ (1<<bit);
+  bitmap[byte]			= bitmap[byte] ^ (1<<bit);
   *free_count--;
   return( (byte<<3)+bit );
 }
 
 
 
+
+
+
+
+/* 5.) udbfslib_deallocate_bit
+
+   Deallocate a bit from a bitmap.
+
+   On Success:
+   	returns 0
+
+   On Failure:
+   	returns -1
+ */
 static int		udbfslib_deallocate_bit(
     uint8_t			*bitmap,
     uint64_t			bitmap_size,
@@ -599,6 +756,70 @@ static int		udbfslib_deallocate_bit(
 }
 
 
+
+
+
+
+/* 6.) udbfslib_allocate_memory_block
+
+   Allocate memory for a UDBFSLIB_BLOCK and default initialize it.
+
+   On Success:
+   	returns a pointer to the UDBFSLIB_BLOCK structure
+
+   On Failure:
+	returns a NULL pointer
+ */
+static UDBFSLIB_BLOCK *udbfslib_allocate_memory_block(
+    UDBFSLIB_INODE *inode, UDBFSLIB_BLOCK **linkpoint ) {
+
+  if( inode == NULL ) {
+    fprintf(stderr,"udbfslib: cannot allocate memory block to NULL inode\n");
+    return( NULL );
+  }
+  if( linkpoint == NULL ) {
+    fprintf(stderr,"udbfslib: must provide a link point when allocating a block memory structure\n");
+    return( NULL );
+  }
+
+  //.:  Allocate memory for block memory structure
+  UDBFSLIB_BLOCK *block =
+    (UDBFSLIB_BLOCK *)malloc(sizeof(UDBFSLIB_BLOCK));
+
+  if( block == NULL ) {
+    perror("udbfslib: unable to allocate memory for block storage");
+    return( NULL );
+  }
+
+  block->next = NULL;
+  block->previous = NULL;
+  block->id= 0;
+  block->offset_start = 0;
+  block->offset_end = 0;
+  block->device_offset = 0;
+  block->inode = inode;
+
+  udbfslib_link(
+      linkpoint,
+      block );
+  
+  return( block );
+}
+
+
+
+
+
+/* 7.) udbfslib_allocate_memory_inode
+
+   Allocate memory for a UDBFSLIB_INODE and default initialize it.
+
+   On Success:
+   	returns a pointer to the UDBFSLIB_INODE structure
+
+   On Failure:
+   	returns a NULL pointer
+ */
 static UDBFSLIB_INODE *udbfslib_allocate_memory_inode(
     UDBFSLIB_MOUNT *mount ) {
 
@@ -634,6 +855,20 @@ static UDBFSLIB_INODE *udbfslib_allocate_memory_inode(
 
 
 
+
+
+
+/* 8.) udbfslib_load_block
+
+   Allocate a UDBFSLIB_BLOCK and link it with the represented physical block
+   information.
+
+   On Success:
+   	returns 0
+
+   On Failure:
+   	returns -1
+ */
 static int		udbfslib_load_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
@@ -641,23 +876,261 @@ static int		udbfslib_load_block(
   return(-1);
 }
 
+
+
+
+
+/* 9.) udbfslib_load_ind_block
+
+   Allocate a UDBFSLIB_INDBLOCK and load/link all indirect blocks defined
+
+   On Success:
+   	returns 0
+
+   On Failure:
+   	returns -1
+ */
 static int		udbfslib_load_ind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-    UDBFSLIB_INDBLOCK		**ind_block ) {
-  return(-1);
+    UDBFSLIB_INDBLOCK		**linkpoint ) {
+
+  UDBFSLIB_INDBLOCK *ind_block;
+  UDBFSLIB_BLOCK *tmp_block;
+  int i, ind_links = inode->mount->block_size>>3;
+
+  if( (inode == NULL) || (linkpoint == NULL) ) {
+    fprintf(stderr,"udbfslib: cannot load indiret block with a NULL inode or NULL linkpoint\n");
+    return( -1 );
+  }
+
+  ind_block = (UDBFSLIB_INDBLOCK *)malloc(
+      sizeof(UDBFSLIB_INDBLOCK) +
+      (sizeof(UDBFSLIB_BLOCK *) * (ind_links-1)) );
+
+  if( ind_block == NULL ) {
+    perror("udbfslib: unable to allocate indirect block memory structure\n");
+    return( -1 );
+  }
+
+  tmp_block = (UDBFSLIB_BLOCK *)malloc(inode->mount->block_size);
+  if( tmp_block == NULL ) {
+
+    perror("udbfslib: unable to allocate temporary storage of indirect data\n");
+    free( ind_block );
+    return( -1 );
+  }
+
+  ind_block->device_offset = block_id * inode->mount->block_size;
+  ind_block->id = block_id;
+
+  if( (lseek( inode->mount->block_device, ind_block->device_offset, SEEK_SET ) != ind_block->device_offset) ||
+      (read( inode->mount->block_device, tmp_block, inode->mount->block_size ) != inode->mount->block_size) ) {
+
+    perror("udbfslib: unable to read indirect block data\n");
+    free( tmp_block );
+    free( ind_block );
+    return( -1 );
+  }
+
+  *linkpoint = ind_block;
+
+  for( i = 0; i<ind_links; i++ ) {
+    if(
+      udbfslib_load_block(
+	  inode,
+	  ((uint64_t *)tmp_block)[i],
+	  &ind_block->block[i] ) != 0 ) {
+
+      fprintf(stderr,"udbfslib: error happened while loading bi-indirects of tri-indirect block [%016llX]\n", ind_block->id);
+      return( -1 );
+    }
+  }
+
+  fprintf(stderr,"udbfslib: ind block [%016llX] OK!\n", ind_block->id);
+  return(0);
 }
 
+
+
+
+
+
+/* 10) udbfslib_load_bind_block
+
+   Allocate a UDBFSLIB_BINDBLOCK structure and load/link all the indirect
+   blocks defined
+
+   On Success:
+   	returns 0
+
+   On Failure:
+   	returns -1
+ */
 static int		udbfslib_load_bind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-    UDBFSLIB_INDBLOCK		**ind_block ) {
-  return(-1);
+    UDBFSLIB_BINDBLOCK		**linkpoint ) {
+
+  UDBFSLIB_BINDBLOCK *bind_block;
+  UDBFSLIB_BLOCK *tmp_block;
+  int i, ind_links = inode->mount->block_size>>3;
+
+  if( (inode == NULL) || (linkpoint == NULL) ) {
+    fprintf(stderr,"udbfslib: cannot load bi-indiret block with a NULL inode or NULL linkpoint\n");
+    return( -1 );
+  }
+
+  bind_block = (UDBFSLIB_BINDBLOCK *)malloc(
+      sizeof(UDBFSLIB_BINDBLOCK) +
+      (sizeof(UDBFSLIB_INDBLOCK *) * (ind_links-1)) );
+
+  if( bind_block == NULL ) {
+    perror("udbfslib: unable to allocate bi-indirect block memory structure\n");
+    return( -1 );
+  }
+
+  tmp_block = (UDBFSLIB_BLOCK *)malloc(inode->mount->block_size);
+  if( tmp_block == NULL ) {
+
+    perror("udbfslib: unable to allocate temporary storage of bi-indirect data\n");
+    free( bind_block );
+    return( -1 );
+  }
+
+  bind_block->device_offset = block_id * inode->mount->block_size;
+  bind_block->id = block_id;
+
+  if( (lseek( inode->mount->block_device, bind_block->device_offset, SEEK_SET ) != bind_block->device_offset) ||
+      (read( inode->mount->block_device, tmp_block, inode->mount->block_size ) != inode->mount->block_size) ) {
+
+    perror("udbfslib: unable to read bi-indirect block data\n");
+    free( tmp_block );
+    free( bind_block );
+    return( -1 );
+  }
+
+  *linkpoint = bind_block;
+
+  for( i = 0; i<ind_links; i++ ) {
+    if(
+      udbfslib_load_ind_block(
+	  inode,
+	  ((uint64_t *)tmp_block)[i],
+	  &bind_block->indblock[i] ) != 0 ) {
+
+      fprintf(stderr,"udbfslib: error happened while loading indirects of bi-indirect block [%016llX]\n", bind_block->id);
+      return( -1 );
+    }
+  }
+
+  fprintf(stderr,"udbfslib: bind block [%016llX] OK!\n", bind_block->id);
+  return(0);
 }
 
+
+
+
+
+
+
+/* 11)	udbfslib_load_tind_block
+
+   Allocate a UDBFSLIB_TINDBLOCK structure and load/link all the defined
+   bi-indirect blocks
+
+   On Success:
+   	returns 0
+
+   On Failure:
+   	returns -1
+ */
 static int		udbfslib_load_tind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-    UDBFSLIB_INDBLOCK		**ind_block ) {
-  return(-1);
+    UDBFSLIB_TINDBLOCK		**linkpoint ) {
+
+  UDBFSLIB_TINDBLOCK *tind_block;
+  UDBFSLIB_BLOCK *tmp_block;
+  int i, ind_links = inode->mount->block_size>>3;
+
+  if( (inode == NULL) || (linkpoint == NULL) ) {
+    fprintf(stderr,"udbfslib: cannot load tri-indiret block with a NULL inode or NULL linkpoint\n");
+    return( -1 );
+  }
+
+  tind_block = (UDBFSLIB_TINDBLOCK *)malloc(
+      sizeof(UDBFSLIB_TINDBLOCK) +
+      (sizeof(UDBFSLIB_BINDBLOCK *) * (ind_links-1)) );
+
+  if( tind_block == NULL ) {
+    perror("udbfslib: unable to allocate tri-indirect block memory structure\n");
+    return( -1 );
+  }
+
+  tmp_block = (UDBFSLIB_BLOCK *)malloc(inode->mount->block_size);
+  if( tmp_block == NULL ) {
+
+    perror("udbfslib: unable to allocate temporary storage of tri-indirect data\n");
+    free( tind_block );
+    return( -1 );
+  }
+
+  tind_block->device_offset = block_id * inode->mount->block_size;
+  tind_block->id = block_id;
+
+  if( (lseek( inode->mount->block_device, tind_block->device_offset, SEEK_SET ) != tind_block->device_offset) ||
+      (read( inode->mount->block_device, tmp_block, inode->mount->block_size ) != inode->mount->block_size) ) {
+
+    perror("udbfslib: unable to read tri-indirect block data\n");
+    free( tmp_block );
+    free( tind_block );
+    return( -1 );
+  }
+
+  *linkpoint =  tind_block;
+
+  for( i = 0; i<ind_links; i++ ) {
+    if(
+      udbfslib_load_bind_block(
+	  inode,
+	  ((uint64_t *)tmp_block)[i],
+	  &tind_block->bindblock[i] ) != 0 ) {
+
+      fprintf(stderr,"udbfslib: error happened while loading bi-indirects of tri-indirect block [%016llX]\n", tind_block->id);
+      return( -1 );
+    }
+  }
+
+  fprintf(stderr,"udbfslib: tri-ind block [%016llX] OK!\n", tind_block->id);
+  return(0);
+}
+
+
+
+/* 12) udbfslib_unload_block
+ */
+static void udbfslib_unload_block(
+    UDBFSLIB_BLOCK	**block_hook) {
+}
+
+
+/* 13) udbfslib_unload_ind_block
+ */
+static void udbfslib_unload_ind_block(
+    UDBFSLIB_INDBLOCK	**indblock_hook ) {
+}
+
+
+/* 14) udbfslib_unload_bind_block
+ */
+static void udbfslib_unload_bind_block(
+    UDBFSLIB_BINDBLOCK	**bindblock_hook ) {
+}
+
+
+/* 15) udbfslib_unload_tind_block
+ */
+static void udbfslib_unload_tind_block(
+    UDBFSLIB_TINDBLOCK	**tindblock_hook ) {
 }
