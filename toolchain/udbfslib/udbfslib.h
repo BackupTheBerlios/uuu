@@ -32,7 +32,11 @@ struct udbfslib_mount {
 				block_bitmap_size,
 				inode_bitmap_offset,
 				inode_bitmap_size,
-				inode_table_offset;
+				inode_table_offset,
+				dir_storage,
+				ind_storage,
+				bind_storage,
+				tind_storage;
 
   struct udbfslib_inode		*opened_inodes;
 };
@@ -183,7 +187,7 @@ int		udbfs_regenerate_table(
     UDBFSLIB_TABLE	*table );
 
 
-UDBFSLIB_INODE	*udbfs_create_file(
+UDBFSLIB_INODE	*udbfs_create_inode(
     UDBFSLIB_MOUNT	*mount);
 
 
@@ -200,5 +204,11 @@ int		udbfs_close_inode(
 int		udbfs_free_inode(
     UDBFSLIB_MOUNT	*mount,
     uint32_t		inode_id);
+
+int		udbfs_write_to_inode(
+    UDBFSLIB_INODE	*inode,
+    uint8_t		*data,
+    uint32_t		size );
+
 
 #endif
