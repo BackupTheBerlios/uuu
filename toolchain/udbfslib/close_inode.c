@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/close_inode.c,v 1.2 2003/10/12 18:12:01 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/close_inode.c,v 1.3 2003/10/12 21:32:19 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "extralib.h"
 
 
 int		udbfs_close_inode(
@@ -80,5 +81,7 @@ int		udbfs_close_inode(
 
     perror("udbfslib: unable to save inode on block device");
   }
+
+  free(inode);
   return(0);
 }
