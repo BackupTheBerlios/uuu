@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.3 2003/10/23 03:11:01 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.4 2003/10/31 22:29:18 bitglue Exp $
 ;
 ; Unununium Operating Engine
 ; Distributed under the BSD License
@@ -45,6 +45,36 @@
   %%end:
 %endmacro
 
+
+
+;-----------------------------------------------------------------------.
+;							return		;
+
+; by default, return to the first entry using ebx
+
+%macro return 0
+  pop ebx
+  jmp [ebx]
+%endmacro
+
+
+; to return to any entry, but still use ebx
+
+%macro return 1
+  pop ebx
+  jmp [ebx+%1*4]
+%endmacro
+
+
+; to return to any entry using any register. Note that general Uuu calling
+; conventions say that EBP, ESI, and EDI must be unchanged across function
+; calls.
+
+%macro return 2
+  pop %2
+  jmp [%2+%1*4]
+%endmacro
+ 
 
 
 %endif ;__MACROS_INC__
