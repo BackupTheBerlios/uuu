@@ -320,6 +320,23 @@ void		udbfs_unmount(
 
 
 
+int		udbfs_set_boot_loader_inode(
+    UDBFSLIB_MOUNT	*mount,
+    uint32_t		inode_id ) {
+
+  if( inode_id < mount->inode_count ) {
+    mount->boot_loader_inode = inode_id;
+  } else {
+    fprintf(stderr,"udbfslib: attempt to set inode outside of valid range\n");
+    return(1);
+  }
+
+  return(0);
+}
+
+
+
+
 
 
 uint32_t	udbfs_allocate_inode_id(
@@ -399,8 +416,12 @@ UDBFSLIB_INODE	*udbfs_create_inode(
     return( NULL );
   }
 
+  inode->physical_offset = 
+    mount->inode_table_offset + (sizeof(UDBFS_INODE)*inode->id);
+
   return(inode);
 }
+
 
 
 
@@ -437,6 +458,7 @@ UDBFSLIB_INODE *udbfs_open_inode(
     udbfslib_load_tind_block( inode, udbfs_inode.tind_block, &inode->tind_block );
   }
 
+  printf("udbfslib: inode [%i] size [%lli] opened\n", inode->id, inode->size );
   return( inode );
 }
 
@@ -452,6 +474,7 @@ int		udbfs_close_inode(
     return(0);
   }
 
+  printf("udbfslib: closing inode [%i] final size [%lli]\n", inode->id, inode->size);
   // remove inode from link_list
   udbfslib_unlink(
       &inode->mount->opened_inodes,
@@ -502,6 +525,11 @@ int		udbfs_close_inode(
     udbfslib_unload_tind_block( &inode->tind_block );
   }
 
+  if( (lseek( inode->mount->block_device, inode->physical_offset, SEEK_SET ) != inode->physical_offset) ||
+      (write( inode->mount->block_device, &physical_inode, sizeof(physical_inode)) != sizeof(physical_inode) ) ) {
+
+    perror("udbfslib: unable to save inode on block device");
+  }
   return(0);
 }
 
@@ -525,6 +553,63 @@ int		udbfs_free_inode(
   }
 
   return(udbfslib_deallocate_bit( mount->inode_bitmap, mount->inode_bitmap_size, &mount->free_inode_count, inode_id ));
+}
+
+
+int udbfs_eoi(
+    UDBFSLIB_INODE	*inode ) {
+
+  if( inode->cursor == inode->size )
+    return(1);
+
+  return(0);
+}
+
+
+
+int		udbfs_read_from_inode(
+    UDBFSLIB_INODE	*inode,
+    uint8_t		*data,
+    uint32_t		size ) {
+
+  UDBFSLIB_BLOCK *block;
+  int partial_read_size;
+  int data_offset = 0;
+  uint64_t physical_offset;
+
+  if( inode == NULL ) return(0);
+
+  /* make sure we don't read past end of data */
+  partial_read_size = inode->size - inode->cursor;
+  size = size < partial_read_size ? size : partial_read_size;
+
+  while( size > 0 ) {
+    
+    block = udbfslib_select_active_inode_block( inode );
+    if( block == NULL ) {
+      fprintf(stderr,"huh.. we got a problem.\n");
+    }
+
+    partial_read_size = block->offset_end - inode->cursor;
+    partial_read_size = partial_read_size > size ? size : partial_read_size;
+
+    physical_offset = block->device_offset + inode->cursor - block->offset_start;
+
+    printf("reading %08X bytes to file offset %016llX from disk physical offset %016llX...\n", partial_read_size, inode->cursor, physical_offset);
+ 
+
+    if( (lseek(inode->mount->block_device, physical_offset, SEEK_SET) != physical_offset ) ||
+        (read(inode->mount->block_device, &data[data_offset], partial_read_size) != partial_read_size ) ) {
+
+      perror("udbfslib: error reading from block device");
+      return(data_offset);
+    }
+
+    size = size - partial_read_size;
+    inode->cursor += partial_read_size;
+    data_offset += partial_read_size;
+  }
+  return( data_offset );
 }
 
 
@@ -568,8 +653,9 @@ int		udbfs_write_to_inode(
     size = size - partial_write_size;
     inode->cursor += partial_write_size;
     data_offset += partial_write_size;
+    if( inode->cursor > inode->size )
+      inode->size = inode->cursor;
   }
-
   return( data_offset );
 }
 
@@ -976,7 +1062,19 @@ static UDBFSLIB_INODE *udbfslib_allocate_memory_inode(
 static int		udbfslib_load_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-    UDBFSLIB_BLOCK		**block_hook ) {
+//    uint64_t			file_offset,
+    UDBFSLIB_BLOCK		**block_hook) {
+
+/*  UDBFSLIB_BLOCK *block = udbfslib_allocate_memory_block;
+
+  *block_hook = block;
+
+  block->id = block_id;
+  block->inode = inode;
+  block->device_offset = inode->mount->block_size * block->id;
+  block->offset_start = file_offset;
+  block->offset_end = file_offset + inode->mount->block_size; */
+
   return(-1);
 }
 
