@@ -23,16 +23,24 @@
 
 %define SANITY_CHECKS
 
-gproc ring_queue.prepend
-;--------------------------------------------------------[ prepend to queue ]--
-;!<proc brief="Prepend a thread to a ring queue">
-;! <p reg="eax" type="pointer" brief="pointer to node to prepend"/>
-;! <p reg="ebx" type="pointer" brief="pointer to ring queue"/>
+gproc ring_queue.insert_before
+;----------------------------------------[ ring queue: insert node before N ]--
+;!<proc brief="inserts a node before a reference queue or node">
+;! <p reg="eax" type="pointer" brief="pointer to node to insert"/>
+;! <p reg="ebx" type="pointer" brief="pointer to reference ring queue or node"/>
 ;! <ret fatal="0" brief="prepending successful">
 ;!  <p reg="eax" type="pointer" brief="prepended node"/>
 ;! </ret>
 ;! <ret brief="other"/>
 ;!</proc>
+;
+; Additional Information:
+;
+; In the comments we refer to the node to insert as being 'I', the reference
+; node as being 'R' and the node already attached as 'A'.  In this regard,
+; 'I' is to be inserted before 'R' but after to 'A' with a final figure of:
+;
+;     A <-> I <-> R
 ;------------------------------------------------------------------------------
 						; validate ring node
 %ifdef SANITY_CHECKS				;------------------------------
@@ -43,21 +51,21 @@ gproc ring_queue.prepend
 %endif						;
 						; find insertion point
 						;------------------------------
-  mov ecx, [ebx + _ring_queue_t.next]		; Load first ring member
+  mov ecx, [ebx + _ring_queue_t.previous]	; A = <-R
 						;
 						; validate insertion point node
 %ifdef SANITY_CHECKS				;------------------------------
- cmp [ecx + _ring_queue_t.previous], ebx	; Make sure member points back
- jnz short .failed_sanity			; ZF=0? guess it doesn't, fail
+ cmp [ecx + _ring_queue_t.next], ebx		; A-> == R?
+ jnz short .failed_sanity			;
 %endif						;
 						;
 						; link node at insertion point
 						;------------------------------
-  mov [eax + _ring_queue_t.next], ecx		; set thrd next to 1st member
-  mov [eax + _ring_queue_t.previous], ebx	; set thrd previous to head
-  mov [ebx + _ring_queue_t.next], eax		; head point to thread
-  mov [ecx + _ring_queue_t.previous], eax	; 1st member point to thread
-  return					; return to caller
+  mov [eax + _ring_queue_t.next], ebx		; I-> = R
+  mov [eax + _ring_queue_t.previous], ecx	; <-I = A
+  mov [ecx + _ring_queue_t.next], eax		; A-> = I
+  mov [ebx + _ring_queue_t.previous], eax	; <-R = I
+  return					;
 						;
 						; error handling section
 						;------------------------------
@@ -71,16 +79,76 @@ __SECT__					; return to code section
  xor eax, eax					; TODO : set error code
  ret_other					;
 %endif						;
+;----------------------------------------[ ring queue: insert node before N ]--
+
+
+
+
+
+gproc ring_queue.insert_after
+;-----------------------------------------[ ring queue: insert node after N ]--
+;!<proc brief="insert a node after a reference queue or node">
+;! <p reg="eax" type="pointer" brief="pointer to node to insert"/>
+;! <p reg="ebx" type="pointer" brief="pointer to reference ring queue or node"/>
+;! <ret fatal="0" brief="prepending successful">
+;!  <p reg="eax" type="pointer" brief="prepended node"/>
+;! </ret>
+;! <ret brief="other"/>
+;!</proc>
+;
+; Additional Information:
+;
+; In the comments we refer to the node to insert as being 'I', the reference
+; node as being 'R' and the node already attached as 'A'.  In this regard,
+; 'I' is to be inserted after 'R' but before to 'A' with a final figure of:
+;
+;     R <-> I <-> A
 ;------------------------------------------------------------------------------
+						; validate ring node
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp [eax + _ring_queue_t.next], eax		; I-> == I?
+ jnz short .failed_sanity			; 
+ cmp [eax + _ring_queue_t.previous], eax	; <-I == I?
+ jnz short .failed_sanity			;
+%endif						;
+						; find insertion point
+						;------------------------------
+  mov ecx, [ebx + _ring_queue_t.next]		; A = R->
+						;
+						; validate insertion point node
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp [ecx + _ring_queue_t.previous], ebx	; <-A == R ?
+ jnz short .failed_sanity			;
+%endif						;
+						;
+						; link node at insertion point
+						;------------------------------
+  mov [eax + _ring_queue_t.next], ecx		; I-> = A
+  mov [eax + _ring_queue_t.previous], ebx	; <-I = R
+  mov [ebx + _ring_queue_t.next], eax		; R-> = I
+  mov [ecx + _ring_queue_t.previous], eax	; <-A = I
+  return					;
+						;
+						; error handling section
+						;------------------------------
+%ifdef SANITY_CHECKS				;
+[section .data]					;
+.str:						;
+ uuustring "sanity check failed in __prepend_to_queue", 0x0A
+__SECT__					; return to code section
+.failed_sanity:					;
+ mov ebx, dword .str				; error message to display
+ xor eax, eax					; TODO : set error code
+ ret_other					;
+%endif						;
+;----------------------------------------[ ring queue: insert node before N ]--
 
 
 
 
 
 
-
-
-gproc ring_queue.link_ordered
+gproc ring_queue.link_ordered_64
 ;---------------------------------------------------[ link to ordered queue ]--
 ;!<proc>
 ;! Link a thread into a ordered ring list.  The ordering value for both the
@@ -155,9 +223,10 @@ __SECT__					; select back the code section
 
 
 
-gproc ring_queue.unlink
+
+gproc ring_queue.remove
 ;-------------------------------------------------------[ unlink from queue ]--
-;!<proc brief="Unlink a node from a ring queue">
+;!<proc brief="Remove a node from a ring queue">
 ;! <p reg="eax" type="pointer" brief="pointer to node to remove"/>
 ;! <ret fatal="0" brief="success"/>
 ;! <ret brief="other"/>
