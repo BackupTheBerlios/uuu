@@ -21,7 +21,8 @@ $(DOC).ps: $(SRC) makefile
 	db2ps $(SRC)
 
 $(DOC).html: $(SRC) makefile
-	db2html -u $(SRC) > $(DOC).html
+	db2html -u $(SRC) > /dev/null
+	mv $(DOC)/$(DOC).html .
 	rm -rf $(DOC) $(DOC).junk
 
 $(DOC).rtf: $(SRC) makefile
