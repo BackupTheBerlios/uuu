@@ -19,6 +19,8 @@
 
 
 %macro uuustring 1-*
+  dd (%%end - %%begin) / 4
+  %%begin:
   %rep %0
     %ifstr %1
       ucs4string %1
@@ -27,6 +29,7 @@
     %endif
     %rotate 1
   %endrep
+  %%end:
 %endmacro
 
 %endif	;__MACROS_INC__

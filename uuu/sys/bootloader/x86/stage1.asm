@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.2 2003/10/03 19:41:45 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.3 2003/10/13 01:14:55 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -125,17 +125,16 @@ _entry:				; setup data and stack segments
 				;
 				; check magic number
 				;-------------------
-  lodsd				; load magic number
+  mov eax, [esi+udbfs_superblock.magic_number]
   sub eax, udbfs_magic		; compare, and set EAX = 0 while we are at it
   jnz error			;
 
   mov cl, -9			; CL = - log2( 512 )
-  add cl, [si + udbfs_superblock.block_size - 4]
+  add cl, [si + udbfs_superblock.block_size]
   mov [..@sect_size1], cl	; CL = log2( block size / 512 )
   inc ax			; AX = 1
   shl al, cl
   mov [..@sect_size2], ax	; do some self modifying code magic...
-;  mov [..@sect_size3], cl	; one can never have too much of this.
 				;
 				; superblock has been verified
 				; SI = .boot_loader_inode
@@ -143,6 +142,10 @@ _entry:				; setup data and stack segments
   xchg bp, ax			;
   lodsw				; get high word
   xchg bx, ax			; BX:BP = boot loader inode
+
+  lodsd
+  ; XXX check that high dword is zero
+ 
   lodsw				; get low word of .inode_first_block
   xchg dx, ax			;
   lodsw				; AX:DX = first block of inode table
@@ -341,14 +344,6 @@ load_block:
 ; DX:AX = sector after the last one read
 ; everything else unmodified
 ;-----------------------------------------------------------------------------
-
-;  xchg ax, dx			; DX:AX = block number of inode table
-;  shld dx, ax, 0		; [SMC] 0 replaced by block->sector shift
-;..@sect_size1 equ $-1
-;  shl ax, 0			; [SMC] same again
-;..@sect_size2 equ $-1
-;  shl cx, 0			; [SMC] yet again
-;..@sect_size3 equ $-1
 
   xchg ax, dx			; DX:AX = block number of inode table
   mov cl, 0
