@@ -4,10 +4,19 @@
 
    see http://developer.berlios.de/projects/uuu/ for more details.
 */
+
+#define _LARGEFILE64_SOURCE
+#define _LARGEFILE_SOURCE
+#define _FILE_OFFSET_BITS 64
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 #include "mkudbfs.h"
 
@@ -47,9 +56,8 @@ uint8_t *			generate_bitmap(
     int *size );
 
 int mkfs(
-    FILE *fs,
-    int fs_size,
-    char *boot_loader_file );
+    int fs,
+    uint64_t fs_size );
 
 
 void				sync_offset(
@@ -85,7 +93,7 @@ int				block_map_size,
 				inode_tind_limit;
 
 
-FILE *fs;
+int fs;
 
 
 
@@ -102,24 +110,77 @@ int main(
 
   */
   
-  int fs_size, result;
+  int64_t fs_size = 0;
+  struct stat status;
 
-  if( argc != 3 ) {
-    fprintf(stderr, "Usage: mkudbfs file_to_format 2nd_stage_boot_loader\n");
-    return(-1);
+  char *filename;
+
+  switch( argc ) {
+    case 2:
+      filename = argv[1];
+      break;
+    case 3:
+      filename = argv[2];
+      sscanf(argv[1],"%llu", &fs_size);
+      printf("fs size [ %llu ]\n", fs_size );
+      break;
+    default:
+      fprintf(stderr, "Usage: mkudbfs [fs_size] file_to_format\n");
+      return(-1);
   }
 
-  fs = fopen( argv[1], "r+b" );
-  if( fs == NULL ) {
-    perror( argv[1] );
+  if( stat( filename, &status ) != 0 ) {
+    perror(filename);
+    exit(-1);
   }
-  fseek( fs, 0, SEEK_END );
-  fs_size = ftell( fs );
+  
+  if( fs_size <= 0 ) {
 
-  result = mkfs(fs, fs_size, argv[2]);
-  fclose( fs );
+    if( (status.st_mode & S_IFMT) == S_IFBLK ) {
+	
+      // manually search for file size
+      int64_t delta = 1<<30;
+      int64_t validated_offset = 0;
+      int64_t attempted_offset = 0;
+
+      fs = open( filename, O_RDONLY|O_LARGEFILE );
+      if( fs <= 0 ) {
+	perror( filename );
+	exit(-1);
+      }
+      while( delta > 0 ) {
+	
+	attempted_offset = validated_offset + delta;
+	if( lseek( fs, attempted_offset, SEEK_SET ) != attempted_offset ) {
+
+	  delta = delta >> 1;
+
+	} else {
+
+	  validated_offset = attempted_offset;
+
+	}
+      }
+      fs_size = validated_offset;
+      close( fs );
+    } else {
+
+      fs_size = status.st_size;
+    }
+  }
+
+      
+
+  fs = open( filename, O_RDWR|O_LARGEFILE );
+  if( fs <= 0 ) {
+    perror( filename );
+    exit(-1);
+  }
+
+  mkfs(fs, fs_size );
+  close( fs );
   printf(":. completed.\n");
-  return( result );
+  return( 0 );
 }
 
 
@@ -127,16 +188,15 @@ int main(
 
 
 int mkfs(
-    FILE *fs,
-    int fs_size,
-    char *boot_loader_file ) {
+    int fs,
+    uint64_t fs_size ) {
 //-----------------------------------------------------------------------------
 
   int i;
   struct _udbfs_file *tmp_file;
   struct _udbfs_table *root_table;
 
-  printf("generating %i kb file system\n", fs_size);
+  printf("generating %lli kb file system\n", fs_size);
   
   superblock = malloc(sizeof(struct __udbfs_superblock));
   if( superblock == NULL ) {
@@ -144,8 +204,14 @@ int mkfs(
     return(-1);
   }
 
-  superblock->block_size = 12;
-  superblock->block_count = (int)(fs_size / BLOCK_SIZE);
+  superblock->block_size = 13;
+  superblock->block_count = 0;
+  while( superblock->block_size >= 9 &&
+      superblock->block_count < 2000 ) {
+    
+    superblock->block_size--;
+    superblock->block_count = (int)(fs_size / BLOCK_SIZE);
+  } 
   printf(":. fs split into %lli blocks of %i bytes\n", superblock->block_count, BLOCK_SIZE);
 
   superblock->inode_first_block = 1;
@@ -206,12 +272,6 @@ int mkfs(
   superblock->bad_block_inode = tmp_file->inode_id;
   close_file( tmp_file );
 
-  printf("\tboot loader\n");
-  tmp_file = create_file();
-  superblock->boot_loader_inode = tmp_file->inode_id;
-  write_boot_loader( tmp_file, boot_loader_file );
-  close_file( tmp_file );
-
   printf("\tjournal\n");
   tmp_file = create_file();
   superblock->journal_inode = tmp_file->inode_id;
@@ -230,8 +290,8 @@ int mkfs(
 
   // Save the superblock
   printf(":. writing superblock\n");
-  if( (fseek( fs, 1024, SEEK_SET ) != 0 ) ||
-      (fwrite( superblock, sizeof(struct __udbfs_superblock), 1, fs ) != 1)) {
+  if( (lseek( fs, 1024, SEEK_SET ) != 1024 ) ||
+      (write( fs, superblock, sizeof(struct __udbfs_superblock) ) != sizeof(struct __udbfs_superblock))) {
     perror("failed to write superblock, aborting");
     exit(-1);
   }
@@ -240,9 +300,9 @@ int mkfs(
   printf(":. saving block and inode bitmaps\n");
   {
     int offset = BLOCK_SIZE * superblock->bitmaps_block;
-    fseek( fs, offset, SEEK_SET );
-    fwrite( block_bitmap, block_map_size, 1, fs );
-    fwrite( inode_bitmap, inode_map_size, 1, fs );
+    lseek( fs, offset, SEEK_SET );
+    write( fs, block_bitmap, block_map_size );
+    write( fs, inode_bitmap, inode_map_size );
   }
   
 
@@ -507,8 +567,11 @@ int write_inode(
   
   int offset = inode_id * sizeof(struct __udbfs_inode) + (superblock->inode_first_block * BLOCK_SIZE);
 
-  fseek( fs, offset, SEEK_SET);
-  fwrite( inode, sizeof( struct __udbfs_inode), 1, fs );
+  if( (lseek( fs, offset, SEEK_SET) != offset) ||
+      (write( fs, inode, sizeof( struct __udbfs_inode) ) != sizeof(struct __udbfs_inode) )) {
+    perror("error writing inode");
+    exit(-1);
+  }
 
   return(0);
 }
@@ -525,10 +588,10 @@ int write_block(
 
   offset = BLOCK_SIZE * block->block_id;
 
-  if( (fseek( fs, offset, SEEK_SET ) != 0 ) ||
-      (fwrite( block->data, BLOCK_SIZE, 1, fs ) != 1 ) ) {
+  if( (lseek( fs, offset, SEEK_SET ) != offset ) ||
+      (write( fs, block->data, BLOCK_SIZE ) != BLOCK_SIZE ) ) {
     perror("error writing block");
-    return(-1);
+    exit(-1);
   }
   return(0);
 }
@@ -961,6 +1024,4 @@ int generate_table_definition(
 
   return(0);
 }
-
-
 
