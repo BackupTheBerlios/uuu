@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.10 2004/01/06 02:39:12 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.11 2004/01/06 20:05:15 bitglue Exp $
 
 UUUROOT=$(CURDIR)
 
@@ -19,7 +19,7 @@ lib/c/bin-i386/dietlibc.a:
 .PHONY: boot.o
 boot.o: $(BIMAGE_OBJS) lib/c/bin-i386/dietlibc.a
 	$(linking) '$^ >  $@'
-	gcc -nostartfiles -static -s -o '$@' -Xlinker -T -Xlinker sys/bimage/$(ARCH)/bimage.ld $(BIMAGE_OBJS) lib/c/bin-i386/dietlibc.a
+	$(CC) -nostartfiles -static -s -o '$@' -Xlinker -T -Xlinker sys/bimage/$(ARCH)/bimage.ld $(BIMAGE_OBJS) lib/c/bin-i386/dietlibc.a
 
 boot.bimage: boot.o
 	$(MKUUUBIMAGE) -o '$@' '$<'
