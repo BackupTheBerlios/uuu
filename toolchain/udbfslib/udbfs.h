@@ -23,6 +23,8 @@ typedef uint64_t		udate;
 #define DATATYPE_ENUMERATION    0xA0
 
 
+#define PACKED __attribute__((packed))
+
 
 
 
@@ -48,7 +50,7 @@ struct udbfs_superblock {
 				superblock_version,	// 0x7B
 				block_size,		// 0x7C
 				inode_format;		// 0x7D
-};
+} PACKED;
 
 
 
@@ -59,7 +61,7 @@ struct udbfs_inode {
 				ind_block,
 				bind_block,
 				tind_block;
-};
+} PACKED;
 
 
 
@@ -74,7 +76,7 @@ struct udbfs_table {
   uint16_t			column_count;
   uint8_t			properties,
 				reserved;
-};
+} PACKED;
 
 
 
@@ -92,7 +94,7 @@ struct udbfs_column {
   				properties,
 				type,
 				shift;
-};
+} PACKED;
 
 
 typedef struct udbfs_superblock	UDBFS_SUPERBLOCK;
