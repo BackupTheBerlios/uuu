@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.4 2003/12/21 19:58:08 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.5 2003/12/23 02:25:03 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; boot routines
@@ -10,7 +10,7 @@
 ; All code from zlib, used to decompress the RAM image, is loaded below 1M with
 ; this code.
 ;
-; Also contained here are a few functions required by zlib: malloc, memcpy, and
+; Also contained here are a few functions required by zlib: calloc, memcpy, and
 ; free.
 ;---------------------------------------------------------------------------==|
 ; Contributors:
@@ -37,7 +37,7 @@ extern set_display_start
 ;				global symbols
 ;---------------===============/              \===============---------------
 
-global malloc
+global calloc
 global free
 global memcpy
 global boot
@@ -56,11 +56,13 @@ global boot
 
 
 ;-----------------------------------------------------------------------.
-						malloc:			;
+						calloc:			;
   pushad
 
   mov eax, [esp+32+4]
   xor edx, edx
+  mov ebx, [esp+32+8]
+  mul ebx
 
   pushad
   mov bl, VGA_CYAN
@@ -234,5 +236,5 @@ boot.invalid_format:
 
 memory_frame: dd stack_top - 0x500
 
-boot_image: incbin "test2.bimage"
+boot_image: incbin "../../../boot.bimage"
 boot_image_size equ $ - boot_image

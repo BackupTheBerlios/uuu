@@ -1,5 +1,5 @@
 ;; Hydro3d
-;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/Attic/test.asm,v 1.7 2003/11/17 23:47:27 bitglue Exp $
+;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bimage/x86/test.asm,v 1.1 2003/12/23 02:25:03 bitglue Exp $
 ;; Written in 2001 Phil Frost, who is playing with it still.
 
 

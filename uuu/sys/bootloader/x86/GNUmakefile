@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.11 2003/11/18 18:35:18 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.12 2003/12/23 02:25:03 bitglue Exp $
 
 UUUROOT=../../..
 
@@ -28,17 +28,10 @@ stage2: stage2.ld $(STAGE2_OBJS)
 
 include $(UUUROOT)/Make.config
 
--include stage1.d $(STAGE2_OBJS:.o=.d) test.d
+-include stage1.d $(STAGE2_OBJS:.o=.d)
 
 # have to make font.inc before making the deps or nasm will puke
 display.d: font.inc
 
 # nasm doesn't generate deps for incbin
-boot.o: test2.bimage
-
-test2.o: test.o
-	ld -s -o test2.o -Ttext 0x300000 test.o
-
-test2.bimage: test2.o
-	$(generating) '$<  >  $@'
-	$(MKUUUBIMAGE) '$<'
+boot.o: $(UUUROOT)/boot.bimage
