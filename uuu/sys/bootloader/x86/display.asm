@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.8 2003/11/08 14:51:15 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.9 2003/11/08 15:43:24 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -14,54 +14,12 @@
 
 %include "stage2-config.asm"
 
-%assign DEFAULT_SCROLL_SPEED	1
-
-%assign MISC_OUTPUT         0x03c2    ; VGA misc. output register
-%assign SC_INDEX            0x03c4    ; VGA sequence controller
-%assign SC_DATA             0x03c5
-%assign PALETTE_INDEX       0x03c8    ; VGA digital-to-analog converter
-%assign PALETTE_DATA        0x03c9
-
-%assign CRTC_INDEX		0x03d4	; VGA CRT controller
-%define CRTC_START_ADDR_LOW	0x0d	;
+%define CRTC_INDEX		0x03d4	; VGA CRT controller
+%define CRTC_PRESET_ROW_SCAN	0x08	;
 %define CRTC_START_ADDR_HIGH	0x0c	;
-%define CRTC_PRESET_ROW_SCAN	0x08
-
-%assign MAP_MASK            0x02      ; Sequence controller registers
-%assign MEMORY_MODE         0x04
-
-%assign H_TOTAL			0x00      ; CRT controller registers
-%assign H_DISPLAY_END		0x01
-%assign H_BLANK_START		0x02
-%assign H_BLANK_END		0x03
-%assign H_RETRACE_START		0x04
-%assign H_RETRACE_END		0x05
-%assign V_TOTAL			0x06
-%assign OVERFLOW		0x07
-%assign MAX_SCAN_LINE		0x09
-%assign HIGH_ADDRESS		0x0C
-%assign LOW_ADDRESS		0x0D
-%assign V_RETRACE_START		0x10
-%assign V_RETRACE_END		0x11
-%assign V_DISPLAY_END		0x12
-%assign OFFSET			0x13
-%assign UNDERLINE_LOCATION	0x14
-%assign V_BLANK_START		0x15
-%assign V_BLANK_END		0x16
-%assign MODE_CONTROL		0x17
-
-
-struc pcx_header
-  .manufacturer:	resb 1
-  .version:		resb 1
-  .encoding:		resb 1
-  .bpp:			resb 1
-  .xmin:		resw 1
-  .ymin:		resw 1
-  .xmax:		resw 1
-  .ymax:		resw 1
-  .otherstuff:		resb 116	; bleh bleh
-endstruc
+%define CRTC_START_ADDR_LOW	0x0d	;
+%define CRTC_CURSOR_LOCATION_HIGH	0x0e
+%define CRTC_CURSOR_LOCATION_LOW	0x0f
 
 
 
@@ -75,12 +33,6 @@ global print_string_len
 global print_hex
 global print_hex_len
 global print_char
-global set_video_mode
-global set_pcx_palette
-global smooth_scroll_off
-global smooth_scroll_on
-global pcx_refresh
-global display_buffer
 global redraw_display
 global wait_vtrace
 
@@ -202,12 +154,11 @@ global wait_vtrace
     cmp ecx, CHAR_PER_ROW * CHAR_PER_COL * 2
     jae .retn
     shr ecx, 1
-    mov dx, 0x03D4
-    mov ax, 0x0000E
+    mov dx, CRTC_INDEX
+    mov al, CRTC_CURSOR_LOCATION_HIGH
     mov ah, ch
     out dx, ax
-    mov dx, 0x03D4
-    mov ax, 0x0000F
+    mov al, CRTC_CURSOR_LOCATION_LOW
     mov ah, cl
     out dx, ax
 
@@ -253,15 +204,6 @@ global wait_vtrace
 
   popad
   retn
-
-
-
-;-----------------------------------------------------------------------.
-						pcx_refresh:		;
-; returns all unmodified
-
-  retn
-
 
 
 
@@ -371,104 +313,6 @@ global wait_vtrace
   mov ah, bl
   and ah, 0x0f
   out dx, ax
-  retn
-
-;.last_line:
-;  mov ecx, FONT_HEIGHT / 4
-;  mov edx, CRTC_INDEX
-;  mov al, CRTC_PRESET_ROW_SCAN
-;  xor ah, ah
-;.by_2s:
-;  add ah, 2
-;  call wait_vtrace
-;  out dx, ax
-;  loop .by_2s
-;
-;  mov cl, FONT_HEIGHT / 2
-;.by_1s:
-;  inc ah
-;  call wait_vtrace
-;  out dx, ax
-;  loop .by_1s
-;
-;  lea esi, [ebx*4+VIDEO_RAM+CHAR_PER_ROW*2]
-;  mov edi, VIDEO_RAM
-;  mov ecx, CHAR_PER_ROW * CHAR_PER_COL / 2
-;
-;  mov ebx, esi
-;  sub ebx, edi
-;  sub [screen_pos], ebx
-;
-;  call wait_vtrace
-;  xor ah, ah
-;  out dx, ax	; start again at 0
-;  xor ebx, ebx
-;  call .set_start_addr_no_wait
-;  rep movsd
-;
-;.done:
-;  call draw_cursor
-;  retn
-;
-;
-;
-;.set_start_addr:
-;  call wait_vtrace
-;.set_start_addr_no_wait:
-;xor ebx, ebx
-;  mov edx, 0x3d4
-;
-;  mov al, 0xc ;CRTC_START_ADDR_HIGH
-;  mov ah, bh
-;  out dx, ax
-;
-;  mov al, 0xd ;CRTC_START_ADDR_LOW
-;  mov ah, bl
-;  out dx, ax
-;
-;  retn
-
-
-;.scroll:					;-----------------------------
-;  mov dx, 03D4h	;The VGA sequencer port
-;  mov ax, 0x08	;Index 8 - set starting scan line
-;.inc_scanline:
-;  add ah, 2
-;  call wait_vtrace
-;  out dx, ax
-;  cmp ah, 16 * 2
-;  jb .inc_scanline
-;
-;  mov esi, VIDEO_RAM + CHAR_PER_ROW * 2
-;  mov edi, VIDEO_RAM
-;  mov ecx, CHAR_PER_ROW * (CHAR_PER_COL - 1) / 2
-;
-;  call wait_vtrace
-;  xor ah, ah
-;  out dx, ax	; start again at 0
-;  rep movsd
-;
-;  push edi
-;
-;  mov eax, 0x07200720
-;  mov ecx, CHAR_PER_ROW / 2
-;  rep stosd
-;
-;  pop edi
-;  mov edi, CHAR_PER_ROW * (CHAR_PER_COL - 1) * 2
-;  jmp .retn
-;
-;
-;-----------------------------------------------------------------------.
-						smooth_scroll_on:	;
-
-  retn
-
- 
-
-;-----------------------------------------------------------------------.
-						smooth_scroll_off:	;
-
   retn
 
 

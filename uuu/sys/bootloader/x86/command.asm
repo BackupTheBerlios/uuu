@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.6 2003/11/08 14:51:15 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.7 2003/11/08 15:43:24 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; command parsing and builtin commands for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -26,15 +26,12 @@
 ; defined by the linker script to be the end of the stage2 data, the buffer is
 ; unbounded on the top.
 extern command_buffer
-extern smooth_scroll_off
-extern smooth_scroll_on
 extern get_key
 extern print_char
 extern print_string
 extern print_string_len
 extern print_hex
 extern print_hex_len
-extern pcx_refresh
 extern display_buffer
 extern screen_pos
 extern builtin_boot
@@ -90,7 +87,6 @@ parse_command:
   popad
   jnz .next_element
 
-  call smooth_scroll_off
   call [edi+edx*4+4]
   jmp start_prompt
 
@@ -102,7 +98,6 @@ parse_command:
 
 
 start_prompt:
-  call smooth_scroll_on
   mov bl, VGA_BLUE
   printstr "stage2"
   mov bl, VGA_WHITE
@@ -324,7 +319,6 @@ builtin_thod.error:
 
   pushad
   printstr "-MORE-"
-  call pcx_refresh
 
   call get_key
   cmp eax, byte 'q'
