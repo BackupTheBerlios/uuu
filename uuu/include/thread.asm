@@ -1,6 +1,9 @@
 %ifndef __THREAD_INCLUDE__
 %define __THREAD_INCLUDE__
 
+
+%include "ring_queue.asm"
+
 ; Realtime Thread Header
 ;------------------------------------------------------------------------------
 ; This structure is created for every realtime thread in the system and is
@@ -46,9 +49,10 @@
 ;------------------------------------------------------------------------------
 struc _thread_t			; ----- ; -------------------------------------
 .execution_start	resd 2	; 00-07 ; start time
-.start_ring		resb _rt_ring_links_size
+.start_ring		resb _ring_queue_t_size
 .execution_end		resd 2	; 10-17 ; number of microseconds of execution
-.end_ring		resb _rt_ring_links_size
+.end_ring		resb _ring_queue_t_size
+.resources_ring		resb _ring_queue_t_size
 .top_of_stack           resd 1	; 20-23 ; active TOS (ESP)
 .bottom_of_stack	resd 1	; 24-27 ; Lowest allowed ESP
 .process_id             resd 1	; 28-2B ; ID of parent process
