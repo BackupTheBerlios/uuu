@@ -1,5 +1,5 @@
 ;; Hydro3d
-;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bimage/x86/test.asm,v 1.1 2003/12/23 02:25:03 bitglue Exp $
+;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bimage/x86/test.asm,v 1.2 2004/01/04 21:51:33 instinc Exp $
 ;; Written in 2001 Phil Frost, who is playing with it still.
 
 
@@ -366,6 +366,11 @@ data.triangle_major_radius: dd TRIANGLE_MAJOR_RADIUS
 
 global _start
 _start:
+
+ extern __interrupt_init
+ call __interrupt_init
+ extern __scheduler_init
+ call __scheduler_init
 
 ;-----------------------------------------------------------------------.
 						create_object:		;
