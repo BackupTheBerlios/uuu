@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/set_boot_loader_inode.c,v 1.2 2003/10/12 18:05:35 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/set_boot_loader_inode.c,v 1.3 2003/10/12 21:27:32 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 
+#include "extralib.h"
 
 
 int		udbfs_set_boot_loader_inode(

@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/link.c,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/link.c,v 1.2 2003/10/12 21:29:00 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 
+#include "extralib.h"
 
 
 /* 2.) udbfslib_link

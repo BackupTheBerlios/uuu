@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/add_column.c,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/add_column.c,v 1.2 2003/10/12 21:31:42 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -8,6 +8,7 @@
 #include "udbfs.h"
 #include "udbfslib.h"
 
+#include "extralib.h"
 
 
 int		udbfs_add_column(

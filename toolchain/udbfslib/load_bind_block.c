@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.8 2003/10/12 20:12:41 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.9 2003/10/12 21:29:00 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -13,6 +13,7 @@
 #include <malloc.h>
 #include <unistd.h>
 
+#include "extralib.h"
 
 
 /* 10) udbfslib_load_bind_block

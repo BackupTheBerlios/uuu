@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/allocate_block_id.c,v 1.2 2003/10/12 18:14:07 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/allocate_block_id.c,v 1.3 2003/10/12 21:31:42 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -9,6 +9,7 @@
 #include "udbfslib.h"
 #include "private.h"
 
+#include "extralib.h"
 
 
 uint64_t	udbfs_allocate_block_id(

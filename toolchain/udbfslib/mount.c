@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.3 2003/10/12 18:23:43 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.4 2003/10/12 21:29:00 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -13,6 +13,8 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <malloc.h>
+
+#include "extralib.h"
 
 
 
