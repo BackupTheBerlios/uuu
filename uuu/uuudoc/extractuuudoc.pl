@@ -16,7 +16,7 @@ print "<?xml version=\"1.0\" ?>\n<uuudoc>\n";
 
 while( <> )
 {
-  $last_label = $1 if /^\s*([\w\.\@]*)\s*:/;
+  $last_label = $1 if (/^\s*([\w\.\@]*)\s*:/ or /^\s*gproc\s+([\w\.\@]*)\s*$/ );
 
   next unless s/^\s*;!//;
 
