@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.5 2003/10/12 23:55:06 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.6 2003/10/13 00:38:16 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -65,6 +65,9 @@ int		udbfs_write_to_inode(
     block = udbfslib_select_active_inode_block( inode );
     if( block == NULL ) {
       block = udbfslib_extend_inode( inode );
+      if( block == NULL ) {
+        return( data_offset );
+      }
     }
 
     partial_write_size = block->offset_end - inode->cursor;
@@ -290,6 +293,13 @@ static UDBFSLIB_BLOCK *udbfslib_extend_inode(
     UDBFSLIB_INODE	*inode ) {
 
   UDBFSLIB_BLOCK *block = NULL;
+  uint64_t block_id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
+
+  if( block_id == 0 ) {
+    fprintf(stderr,"udbfslib: out of disk space\n");
+    return(NULL);
+  }
+    
 
   if( inode->block[0] == NULL ) {
     block = udbfslib_allocate_memory_block( inode, &inode->block[0] );
@@ -348,7 +358,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_inode(
   return(NULL);
 
 finalize:
-  block->id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
+  block->id = block_id;
   block->offset_end = block->offset_start + inode->mount->block_size;
   block->device_offset = block->id * inode->mount->block_size;
 
