@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.11 2004/01/03 02:57:42 instinc Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.12 2004/01/04 01:22:38 instinc Exp $
 ;
 ; Unununium Operating Engine
 ; Distributed under the BSD License
@@ -108,7 +108,6 @@ global %1
 
 
 %macro ecall 1-*
-  %define CONT %%continue
 
   %if %0 - 1 <> %{1}__ret_count
     %error "incorrect number of return points"
@@ -116,7 +115,11 @@ global %1
   call %1
   %rep %0-1
     %rotate 1
+    %ifidn %1, CONT
+    dd %%continue
+    %else
     dd %1
+    %endif
   %endrep
   %%continue:
 %endmacro
