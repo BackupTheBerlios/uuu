@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.5 2003/12/31 20:16:55 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.6 2004/01/08 22:05:52 bitglue Exp $
 ;
 ; minimalistic memory allocater, for tempoary and troubleshooting uses.
 
@@ -79,7 +79,7 @@ global mem.reallocate
   neg eax
   add eax, [memory_frame]
   mov [memory_frame], eax
-  pop ebx
+
   cmp eax, memory_bottom
   jb .nomem
   return
