@@ -41,10 +41,18 @@
 %define RT_SCHED_STATUS_WAITING		0x03
 ;
 ; The 'flags' are used by the scheduler for various tracking functions:
+;
 ;   bit	description
+;
 ;     0	lended time run (0=no, 1=running under lended time)
+%define RT_FLAGS_LENDED_TIME		0x00
+;
 ;     1 realtime thread select (0=non-rt, 1=realtime)
+%define RT_FLAGS_RTSELECT		0x01
+;
 ;     2	initialized status (0=unitialized, 1=initialized)
+%define RT_FLAGS_INIT_STATUS		0x02
+;
 ;   3-7	reserved
 ;------------------------------------------------------------------------------
 struc _thread_t			; ----- ; -------------------------------------
