@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.1 2003/11/07 20:55:38 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.2 2003/11/10 15:23:07 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; boot routines
@@ -29,6 +29,7 @@ extern stack_top
 extern command_buffer
 extern print_string
 extern print_hex
+extern set_display_start
 
 
 
@@ -156,6 +157,8 @@ builtin_boot.invalid_format:
 .end:
   mov bl, VGA_WHITE
   printstr "image looks good",0xa
+  xor ebx, ebx
+  call set_display_start
   pop eax
   jmp eax
 

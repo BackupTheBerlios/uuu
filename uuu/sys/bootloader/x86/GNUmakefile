@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.8 2003/11/08 14:51:15 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.9 2003/11/10 15:23:07 bitglue Exp $
 
 UUUROOT=../../..
 
@@ -28,7 +28,7 @@ stage2: stage2.ld $(STAGE2_OBJS)
 
 include $(UUUROOT)/Make.config
 
--include stage1.d $(STAGE2_OBJS:.o=.d)
+-include stage1.d $(STAGE2_OBJS:.o=.d) test.d
 
 # have to make font.inc before making the deps or nasm will puke
 display.d: font.inc
@@ -40,7 +40,7 @@ boot.o: test2.bimage
 test.o: uuu-logov2.txt
 
 test2.o: test.o
-	ld -o test2.o -Ttext 0x300000 test.o
+	ld -s -o test2.o -Ttext 0x300000 test.o
 
 test2.bimage: test2.o
 	$(generating) '$<  >  $@'

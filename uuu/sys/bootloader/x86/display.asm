@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.9 2003/11/08 15:43:24 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.10 2003/11/10 15:23:07 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -35,6 +35,7 @@ global print_hex_len
 global print_char
 global redraw_display
 global wait_vtrace
+global set_display_start
 
 
 
@@ -122,6 +123,13 @@ global wait_vtrace
   sub edi, edx		; move cursor to left edge
   add edi, CHAR_PER_ROW * 2
 
+  push edi
+  add edi, VIDEO_RAM
+  mov ecx, CHAR_PER_ROW / 2
+  mov eax, 0x07200720
+  rep stosd
+  pop edi
+
   jmp .done
 
 .bs:			;------------------------------------------------------
@@ -134,11 +142,7 @@ global wait_vtrace
   mov [VIDEO_RAM + edi], ax
   ; spill to .done
 
-
 .done:
-;  cmp edi, CHAR_PER_COL * CHAR_PER_ROW * 2 + 0xa0 * 2
-;  jae .scroll
-.retn:
   mov [screen_pos], edi
 
   popad
@@ -150,17 +154,15 @@ global wait_vtrace
 ;-----------------------------------------------------------------------.
 						draw_cursor:		;
 
-    mov ecx, [screen_pos]
-    cmp ecx, CHAR_PER_ROW * CHAR_PER_COL * 2
-    jae .retn
-    shr ecx, 1
-    mov dx, CRTC_INDEX
-    mov al, CRTC_CURSOR_LOCATION_HIGH
-    mov ah, ch
-    out dx, ax
-    mov al, CRTC_CURSOR_LOCATION_LOW
-    mov ah, cl
-    out dx, ax
+  mov ecx, [screen_pos]
+  shr ecx, 1
+  mov dx, CRTC_INDEX
+  mov al, CRTC_CURSOR_LOCATION_HIGH
+  mov ah, ch
+  out dx, ax
+  mov al, CRTC_CURSOR_LOCATION_LOW
+  mov ah, cl
+  out dx, ax
 
 .retn:
   retn
@@ -242,6 +244,8 @@ global wait_vtrace
   add edx, byte -1	; set cf if edx is not 0
   adc esi, eax		; ESI = eax, or eax + 1 if there was a remainder
 
+  mov ebx, [vram_offset]	; EBX = current scanline
+
   sub esi, CHAR_PER_COL		; ESI = number of whole lines to scroll
   jbe short .done
 
@@ -250,7 +254,6 @@ global wait_vtrace
 %endif
   lea ebp, [esi * 8]
   shl ebp, 1			; EBP = target scanline
-  xor ebx, ebx			; EBX = current scanline
 
 .jump_half:
   mov ecx, ebp
@@ -258,10 +261,13 @@ global wait_vtrace
   shr ecx, 1
   adc ebx, ecx			; add the bigger half of the distance to ebx
 
-  call .set_location
+  call set_display_start
 
   cmp ebx, ebp
-  jb .jump_half
+  jb short .jump_half
+
+  cmp esi, CHAR_PER_COL
+  jb short .no_shift
 
 %if CHAR_PER_ROW != 80
   %error "CHAR_PER_ROW assumed to be 80 here"
@@ -273,14 +279,14 @@ global wait_vtrace
   add esi, VIDEO_RAM
   mov edi, VIDEO_RAM
 
-  xor ebx, ebx
-  call .set_location
   mov ecx, CHAR_PER_ROW * CHAR_PER_COL / 2
   rep movsd
 
-  mov eax, 0x07200720
-  mov ecx, CHAR_PER_ROW * CHAR_PER_COL / 2
-  rep stosd
+  xor ebx, ebx
+  call set_display_start
+
+.no_shift:
+  mov [vram_offset], ebx
 
 .done:
   call draw_cursor
@@ -288,7 +294,9 @@ global wait_vtrace
   retn
 
 
-.set_location:
+
+;-----------------------------------------------------------------------.
+						set_display_start:	;
   ; ebx = scanline offset
   mov dx, CRTC_INDEX
 
@@ -324,3 +332,4 @@ global wait_vtrace
 align 4
 
 screen_pos: resd 1
+vram_offset: resd 1
