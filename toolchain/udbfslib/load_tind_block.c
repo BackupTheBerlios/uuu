@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.1 2003/10/11 13:14:19 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.2 2003/10/12 15:26:09 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -29,6 +29,7 @@
 int		udbfslib_load_tind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
+    uint64_t			offset_modifier,
     UDBFSLIB_TINDBLOCK		**linkpoint ) {
 
   UDBFSLIB_TINDBLOCK *tind_block;
@@ -76,11 +77,14 @@ int		udbfslib_load_tind_block(
       udbfslib_load_bind_block(
 	  inode,
 	  ((uint64_t *)tmp_block)[i],
+	  offset_modifier,
 	  &tind_block->bindblock[i] ) != 0 ) {
 
       fprintf(stderr,"udbfslib: error happened while loading bi-indirects of tri-indirect block [%016llX]\n", tind_block->id);
       return( -1 );
     }
+
+    offset_modifier += inode->mount->bind_storage;
   }
 
   fprintf(stderr,"udbfslib: tri-ind block [%016llX] OK!\n", tind_block->id);
