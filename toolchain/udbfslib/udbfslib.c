@@ -1,4 +1,6 @@
 #define _LARGEFILE64_SOURCE
+#define _LARGEFILE_SOURCE
+#define _FILE_OFFSET_BITS 64
 #define _POSIX_SOURCE
 
 #include "udbfslib.h"
@@ -6,6 +8,12 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+
+static uint64_t allocate_bit( uint8_t *bitmap, uint64_t size );
+static uint64_t allocate_block( UDBFS_MOUNT *mount );
+static uint32_t allocate_inode( UDBFS_MOUNT *mount );
+static int load_block_bitmap( UDBFS_MOUNT *mount );
+static int load_inode_bitmap( UDBFS_MOUNT *mount );
 static void link_mount( UDBFS_MOUNT *mount );
 static void unlink_mount( UDBFS_MOUNT *mount );
 static int validate_superblock( UDBFS_MOUNT *mount );
@@ -22,14 +30,14 @@ UDBFS_MOUNT *udbfs_mount( char *block_device ) {
 
   printf("lib: request received to mount [%s]\n", block_device );
 
-  if( (mount_file = open(block_device, O_RDWR | O_LARGEFILE )) == 0 ) {
-    perror("unable to open block device");
+  if( (mount_file = open(block_device, O_RDWR | O_LARGEFILE )) == -1 ) {
+    perror("lib: unable to open block device");
     return(NULL);
   }
 
   if( (mount = (UDBFS_MOUNT *)malloc(sizeof(UDBFS_MOUNT))) == NULL ) {
     close(mount_file);
-    perror("unable to allocate memory required to store the mount information");
+    perror("lib: unable to allocate memory required to store the mount information");
     return(NULL);
   }
 
@@ -39,13 +47,15 @@ UDBFS_MOUNT *udbfs_mount( char *block_device ) {
   mount->inode_bitmap = NULL;
   mount->block_bitmap = NULL;
 
-  if( validate_superblock( mount ) == 0 ) {
-    free( mount );
-    close( mount_file );
+  link_mount( mount );
+
+  if( (validate_superblock( mount ) != 0) ||
+      (load_inode_bitmap( mount ) != 0) ||
+      (load_block_bitmap( mount ) != 0) ) {
+
+    udbfs_unmount( mount );
     return(NULL);
   }
-
-  link_mount( mount );
 
   printf("lib: [%s] mounted as [%p]\n", block_device, mount );
   return(mount);
@@ -81,6 +91,39 @@ void udbfs_unmount( UDBFS_MOUNT *mount ) {
   free( mount );
 }
 
+
+
+
+
+
+
+UDBFS_INODE *create_inode( UDBFS_MOUNT *mount ) {
+
+  UDBFS_INODE *inode = (UDBFS_INODE *)malloc(sizeof(UDBFS_INODE));
+
+  if( inode == NULL ) {
+
+    perror("lib: unable to allocate memory for inode structure\n");
+
+  } else {
+    
+    inode->next = NULL;
+    inode->previous = NULL;
+    inode->id = allocate_inode( mount );
+    inode->file_size = 0;
+    inode->current_offset = 0;
+    inode->current_block = NULL;
+    inode->blocks = NULL;
+
+  }
+  return( inode );
+}
+
+
+
+UDBFS_INODE *open_inode( UDBFS_MOUNT *mount, uint32_t inode_id ) {
+  return(NULL);
+}
 
 
 
@@ -145,7 +188,7 @@ static int validate_superblock( UDBFS_MOUNT *mount ) {
     fprintf(stderr,"lib: recorded block size is invalid: too small\n");
     return(-1);
   }
-  if( mount->superblock.block_size < 20 ) {
+  if( mount->superblock.block_size > 20 ) {
     fprintf(stderr,"lib: WARNING: block size is over 20bits: %i bits\n", mount->superblock.block_size );
   }
 
@@ -153,6 +196,111 @@ static int validate_superblock( UDBFS_MOUNT *mount ) {
 }
 
 
+
+
+static int load_inode_bitmap( UDBFS_MOUNT *mount ) {
+
+  int64_t offset = (1<<mount->superblock.block_size)*mount->superblock.bitmaps_block+((mount->superblock.block_count + 7)>>3);
+  int64_t size = (mount->superblock.inode_count + 7)>>3;
+
+  printf("lib: loading inode bitmap from offset [%016llX] for [%016llX]\n", offset, size);
+  mount->inode_bitmap = (uint8_t *)malloc(size);
+  if( mount->inode_bitmap == NULL ) {
+    perror("lib: unable to allocate memory for inode bitmap");
+    return(-1);
+  }
+
+  if( (lseek( mount->block_device, offset, SEEK_SET ) != offset) ||
+      (read(mount->block_device, mount->inode_bitmap, size ) != size) ) {
+    perror("lib: unable to load inode bitmap");
+    return(-1);
+  }
+
+  return(0);
+}
+
+
+
+
+static int load_block_bitmap( UDBFS_MOUNT *mount ) {
+
+  int64_t offset = (1<<mount->superblock.block_size)*mount->superblock.bitmaps_block;
+  int64_t size = (mount->superblock.block_count + 7)>>3;
+
+  printf("lib: loading block bitmap from offset [%016llX] for [%016llX]\n", offset, size);
+
+  mount->block_bitmap = (uint8_t *)malloc(size);
+  if( mount->block_bitmap == NULL ) {
+    perror("lib: unable to allocate memory for block bitmap");
+    return(-1);
+  }
+
+  if( (lseek( mount->block_device, offset, SEEK_SET ) != offset) ||
+      (read( mount->block_device, mount->block_bitmap, size ) != size) ) {
+    perror("lib: unable to load block bitmap");
+    return(-1);
+  }
+
+  return(0);
+}
+
+
+
+
+
+
+static uint32_t allocate_inode( UDBFS_MOUNT *mount ) {
+
+  uint32_t inode_id =(uint32_t)(allocate_bit( mount->inode_bitmap, mount->superblock.inode_count ) );
+
+  if( inode_id == 0 ) {
+    fprintf(stderr,"lib: [%p] out of inode entry\n", mount);
+  }
+
+  return( inode_id );
+}
+
+
+
+
+
+static uint64_t allocate_block( UDBFS_MOUNT *mount ) {
+
+  uint64_t block_id =allocate_bit( mount->block_bitmap, mount->superblock.block_count );
+
+  if( block_id == 0 ) {
+    fprintf(stderr,"lib: [%p] out of disk block\n", mount);
+  }
+
+  return( block_id );
+}
+
+
+
+
+
+static uint64_t allocate_bit( uint8_t *bitmap, uint64_t bitmap_size ) {
+
+  uint64_t bytesize = (bitmap_size + 7)>>3;
+  uint64_t byte = 0;
+  int bit = 0;
+
+  while( byte <= bytesize ) {
+    
+    if( bitmap[byte] != 0x00 ) {
+
+      while( ((1<<bit) & bitmap[byte]) == 0x00 ) {
+	bit++;
+      }
+      bitmap[byte] = bitmap[byte] ^ (1<<bit);
+      return( (byte<<3) + bit );
+    }
+
+    byte++;
+  }
+
+  return(0);
+}
 
 
 
