@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.6 2003/10/12 20:06:25 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_bind_block.c,v 1.7 2003/10/12 20:08:26 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -100,6 +100,7 @@ int		udbfslib_load_bind_block(
 
     offset_modifier += inode->mount->ind_storage;
   }
+  free(tmp_block);
 
   fprintf(stderr,"udbfslib: bind block [%016llX] OK!\n", bind_block->id);
   return(0);

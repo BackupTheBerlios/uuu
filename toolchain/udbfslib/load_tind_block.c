@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.4 2003/10/12 20:06:25 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_tind_block.c,v 1.5 2003/10/12 20:08:26 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -93,6 +93,7 @@ int		udbfslib_load_tind_block(
 
     offset_modifier += inode->mount->bind_storage;
   }
+  free(tmp_block);
 
   fprintf(stderr,"udbfslib: tri-ind block [%016llX] OK!\n", tind_block->id);
   return(0);
