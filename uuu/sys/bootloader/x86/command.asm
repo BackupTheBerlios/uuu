@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.9 2003/11/18 18:35:18 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.10 2003/12/11 16:21:41 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; command parsing and builtin commands for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -36,7 +36,7 @@ extern print_hex
 extern print_hex_len
 extern display_buffer
 extern screen_pos
-extern vram_offset
+extern cur_scanline
 extern boot
 extern builtin_mbinfo
 extern boot_source
@@ -597,14 +597,14 @@ __SECT__
 						builtin_clear:		;
 
   mov eax, 0x07200720
-  mov edi, VIDEO_RAM			; clear the visible page,
-  mov ecx, CHAR_PER_COL * CHAR_PER_ROW	; and one beyond it too
+  mov edi, VIDEO_RAM
+  mov ecx, CHAR_PER_COL * CHAR_PER_ROW / 2
   rep stosd
 
   mov eax, CHAR_PER_COL * CHAR_PER_ROW * 2
   mov dword [screen_pos], eax
   xor eax, eax
-  mov dword [vram_offset], eax
+  mov dword [cur_scanline], eax
 
   retn
 

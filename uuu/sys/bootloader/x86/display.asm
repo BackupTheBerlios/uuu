@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.12 2003/11/18 18:35:18 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.13 2003/12/11 16:21:41 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -28,7 +28,7 @@
 ;---------------===============/              \===============---------------
 
 global screen_pos
-global vram_offset
+global cur_scanline
 global print_string
 global print_string_len
 global print_hex
@@ -260,7 +260,7 @@ global print_nul_string
   call draw_cursor
 
   mov eax, [screen_pos]
-  cmp eax, CHAR_PER_ROW * CHAR_PER_COL * 2
+;  cmp eax, CHAR_PER_ROW * CHAR_PER_COL * 2
   xor edx, edx
   mov ebx, CHAR_PER_ROW * 2
   div ebx
@@ -268,17 +268,38 @@ global print_nul_string
   xor esi, esi
   add edx, byte -1	; set cf if edx is not 0
   adc esi, eax		; ESI = eax, or eax + 1 if there was a remainder
+;  mov esi, eax
+;  test edx, edx
+;  jz .no_remainder
+;  inc esi
+;.no_remainder:
 
-  mov ebx, [vram_offset]	; EBX = current scanline
+  mov ebx, [cur_scanline]	; EBX = current scanline
 
+  mov eax, ebx
+%if FONT_HEIGHT != 16
+  %error "FONT_HEIGHT assumed to be 16 here"
+%endif
+  shr eax, 4
+  sub esi, eax
   sub esi, CHAR_PER_COL		; ESI = number of whole lines to scroll
+  mov [0x500], eax
   jbe short .done
+
+  push edi
+  mov edi, [screen_pos]
+  add edi, VIDEO_RAM
+  mov ecx, CHAR_PER_ROW / 2
+  mov eax, 0x07200720
+  rep stosd
+  pop edi
 
 %if FONT_HEIGHT != 16
   %error "FONT_HEIGHT assumed to be 16 here"
 %endif
   lea ebp, [esi * 8]
   shl ebp, 1			; EBP = target scanline
+  add ebp, ebx
 
 .jump_half:
   mov ecx, ebp
@@ -311,7 +332,7 @@ global print_nul_string
   call set_display_start
 
 .no_shift:
-  mov [vram_offset], ebx
+  mov [cur_scanline], ebx
 
 .done:
   call draw_cursor
@@ -357,4 +378,4 @@ global print_nul_string
 align 4
 
 screen_pos: resd 1
-vram_offset: resd 1
+cur_scanline: resd 1
