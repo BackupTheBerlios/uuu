@@ -23,7 +23,7 @@
 
 
 
-gproc ringqueue_prepend
+gproc ringqueue.prepend
 ;--------------------------------------------------------[ prepend to queue ]--
 ;!<proc brief="Prepend a thread to a ring queue">
 ;! <p reg="eax" type="pointer" brief="pointer to node to prepend"/>
@@ -70,7 +70,7 @@ __SECT__					; return to code section
 
 
 
-gproc ringqueue_link_ordered
+gproc ringqueue.link_ordered
 ;---------------------------------------------------[ link to ordered queue ]--
 ;!<proc>
 ;! Link a thread into a ordered ring list.  The ordering value for both the
@@ -144,7 +144,7 @@ __SECT__					; select back the code section
 
 
 
-gproc ringqueue_unlink
+gproc ringqueue.unlink
 ;-------------------------------------------------------[ unlink from queue ]--
 ;>
 ;; Unlink a thread from a ring list.
