@@ -10,11 +10,13 @@ if [ -z $SCITECH ] ; then
   export SCITECH=$HOME/scitech
 fi
 
+export CHECKED=1
+
 # Initialise the default compile time environment
 
 . $SCITECH/bin/set-vars-linux.sh
 . $SCITECH/bin/gcc-uuu.sh
 
 # Change to the directory containing all the SNAP sample code
-cd $SCITECH/examples/snap/graphics
+#cd $SCITECH/examples/snap/graphics
 
