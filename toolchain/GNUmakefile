@@ -1,4 +1,4 @@
-UTILS = udbfslib mkudbfs udbfstools
+UTILS = udbfslib mkudbfs udbfstools mkuuubimage
 
 include Make.conf
 
