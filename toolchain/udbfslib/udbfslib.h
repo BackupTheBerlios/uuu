@@ -210,5 +210,16 @@ int		udbfs_write_to_inode(
     uint8_t		*data,
     uint32_t		size );
 
+int		udbfs_read_from_inode(
+    UDBFSLIB_INODE	*inode,
+    uint8_t		*data,
+    uint32_t		size );
+
+int		udbfs_eoi(
+    UDBFSLIB_INODE	*inode );
+
+int		udbfs_set_boot_loader_inode(
+    UDBFSLIB_MOUNT	*mount,
+    uint32_t		inode_id );
 
 #endif
