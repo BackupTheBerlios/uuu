@@ -1,5 +1,5 @@
 /*
- * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.ld,v 1.3 2003/11/07 20:55:38 bitglue Exp $
+ * $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.ld,v 1.4 2003/11/08 13:46:28 bitglue Exp $
  *
  * ld script for the stage2 bootloader
  */
@@ -52,9 +52,9 @@ SECTIONS
 
     PROVIDE( boot_size = ALIGN(4) - boot_dest );
 
-    /* this is used to store keyboard input to be parsed. This must be changed,
-     * to support multiboot, because the bootloader wouldn't know this space is
-     * reserved. We put it below 1M because GRUB won't use it. */
+    /* Unfortunately, as I read the multiboot standard it doesn't mention what
+     * memory is used by the bootloader, and what by the booted kernel, so this
+     * is put below 1M in hopes it won't get clobbered by a boot module. */
 
     PROVIDE( command_buffer = . );
   }
