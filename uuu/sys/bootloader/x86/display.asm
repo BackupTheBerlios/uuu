@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.4 2003/10/23 03:11:01 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.5 2003/10/23 03:39:25 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -448,10 +448,26 @@
     dec ch
     jnz .draw_cursor
 
-  %endif CURSOR_HEIGHT != 0
-  .retn:
+  %endif ; CURSOR_HEIGHT != 0
+
+%elifidn BOOT_CONSOLE,textual
+
+    mov ecx, [screen_pos]
+    cmp ecx, CHAR_PER_ROW * CHAR_PER_COL * 2
+    jae .retn
+    shr ecx, 1
+    mov dx, 0x03D4
+    mov ax, 0x0000E
+    mov ah, ch
+    out dx, ax
+    mov dx, 0x03D4
+    mov ax, 0x0000F
+    mov ah, cl
+    out dx, ax
 
 %endif ; %ifidn BOOT_CONSOLE,graphical
+
+.retn:
   retn
 
 
@@ -729,6 +745,8 @@
   ; low address remains the same always
 
   popad
+%else ; %ifidn BOOT_CONSOLE,graphical
+  call draw_cursor
 %endif ; %ifidn BOOT_CONSOLE,graphical
   retn
 

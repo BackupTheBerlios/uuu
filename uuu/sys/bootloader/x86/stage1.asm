@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.4 2003/10/23 03:11:01 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.5 2003/10/23 03:39:25 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -100,7 +100,9 @@ _entry:				; setup data and stack segments
 				; set video mode to 320x200
 				;--------------------------
   mov ax, 0x13			; 13h = 320x200x4bpp
+%ifidn BOOT_CONSOLE,graphical
   int BIOSVIDEO			; request servicing
+%endif ; %ifidn BOOT_CONSOLE,graphical
 				;
 				; get disk geometry
 				;------------------
@@ -244,38 +246,36 @@ loading_object:			;--------------------------------------
   ; es = segment to load the sectors, must be kept intact
   ; ds = 0000
   ; cs = 0000
-  mov ax, 200			; 320 x 200
-  mul bp			; compute progress bar percentage
-  div di			;
-  push es			; backup load segment address
-  push word VRAM_SEGMENT	;
-  pop es			; set es = gfx video segment
-  mov di, 320*200		; warp to bottom right corner
-  xchg ax, dx			; dx = progress / 200
-  mov al, 0x09			; al = color
-.drawing_bar:			;
-  dec di			; get place for 1 pixel
-  dec di			; get place for a 2nd pixel
-  stosb				; draw both pixels with color of AL
-  stosb				;
-  sub di, 320			; move up one line
-  jz short .done_drawing	; if we reached the top we're done.
-  dec dx			; progress bar color swap check
-  jnz short .drawing_bar	; haven't reached that point yet
-  dec ax			; al = color 09->08
-  jmp short .drawing_bar	; continue drawing up to the top
-.done_drawing:			;
-  pop es			; restore the load segment address
+%ifidn BOOT_CONSOLE,graphical
+    mov ax, 200			; 320 x 200
+    mul bp			; compute progress bar percentage
+    div di			;
+    push es			; backup load segment address
+    push word VRAM_SEGMENT	;
+    pop es			; set es = gfx video segment
+    mov di, 320*200		; warp to bottom right corner
+    xchg ax, dx			; dx = progress / 200
+    mov al, 0x09			; al = color
+  .drawing_bar:			;
+    dec di			; get place for 1 pixel
+    dec di			; get place for a 2nd pixel
+    stosb				; draw both pixels with color of AL
+    stosb				;
+    sub di, 320			; move up one line
+    jz short .done_drawing	; if we reached the top we're done.
+    dec dx			; progress bar color swap check
+    jnz short .drawing_bar	; haven't reached that point yet
+    dec ax			; al = color 09->08
+    jmp short .drawing_bar	; continue drawing up to the top
+  .done_drawing:			;
+    pop es			; restore the load segment address
+%endif ; %ifidn BOOT_CONSOLE,graphical
   popa				; restore registers (si,bx,cx,bp,di)
   cmp bp, di			; loaded all sectors?
   jnz loading_object		; if not, continue loading them
 				;
 ;----------------------------------------------------------------------------
 				;
-%ifidn BOOT_CONSOLE,textual
-  mov ax, 0x0003		; all loaded, set video mode back to 80x25
-  int BIOSVIDEO			;
-%endif
 				;
   cli				; disable interrutps, sensitive stuff coming
 				;
