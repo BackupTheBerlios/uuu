@@ -82,9 +82,8 @@
 ; microseconds or in PIT ticks.  The system will be slightly more precise
 ; if setup using PIT ticks, so in case of doubt leave it as it is.
 ;
-;
-; Comment the next line to set the system in microseconds based configuration:
-%define _RT_TIMER_TICKS_	1
+%define _RT_TIMER_FORMAT_	TICKS
+;%define _RT_TIMER_FORMAT_	MICROSECONDS
 ;
 ;
 ; Recommended _DEFAULT_RESOLUTION_ values:
@@ -95,7 +94,7 @@
 ;   Pentium III/Athlon:	 10us		 12ticks
 ;   Pentium IV:		  5us		  6ticks
 ;
-%assign _DEFAULT_RESOLUTION_    12
+%assign _RT_TIMER_RESOLUTION_    298
 ;------------------------------------------------------------------------------
 ;
 ;
@@ -204,8 +203,8 @@
 %define RT_SANITY_VERBOSE
 ;
 ; Those values are magic markers to help detect invalid pointers/corruption
-%define RT_THREAD_MAGIC		'thrmagic'
-%define RT_THREAD_POOL_MAGIC	'thpomagi'
+%define RT_THREAD_MAGIC		('thrm'+'agic')
+%define RT_THREAD_POOL_MAGIC	('thpo'+'magi')
 ;------------------------------------------------------------------------------
 
 
@@ -213,14 +212,16 @@
 
 %include "ring_queue.asm"
 %include "thread.asm"
+%include "interrupts.asm"
 %include "ret_counts.asm"
 
-;%include "bochs.asm"
+%include "bochs.asm"
 
 
 extern ring_queue.link_ordered
 extern ring_queue.prepend
 extern ring_queue.unlink
+extern int.set_handler
 
 
 
@@ -620,6 +621,15 @@ __internal_stack__:		resb 1024
 
 
 
+; New Ticks Per IRQ
+;------------------------------------------------------------------------------
+; Number of Ticks per IRQ to be reprogrammed by the __resolution_programmer
+; timer.  See system_time.set_timer_resolution
+;------------------------------------------------------------------------------
+new_ticks_per_irq:		resd 1
+;------------------------------------------------------------------------------
+
+
 
 
 
@@ -694,28 +704,30 @@ __scheduler_init:
   mov ebx, ready_for_execution			;
   lea eax,[TIMER_START_RING(eax)]		;
   ecall ring_queue.prepend, CONT, CONT		;
-  
-
-  ; TODO: continue the init!
-  retn
- 
-
-; DONE:
-;
-; - init the thread pools
-; - acquire one thread
-; - set as active thread
-; - setup scheduler initial state
-;
-; TODO:
-;
-; - program the PIT
-; - hack it up to scheduled state
-; - disable interrrupts
-; - hook up IRQ 0
-; - enable interrupt
-; - unmask IRQ 0
-; - return
+						;
+						; Program the PIT
+						;------------------------------
+  mov eax, _RT_TIMER_RESOLUTION_		;
+%ifidn _RT_TIMER_FORMAT_, TICKS			;
+  ecall system_time.set_timer_resolution_ticks, CONT, CONT, CONT
+%elifidn _RT_TIMER_FORMAT_, MICROSECONDS	;
+  ecall system_timer.set_timer_resolution, CONT, CONT, CONT
+%endif						;
+						;
+						; Connect the PIT IRQ handler
+						;------------------------------
+  mov eax, 0x20					;
+  mov ebx, __pit_interrupt_handler		;
+  ecall int.set_handler, CONT, CONT		;
+						; Enable IRQ 0
+						;------------------------------
+  cli						;
+  in  al, 0x21					; read current irq mask
+  and al, 0xFE					; take out bit 0
+  out 0x21, al					; write back new mask
+  sti						;
+						;
+  retn						;
 ;------------------------------------------------[/scheduler initialisation ]--
 
 
@@ -756,11 +768,11 @@ section .text
 __set_timer:
 ;--------------------------------------------------------------[ set timer ]--
 ;; Reprogram the PIT and sets the number of full timer expirations for a given
-;; microsecond delay.
+;; number of ticks
 ;;
 ;; parameters
 ;; ----------
-;; eax = number of microseconds before allowing interruption
+;; edx = number of microseconds before allowing interruption
 ;;
 ;;
 ;; returns
@@ -769,16 +781,6 @@ __set_timer:
 ;; edx = destroyed
 ;; pit_ticks = number of full expiration to let go
 ;-----------------------------------------------------------------------------
-%ifdef _RT_TIMER_TICKS_				;-timer is in PIT ticks
-  mov edx, eax					; move tick count in edx
-						; edx: tick count
-						;
-%else						;-timer is in microseconds
-  shl  eax, _PIT_ADJ_SHIFT_REQUIRED_            ; adjust microseconds for mul
-  mov  edx, _PIT_ADJ_MULT_                      ; magic multiplier
-  mul  edx                                      ; magic mul, get ticks count
-%endif						; edx: tick count
-						;
   mov  al, 0x36                                 ; select channel 0
   out  0x43, al                                 ; send op to command port
   xchg eax, edx                                 ; move tick count in eax
@@ -855,6 +857,28 @@ __re_evaluate_execution_priority:
 
 
 
+
+; Timer Reprogrammer
+;------------------------------------------------------------------------------
+__resolution_reprogram_timer:
+  istruc _thread_timer_t
+at _thread_timer_t.procedure,	dd __resolution_programmer
+at _thread_timer_t.execution_time, dd 0, 0
+at _thread_timer_t.ring, dd $, $
+  iend
+;
+;
+__resolution_programmer:
+;---------------------------------------------------[ resolution programmer ]--
+; This timer is set by the system_timer.set_timer_resolution procedure.  When
+; executed it calls __set_timer to reprogram the number of ticks between fired
+; IRQ.
+;------------------------------------------------------------------------------
+  mov edx, [new_ticks_per_irq]
+  mov [ticks_per_irq], edx
+  call __set_timer
+  retn
+;---------------------------------------------------[/resolution programmer ]--
 
 
 
@@ -1498,6 +1522,75 @@ gproc system_time.set_tick_drift_correction_rate
 
 
 
+gproc system_time.set_timer_resolution
+;---------------------------------------[ system time: set timer resolution ]--
+;!<proc>
+;! <p reg="eax" type="uinteger32" brief="microseconds between PIT interrupts"/>
+;! <ret fatal="0" brief="success"/>
+;! <ret fatal="1" brief="resolution not supported by current hardware"/>
+;! <ret brief="other"/>
+;!</proc>
+;------------------------------------------------------------------------------
+						; convert microseconds to ticks
+						;------------------------------
+  mov edx, _PIT_ADJ_MULT_			;
+  mul edx					;
+						;
+  ecall system_time.set_timer_resolution_ticks, CONT, .unsupported_range, .unexpected
+  return					;
+						;
+.unsupported_range:				;
+  return 1					;
+						;
+.unexpected:					;
+  ret_other					;
+;---------------------------------------[/system time: set timer resolution ]--
+
+
+
+
+
+gproc system_time.set_timer_resolution_ticks
+;-------------------------------[ system time: set timer resolution in ticks ]--
+;!<proc>
+;! <p reg="eax" type="uinteger32" brief="number of ticks between PIT interrupts"/>
+;! <ret fatal="0" brief="success"/>
+;! <ret fatal="1" brief="resolution not supported by current hardware"/>
+;! <ret brief="other"/>
+;!</proc>
+;-------------------------------------------------------------------------------
+						; validate range 1 < x < 65536
+						;------------------------------
+  cmp eax, 2					;
+  jb short .unsupported_range			;
+  cmp eax, 65535				;
+  ja short .unsupported_range			;
+						;
+						; set new range to reprogram
+						;------------------------------
+  mov [new_ticks_per_irq], eax			;
+						;
+						; set reprogrammation procedure
+						;------------------------------
+  mov ecx, [ticks_count]			;
+  mov edx, [ticks_count]			;
+  mov eax, __resolution_reprogram_timer		;
+  mov ebx, timer_ring				;
+  mov [TIMER_R_EXEC(eax)], ecx			;
+  mov [TIMER_R_EXEC(eax)], edx			;
+  add eax, byte _thread_timer_t.ring		;
+  ecall ring_queue.prepend, CONT, .unexpected	;
+						;
+  return					;
+						;
+.unsupported_range:				;
+  return 1					;
+						;
+.unexpected:					;
+  ret_other					;
+;-------------------------------[/system time: set timer resolution in ticks ]--
+
+
 
 
 
@@ -1570,6 +1663,11 @@ __pit_interrupt_handler:
 						;------------------------------
   pushad					;
 						;
+						; send Specific-EOI to PIC
+						;------------------------------
+  mov al, 0x60					;
+  out 0x20, al					;
+						;
 						; get pointer to current thread
 						;------------------------------
   mov ebp, [executing_thread]			;
@@ -1621,25 +1719,29 @@ __pit_interrupt_handler:
  jnz short .sanity_check_failed_timer		;
 %endif						;
 						;
-  cmp [TIMER_R_EXEC(eax) + 4], edi		; check set execution time
+
+  lea ebp, [eax - _thread_timer_t.ring]		;
+  cmp [ebp + _thread_timer_t.execution_time + 4], edi
+;  cmp [TIMER_R_EXEC(eax) + 4 - _thread_timer_t.ring], edi		; check set execution time
   ja short .timer_cycled			;
   jb short .execute_timer			;
-  cmp [TIMER_R_EXEC(eax)], esi			;
+  cmp [ebp + _thread_timer_t.execution_time], esi
+;  cmp [TIMER_R_EXEC(eax) - _thread_timer_t.ring], esi			;
   ja short .timer_cycled			;
 						;
 						; execute timer
 .execute_timer:					;------------------------------
-  mov ebp, eax					; unlink from timer ring..
   ecall ring_queue.unlink, CONT, .sanity_check_failed_timer
   mov eax, ebp					;
   mov esp, __internal_stack__.top		; set internal stack
-  call [TIMER_R_PROC(ebp)]			; execute timer procedure
+  call [ebp + _thread_timer_t.procedure]	; execute timer procedure
   jmp short .cycle_timer_ring			; check for other timers
 						;
 						;
 .timer_cycled:					; load first ready thread
 						;------------------------------
   mov eax, [ready_for_execution + _ring_queue_t.next]
+  sub eax, _thread_t.start_timer + _thread_timer_t.ring
 						;
 						; validate thread pointer
 %ifdef SANITY_CHECKS				;------------------------------
