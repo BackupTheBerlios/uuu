@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.7 2003/12/31 18:34:44 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.8 2004/01/01 02:17:46 bitglue Exp $
 
 UUUROOT=$(CURDIR)
 
@@ -37,6 +37,8 @@ clean:
 	  $(cleaning) "$$dir"; \
 	  $(MAKE) -C "$$dir" clean; \
 	done
+	$(cleaning) '$(CURDIR)/uuudoc'
+	$(MAKE) -C '$(CURDIR)/uuudoc' clean
 	$(cleaning) '$(CURDIR)'
 	rm -f diskimage boot.o boot.bimage sourcefiles
 	rm -f uuudoc/uuudoc.xml
@@ -52,9 +54,16 @@ $(BIMAGE_OBJS): include/ret_counts.asm
 new_files:
 	rm -f sourcefiles
 
-uuudoc/uuudoc.xml: $(SOURCEFILES)
-	$(generating) '$@'
-	uuudoc/extractuuudoc.pl `find -name '*.asm'` > "$@"
+.PHONY: doc
+doc:
+	$(entering) $(CURDIR)/uuudoc
+	$(MAKE) -C uuudoc all
+	$(entering) $(CURDIR)
+
+uuudoc/uuudoc.xml uuudoc/uuudoc.html: $(SOURCEFILES)
+	$(entering) $(CURDIR)/uuudoc
+	$(MAKE) -C uuudoc $(notdir $@)
+	$(entering) $(CURDIR)
 
 sourcefiles: $(SOURCEFILES)
 	$(generating) '$@'
@@ -65,4 +74,3 @@ sourcefiles: $(SOURCEFILES)
 include/ret_counts.asm: uuudoc/ret_counts.xsl uuudoc/uuudoc.xml
 	$(generating) '$@'
 	$(XSLTPROC) $^ > '$@'
-
