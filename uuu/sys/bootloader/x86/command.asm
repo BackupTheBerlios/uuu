@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.3 2003/10/23 03:11:01 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.4 2003/10/31 22:32:06 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; command parsing and builtin commands for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -10,6 +10,8 @@
 ;				configuration
 ;---------------===============/             \===============---------------
 
+%include "stage2-config.asm"
+
 ; thod dumps THOD_GROUPS * THOD_GROUP_SIZE bytes at a time, with an extra space
 ; every THOD_GROUP_SIZE bytes
 %if SCREEN_WIDTH = 360
@@ -19,6 +21,41 @@
 %endif
 %assign THOD_GROUP_SIZE	4
 
+
+
+;---------------===============\                /===============---------------
+;				external symbols
+;---------------===============/                \===============---------------
+
+; defined by the linker script to be the end of the stage2 data, the buffer is
+; unbounded on the top.
+extern command_buffer
+extern smooth_scroll_off
+extern smooth_scroll_on
+extern get_key
+extern print_char
+extern print_string
+extern print_string_len
+extern print_hex
+extern print_hex_len
+extern pcx_refresh
+extern display_buffer
+extern screen_pos
+
+extern ata_read_sector
+extern floppy_motor_on
+extern floppy_read_sectors
+extern floppy_motor_off
+extern lba_to_chs
+
+
+
+;---------------===============\              /===============---------------
+;				global symbols
+;---------------===============/              \===============---------------
+
+global builtin_clear
+global start_prompt
 
 
 

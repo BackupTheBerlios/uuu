@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.5 2003/10/23 03:39:25 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.6 2003/10/31 22:32:06 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -6,28 +6,13 @@
 ;
 ; 2003-09-22	Phil Frost	Initial version
 
-%ifidn BOOT_CONSOLE,graphical
-  %assign FONT_HEIGHT	8
-  %assign FONT_WIDTH	5
-  %assign FONT_START	' ' ; first letter in the font
-  %assign FONT_END	'~' ; last letter in the font
-  %assign LETTER_PADDING	1   ; blank pixels between letters
-  %assign LINE_PADDING	0   ; blank pixels between lines
 
-  %assign CELL_WIDTH	(FONT_WIDTH + LETTER_PADDING)
-  %assign CELL_HEIGHT	(FONT_HEIGHT + LINE_PADDING)
-  %assign CHAR_PER_COL	(SCREEN_HEIGHT / CELL_HEIGHT)
-  %assign CHAR_PER_ROW	(SCREEN_WIDTH / CELL_WIDTH)
 
-  %assign CURSOR_HEIGHT	2
-  %assign CURSOR_HEADROOM	(FONT_HEIGHT-CURSOR_HEIGHT)
-  %assign CURSOR_COLOR	0xff
+;---------------===============\             /===============---------------
+;				configuration
+;---------------===============/             \===============---------------
 
-  %assign PLANE_SIZE	(SCREEN_HEIGHT * SCREEN_WIDTH / 4)	; bytes per plane
-%elifidn BOOT_CONSOLE,textual
-  %assign CHAR_PER_COL	25
-  %assign CHAR_PER_ROW	80
-%endif
+%include "stage2-config.asm"
 
 %ifidn BOOT_CONSOLE,graphical
   %assign VIDEO_RAM	0xa0000
@@ -67,6 +52,39 @@
 %assign V_BLANK_END		0x16
 %assign MODE_CONTROL		0x17
 
+
+struc pcx_header
+  .manufacturer:	resb 1
+  .version:		resb 1
+  .encoding:		resb 1
+  .bpp:			resb 1
+  .xmin:		resw 1
+  .ymin:		resw 1
+  .xmax:		resw 1
+  .ymax:		resw 1
+  .otherstuff:		resb 116	; bleh bleh
+endstruc
+
+
+
+;---------------===============\              /===============---------------
+;				global symbols
+;---------------===============/              \===============---------------
+
+global screen_pos
+global print_string
+global print_string_len
+global print_hex
+global print_hex_len
+global print_char
+global set_video_mode
+global set_pcx_palette
+global smooth_scroll_off
+global smooth_scroll_on
+global pcx_refresh
+global display_buffer
+global redraw_display
+global wait_vtrace
 
 
 
@@ -848,9 +866,11 @@ align 4
 
 screen_pos: resd 1
 
-display_buffer:
-  .plane0: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
-  .plane1: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
-  .plane2: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
-  .plane3: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
-  .end:
+%ifidn BOOT_CONSOLE,graphical
+  display_buffer:
+    .plane0: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
+    .plane1: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
+    .plane2: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
+    .plane3: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
+    .end:
+%endif

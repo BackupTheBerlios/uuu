@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/floppy.asm,v 1.1 2003/09/23 03:46:22 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/floppy.asm,v 1.2 2003/10/31 22:32:06 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; floppy driver for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -12,6 +12,8 @@
 ;---------------===============\             /===============---------------
 ;				configuration
 ;---------------===============/             \===============---------------
+
+%include "stage2-config.asm"
 
 %assign FDC_DOR		0x3f2
 %assign FDC_MSR		0x3f4
@@ -43,6 +45,26 @@
 %assign FDC_CMD_INT_STATUS	0x08
 
 %assign FLOPPY_BUFFER_ADDR	0x7c00	; let's use the bootloader's memory :)
+
+
+
+;---------------===============\                /===============---------------
+;				external symbols
+;---------------===============/                \===============---------------
+
+extern wait_vtrace
+extern panic
+extern print_string
+
+
+;---------------===============\              /===============---------------
+;				global symbols
+;---------------===============/              \===============---------------
+
+global lba_to_chs
+global floppy_motor_on
+global floppy_motor_off
+global floppy_read_sectors
 
 
 

@@ -1,30 +1,36 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.4 2003/10/23 03:11:01 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.5 2003/10/31 22:32:06 bitglue Exp $
 
 UUUROOT=../../..
 
-.PHONY: all
-all: stage1.bin stage2.bin
+STAGE2_OBJS = stage2.o display.o command.o keyboard.o floppy.o ata.o
 
-$(diskimage): stage1.bin stage2.bin
+.PHONY: all
+all: stage1.bin stage2
+
+$(diskimage): stage1.bin stage2
 	$(generating) "$@"
 	dd if=/dev/zero of=$@ count=2880 2> /dev/null
 	"$(MKUDBFS)" $(MKUDBFSFLAGS) "$@" > /dev/null
 	dd if=stage1.bin of="$(diskimage)" count=1 conv=notrunc 2> /dev/null
-	"$(UDB_INSTBOOT)" $(UDB_INSTBOOT_FLAGS) "$(diskimage)" stage2.bin > /dev/null
+	"$(UDB_INSTBOOT)" $(UDB_INSTBOOT_FLAGS) "$(diskimage)" stage2 > /dev/null
 
 .PHONY: clean
 clean: basic-clean
-	rm -f font.inc *.bin
+	rm -f font.inc *.bin *.o stage2
 
 font.inc: font.src
 	$(generating) "$@"
 	./mkfont.py < font.src > font.inc
 
+stage2: stage2.ld $(STAGE2_OBJS)
+	$(generating) "$@"
+	ld -o '$@' -s -Ttext=0x100000 stage2.ld $(STAGE2_OBJS)
+
 include $(UUUROOT)/Make.config
 
 ASFLAGS += -dBOOT_CONSOLE=$(BOOT_CONSOLE)
 
--include stage1.d stage2.d
+-include stage1.d $(STAGE2_OBJS:.o=.d)
 
 # have to make font.inc before making the deps or nasm will puke
-stage2.d: font.inc
+display.d: font.inc

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.6 2003/10/27 00:40:33 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.7 2003/10/31 22:32:06 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -34,6 +34,8 @@ bits 16
   %define BOOT_CONSOLE graphical
 %endif
 
+; multiboot constants
+
 struc mboot
 .magic               resd 1
 .flags               resd 1
@@ -43,6 +45,47 @@ struc mboot
 .load_end_addr       resd 1
 .bss_end_addr        resd 1
 .entry_addr          resd 1
+endstruc
+
+
+; ELF constants
+
+%assign SHT_PROGBITS	1
+%assign SHT_NOBITS	8
+%assign ELF32_SIGNATURE	0x464C457F
+
+struc elf_header
+.e_signature:	resd 1
+.e_class:	resb 1
+.e_data:	resb 1
+.e_hdrversion:	resb 1
+.e_ident:	resb 9
+.e_type:	resw 1
+.e_machine:	resw 1
+.e_version:	resd 1
+.e_entry:	resd 1
+.e_phoff:	resd 1
+.e_shoff:	resd 1
+.e_flags:	resd 1
+.e_ehsize:	resw 1
+.e_phentisze:	resw 1
+.e_phnum:	resw 1
+.e_shentsize:	resw 1
+.e_shnum:	resw 1
+.e_shstrndx:	resw 1
+endstruc
+
+struc elf_section
+.sh_name:	resd 1
+.sh_type:	resd 1
+.sh_flags:	resd 1
+.sh_addr:	resd 1
+.sh_offset:	resd 1
+.sh_size:	resd 1
+.sh_link:	resd 1
+.sh_info:	resd 1
+.sh_addralign:	resd 1
+.sh_entsize:	resd 1
 endstruc
 
 
@@ -186,7 +229,7 @@ _entry:				; setup data and stack segments
 				; calculate how many blocks are in the file
 				;-------------------------------------------
   lodsw				; AX = file size in bytes
-  add [..@file_size], ax	; some SMC magic for later
+  ;add [..@file_size], ax	; some SMC magic for later
   add ax, bp			; AX = file size in bytes rounded to multiple
 				;   of the block size (low bits don't matter)
   pop cx			; POP CL = log2( block size / udbfs_inode_size )
@@ -332,7 +375,7 @@ loading_object:			;--------------------------------------
 ;  mov [cursor], di
 ;  retn
 ;
-;  cursor: dw 0xa0
+;  cursor: dw 13*0xa0
 
 
 
@@ -397,7 +440,6 @@ drive equ $-1			;    drive ID
   shl al, 6			; move high 2 bits of cylinder number
   or ax, si			; merge in sector value
   xchg ax, cx			; cx = cylinder/sector
-  mov ah, BIOSDISK_READ_SECTORS	; set function number
   mov ax, (BIOSDISK_READ_SECTORS << 8) + 1
 .retry:				;
   pusha				; save all regs in case of an error
@@ -424,7 +466,7 @@ drive equ $-1			;    drive ID
 
 wait_kbd_command:
 ;-----------------------------------------------------------------------------
-  in AL, 64h			; read 8042 status port
+  in al, 64h			; read 8042 status port
   test al, 0x01			; wait until port 0x60 is ready
   jc wait_kbd_command		;
   retn				;
@@ -446,46 +488,85 @@ pmode:
 ;  mov gs, eax			;
   mov ss, eax			;
 
-  mov esi, 0			; [SMC] set esi to header of loaded file
+  mov esi, 0			; [SMC] set esi to top of loaded file
 ..@file_location equ $-4
   shl esi, 4
 
-  mov edi, esi			; prepare to search for multiboot header
-  mov eax, MBOOT_SIGNATURE	; value to search for
-  mov ecx, esi			; search for about 0x8000 cases (will vary
-  repnz scasd			;   on the block size, but it doesn't matter)
-  jnz short .flat		; if we don't find it, assume a flat binary
-				;
-				;
-				; MultiBoot file
-.mboot:				;---------------
-  mov ecx, [edi + mboot.load_end_addr - 4]
-  mov ebp, [edi + mboot.bss_end_addr - 4]
-  mov edx, [edi + mboot.entry_addr - 4]
-  mov edi, [edi + mboot.load_addr - 4]
-  sub ecx, edi			; find number of bytes to move
-  shr ecx, 2			; make them dwords
-  rep movsd			; move them over
-  xor eax, eax			; set eax = 0 for zeroize operation
-  mov ecx, ebp			;
-  sub ecx, edi			; find number of bytes to zeroize
-  jz short .none		; in case there are none
-  shr ecx, 2			; make those bytes dwords
-  rep stosd			; zeroize them
-.none:				;
-  mov eax, MBOOT_LOADED		; set eax to multiboot loaded
-  jmp edx			; jump to entry point
-				;
-				;
+  cmp [esi], dword ELF32_SIGNATURE;
+  jnz short $			;
+
+				; ELF file
+.elf:				;---------
+  mov ebp, esi			; set ebp = pointer to header
+  xor eax, eax			; prepare eax for zeroize operations
+  mov edx, [ebp + elf_header.e_shoff]
+  add edx, ebp			; compute offset to section header in memory
+.process_section:		;
+  mov esi, [edx + elf_section.sh_offset]; load section offset 'in file'
+  add esi, ebp			; compute section offset in memory
+  mov edi, [edx + elf_section.sh_addr]; load destination address
+  mov ecx, [edx + elf_section.sh_size]; number of dword to move
+  cmp [edx + elf_section.sh_type], byte SHT_PROGBITS; data provided?
+  jz short .move		; yes, move it over
+  cmp [edx + elf_section.sh_type], byte SHT_NOBITS; .bss?
+  jnz short .skip		; nope, unknown, skip it
+  rep stosb			; zeroize destination for said lenght
+  jmp short .skip		;
+.move:				;
+  rep movsb			; move provided data
+.skip:				;
+  add edx, byte elf_section_size; move forward to next section description
+  dec byte [ebp + elf_header.e_shnum]; another section to process?
+  jnz short .process_section	; if so, go do it
+  jmp [ebp + elf_header.e_entry]; if not, jump to entry point
+
+; ,-------------------------------------------------------------------------.
+; | here is some code to boot other sorts of files, disabled to save space. |
+; `-------------------------------------------------------------------------' 
+;
+; -=# multiboot standard #=-
+;
+;  mov edi, esi			; prepare to search for multiboot header
+;  mov eax, MBOOT_SIGNATURE	; value to search for
+;  mov ecx, esi			; search for about 0x8000 cases (will vary
+;  repnz scasd			;   on the block size, but it doesn't matter)
+;  jnz short .flat		; if we don't find it, assume a flat binary
+;				;
+;				;
+;				; MultiBoot file
+;.mboot:				;---------------
+;  mov ecx, [edi + mboot.load_end_addr - 4]
+;  mov ebp, [edi + mboot.bss_end_addr - 4]
+;  mov edx, [edi + mboot.entry_addr - 4]
+;  mov edi, [edi + mboot.load_addr - 4]
+;  sub ecx, edi			; find number of bytes to move
+;  shr ecx, 2			; make them dwords
+;  rep movsd			; move them over
+;  xor eax, eax			; set eax = 0 for zeroize operation
+;  mov ecx, ebp			;
+;  sub ecx, edi			; find number of bytes to zeroize
+;  jz short .none		; in case there are none
+;  shr ecx, 2			; make those bytes dwords
+;  rep stosd			; zeroize them
+;.none:				;
+;  mov eax, MBOOT_LOADED		; set eax to multiboot loaded
+;  jmp edx			; jump to entry point
+;				;
+;
+;
+;
+; -=# flat binary #=-
 				; flat binary
-.flat:				;------------
-  mov ecx, 3			; [SMC]
-..@file_size equ $-4		;
-  shr ecx, 2			; bytes -> dwords
-  mov edi, LOAD_ADDR		;
-  mov eax, edi			;
-  rep movsd			;
-  jmp eax			;
+;.flat:				;------------
+;  mov ecx, 3			; [SMC]
+;..@file_size equ $-4		;
+;  shr ecx, 2			; bytes -> dwords
+;  mov edi, LOAD_ADDR		;
+;  mov eax, edi			;
+;  rep movsd			;
+;  jmp eax			;
+
+
 ;------------------------------------------------------------------------------
 
 

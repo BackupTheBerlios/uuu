@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/ata.asm,v 1.1 2003/09/23 03:46:22 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/ata.asm,v 1.2 2003/10/31 22:32:06 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; Primary IDE driver			   Copyright (c) 2000-2001 Dave Poirer
 ; for the stage2 bootloader		     Distributed under the BSD License
@@ -12,6 +12,8 @@
 ;				configuration
 ;---------------===============/             \===============---------------
 
+%include "stage2-config.asm"
+
 %define ATA_SECTOR_BUFFER	0x7c00		; use the boot record's memory
 
 __IODE_ADD_DEVICE_ERR__   equ 1
@@ -22,6 +24,22 @@ struc ata_geometry
 	.sectors_per_track:	resd 1
 	.heads_per_cylinder:	resd 1
 endstruc
+
+
+
+;---------------===============\                /===============---------------
+;				external symbols
+;---------------===============/                \===============---------------
+
+extern print_string
+
+
+
+;---------------===============\              /===============---------------
+;				global symbols
+;---------------===============/              \===============---------------
+
+global ata_read_sector
 
 
 
