@@ -1,4 +1,4 @@
-;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/lib/hash/fasthash.asm,v 1.1 2003/12/31 18:34:44 bitglue Exp $
+;; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/lib/hash/fasthash.asm,v 1.2 2004/01/01 02:16:48 bitglue Exp $
 ;;
 ;; Fasthash - a lib cell providing a fast hash function for hash table lookups
 ;; Copyright (C) 2001 by Phil Frost.
@@ -103,8 +103,8 @@ global lib.string.fasthash
 ;!
 ;!   <p reg="eax" type="pointer" brief="the key, a string of arbitrary
 ;!   bytes"/>
-;!   <p reg="ebx" type="uinteger32" brief="seed">
-;!   <p reg="ecx" type="uinteger32" brief="length of the key"/>
+;!   <p reg="ebx" type="uinteger32" brief="seed"/>
+;!   <p reg="ecx" type="uinteger32" brief="length of the key">
 ;!     This can be used to hash a key in multiple steps by using the result of
 ;!     a previous run as the seed for the next. For the initial call, it may
 ;!     be any value, provided it is always the same, for otherwise the same
