@@ -3,9 +3,10 @@
 #define _FILE_OFFSET_BITS		64
 #define _POSIX_SOURCE
 
+#include <stdlib.h>
 #include "udbfs.h"
 #include "udbfslib.h"
-
+#include "private.h"
 
 
 /* 8.) udbfslib_load_block
@@ -22,18 +23,20 @@
 int		udbfslib_load_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
-//    uint64_t			file_offset,
+    uint64_t			file_offset,
     UDBFSLIB_BLOCK		**block_hook) {
 
-/*  UDBFSLIB_BLOCK *block = udbfslib_allocate_memory_block;
+  UDBFSLIB_BLOCK *block = udbfslib_allocate_memory_block(inode, block_hook);
 
-  *block_hook = block;
+  if( block == NULL ) {
+    return(-1);
+  }
 
   block->id = block_id;
   block->inode = inode;
   block->device_offset = inode->mount->block_size * block->id;
   block->offset_start = file_offset;
-  block->offset_end = file_offset + inode->mount->block_size; */
+  block->offset_end = file_offset + inode->mount->block_size;
 
-  return(-1);
+  return(0);
 }
