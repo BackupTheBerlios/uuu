@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.2 2003/10/03 19:41:45 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.3 2003/10/14 22:21:49 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; central file
@@ -18,6 +18,11 @@ org 0x100000
 ;---------------===============\             /===============---------------
 ;				configuration
 ;---------------===============/             \===============---------------
+
+; arbitrary number used to detect if we are restarting from a reboot or from
+; scratch
+
+%define INIT_MAGIC	0x1fe81f8c
 
 ; 				colors
 ;------------------------------------------------------
@@ -106,12 +111,18 @@ start:					;--------------------
   call set_pcx_palette
   call set_video_mode
 
+  cmp [init_magic], dword INIT_MAGIC
+  jz get_to_business
+
+  call builtin_clear
+  mov [init_magic], dword INIT_MAGIC
+
 
 					; enough play; let's start to boot
 get_to_business:			;---------------------------------
 
   mov bl, VGA_YELLOW
-  printstr 0xa,"Unununium stage 2 bootloader version $Revision: 1.2 $",0x0a
+  printstr "Unununium stage 2 bootloader version $Revision: 1.3 $",0x0a
   mov bl, VGA_WHITE
   printstr "run ",0x27,"help",0x27," for a list of available commands.",0xa
   jmp start_prompt			;
@@ -165,6 +176,13 @@ _gdt:
 ;---------------===============/            \===============---------------
 
 ; WARNING: the .bss section is not set to zero
+
+alignb 4
+
+; set to INIT_MAGIC so we can tell if we are restarting from scratch or from
+; a reboot
+
+init_magic: resd 1
 
 ; buffer for the command line
 command_buffer:		; as long as this is last, it can be as big as we like

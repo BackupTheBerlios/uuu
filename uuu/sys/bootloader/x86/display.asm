@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.2 2003/10/03 19:41:45 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/display.asm,v 1.3 2003/10/14 22:21:49 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; graphical console for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -23,8 +23,6 @@
 %assign CURSOR_COLOR	0xff
 
 %assign PLANE_SIZE	(SCREEN_HEIGHT * SCREEN_WIDTH / 4)	; bytes per plane
-
-%define SCREEN_POS(x,y)	(SCREEN_WIDTH * SCREEN_HEIGHT - ( SCREEN_WIDTH * CELL_HEIGHT * (CHAR_PER_COL-y) ) + CELL_WIDTH * x )
 
 %assign VIDEO_RAM	0xa0000
 
@@ -611,11 +609,7 @@
   dec bl
   jnz .draw_plane
 
-  mov dx, 0x3da		;
-.wait:			;
-  in al, dx		;
-  test al, 0x8		;
-  jnz .wait		;
+  call wait_vtrace
 
   mov ebx, [last_page]
   mov dx, CRTC_INDEX
@@ -683,7 +677,6 @@
 ;---------------===============/             \===============---------------
 
 align 4
-screen_pos: dd SCREEN_POS(0,CHAR_PER_COL-1)
 last_page: dd VIDEO_RAM		; last page used; used for page switching
 
 font:
@@ -712,6 +705,9 @@ pcx_end:
 ;---------------===============/            \===============---------------
 
 align 4
+
+screen_pos: resd 1
+
 display_buffer:
   .plane0: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
   .plane1: resb SCREEN_WIDTH * SCREEN_HEIGHT / 4
