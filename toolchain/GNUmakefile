@@ -12,9 +12,7 @@ ifeq ($(VERBOSE),on)
 endif
 
 all:
-	@set -e
-	@$(foreach util,$(UTILS),$(making) $(util); $(MAKE) -C $(util); )
+	@$(foreach util,$(UTILS),$(making) $(util) && $(MAKE) -C $(util) && ) :
 
 install clean:
-	@set -e
-	@$(foreach util,$(UTILS),$(making) '$@' in $(util); $(MAKE) -C $(util) "$@"; )
+	@$(foreach util,$(UTILS),$(making) '$@' in $(util) && $(MAKE) -C $(util) "$@" && ) :

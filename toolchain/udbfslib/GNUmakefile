@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.9 2003/10/13 21:27:20 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.10 2003/10/13 22:27:23 bitglue Exp $
 
 include ../Make.conf
 
@@ -40,5 +40,7 @@ clean:
 	rm -f libudbfs.a test *.o
 
 install: libudbfs.a
-	cp libudbfs.a "$(LIBDIR)"
-	cp udbfs.h udbfslib.h "$(INCDIR)"
+	$(installing) 'libudbfs.a' in '$(LIBDIR)'
+	cp libudbfs.a '$(LIBDIR)'
+	$(installing) 'udbfs.h' in '$(INCDIR)'
+	cp udbfs.h udbfslib.h '$(INCDIR)'

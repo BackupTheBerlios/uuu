@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkudbfs/GNUmakefile,v 1.5 2003/10/13 22:12:54 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkudbfs/GNUmakefile,v 1.6 2003/10/13 22:27:23 bitglue Exp $
 
 include ../Make.conf
 
@@ -12,4 +12,5 @@ clean:
 	rm -f mkudbfs
 
 install: mkudbfs
-	cp mkudbfs "$(BINDIR)"
+	$(installing) 'mkudbfs' in '$(BINDIR)'
+	cp mkudbfs '$(BINDIR)'
