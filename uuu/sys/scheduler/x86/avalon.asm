@@ -255,6 +255,30 @@ struc _rt_thread_pool_t		; ----- ; -------------------------------------
 .threads	resb _STACK_SIZE_ * 32	; thread headers and stacks
 endstruc			; ----- ; -------------------------------------
 ;------------------------------------------------------------------------------
+;
+; Thread Stack
+;------------------------------------------------------------------------------
+; Describes the order the information is stored on stack from top (highest
+; address) to bottom (lowest address).  This structure should be used for
+; INVERSE address adjustment. For example, if eax points to the current TOS,
+; one would do [eax - _thread_stack_t.eip - 4] to access eip and would do
+; [eax - _thread_stack_t.edi - 4] to access edi.
+;------------------------------------------------------------------------------
+struc _thread_stack_t
+.eip		resd 1
+.eflags		resd 1
+.eax		resd 1
+.ecx		resd 1
+.edx		resd 1
+.ebx		resd 1
+.esp		resd 1
+.ebp		resd 1
+.esi		resd 1
+.edi		resd 1
+endstruc
+;------------------------------------------------------------------------------
+
+
 
 
 ;------------------------------------------------------------------------------
@@ -727,7 +751,7 @@ gproc thrd.initialize
 ;! <ret fatal="0" brief="initialization completed"/>
 ;! <ret fatal="1" brief="initialization failed - thread is being used"/>
 ;!</proc>
-;----------------------------------------------[/realtime thread initialize ]--
+;------------------------------------------------------------------------------
 						; validate thread pointer
 %ifdef SANITY_CHECKS				;------------------------------
  cmp dword [eax + _thread_t.magic], RT_THREAD_MAGIC
@@ -736,16 +760,60 @@ gproc thrd.initialize
 						; make sure the thread is
 						; not currently scheduled
 						;------------------------------
-  cmp byte [eax + _thread_t.status], byte RT_SCHED_STATUS_UNSCHEDULED 
+  cmp byte [eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED 
   jz short .thread_in_use			;
+						; also verify it is unlinked
+%ifdef SANITY_CHECKS				;------------------------------
+ add eax, byte _thread_t.start_ring		;
+ cmp eax, [eax]					;
+ jnz short .sanity_check_failed_linked		;
+ add eax, byte (_thread_t.end_ring - _thread_t.start_ring)
+ cmp eax, [eax]					;
+ jnz short .sanity_check_failed_linked		;
+ sub eax, byte _thread_t.end_ring		;
+%endif						;
+						; set event notification hndlr
+						;------------------------------
+  mov [eax + _thread_t.event_notifier], ebx	;
 						;
-; TODO:
-; - set ESP to thread id
-; - validate .bottom_of_stack (sanity)
-; - make sure the thread is unlinked (sanity)
-; - push on the stack (moving esp) the registers, flags, etc & parameter pointer
-; - set event notification handler
-; - set the initialized flag
+; additional information:
+;------------------------
+; The stack should contain, after initialization, the following values from
+; top to bottom (structure _thread_stack_t):
+;
+;   eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi
+;
+; The pointer to pass to the application has parameter is stored in 'eax'.
+; The ecx, edx, ebx, ebp, esi and edi registers will be 0, esp is set to
+; the thread ID.
+;
+; Let's define a small macro to simplify the addressing:
+%define STACK(x) eax - (_thread_stack_t. %+ x + 4)
+						; set initial register values
+						;------------------------------
+  xor ebx, ebx					;
+  mov [STACK(edi)], ebx				; edi = 0
+  mov [STACK(esi)], ebx				; esi = 0
+  mov [STACK(ebp)], ebx				; ebp = 0
+  mov [STACK(esp)], eax				; esp = pointer to top of stack
+  mov [STACK(ebx)], ebx				; ebx = 0
+  mov [STACK(edx)], ebx				; edx = 0
+  mov [STACK(ecx)], ebx				; ecx = 0
+  mov [STACK(eax)], ecx				; eax = parameter to thread
+  mov [STACK(eflags)], dword _THREAD_INITIAL_EFLAGS_
+  mov [STACK(eip)], edx				; eip = initial control address
+						;
+						; set stack boundaries
+						;------------------------------
+  lea ebx, [eax - _thread_stack_t_size]		; 
+  lea ecx, [eax + (_thread_t_size - _STACK_SIZE_)]
+  mov [eax + _thread_t.top_of_stack], ebx	; top...
+  mov [eax + _thread_t.bottom_of_stack], ecx	; bottom...done
+						;
+						; mark thread as initialized
+						;------------------------------
+  or [eax + _thread_t.flags], byte RT_FLAGS_INIT_STATUS
+  return					;
 						;
 .thread_in_use:					;
   return 1					;
@@ -754,12 +822,19 @@ gproc thrd.initialize
 [section .data]					;------------------------------
 .sanity_magic:					;
   uuustring "thrd.initialize thread pointer failed magic check", 0x0A
+.sanity_linked:
+  uuustring "thrd.initialize thread is linked but unscheduled..sanity failed", 0x0A
 __SECT__					;
+.sanity_check_failed_linked:			;
+  mov ebx, .sanity_linked			;
+  jmp short .sanity_common			;
 .sanity_check_failed_magic:			;
   mov ebx, .sanity_magic			;
+.sanity_common:					;
   xor eax, eax					;
   ret_other					;
 %endif						;
+;----------------------------------------------[/realtime thread initialize ]--
 
 
 
