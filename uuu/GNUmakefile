@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.5 2003/12/23 20:48:59 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/GNUmakefile,v 1.6 2003/12/31 03:22:44 bitglue Exp $
 
 UUUROOT=$(CURDIR)
 
@@ -6,11 +6,13 @@ all: diskimage
 
 include $(UUUROOT)/Make.config
 include $(UUUROOT)/sys/bimage/$(ARCH)/Make.config
+-include sourcefiles
 
 diskimage: boot.bimage
 
 .PHONY: boot.o
 boot.o: $(BIMAGE_OBJS)
+	$(linking) '$^  >  $@'
 	ld -static -s -o '$@' -T sys/bimage/$(ARCH)/bimage.ld $(BIMAGE_OBJS)
 
 boot.bimage: boot.o
@@ -31,12 +33,36 @@ grub: boot.bimage
 
 .PHONY: clean
 clean:
-	rm -f diskimage boot.o boot.bimage
-	$(entering) $(CURDIR)/sys/bootloader
-	$(MAKE) -C sys/bootloader clean
-	$(entering) $(CURDIR)
+	for dir in $(sort $(dir $(BIMAGE_OBJS)) $(dir $(SOURCEFILES)) ); do \
+	  $(cleaning) "$$dir"; \
+	  $(MAKE) -C "$$dir" clean; \
+	done
+	$(cleaning) '$(CURDIR)'
+	rm -f diskimage boot.o boot.bimage sourcefiles
+	rm -f uuudoc/uuudoc.xml
+	rm -f include/ret_counts.asm
 
 .PHONY: $(BIMAGE_OBJS)
-$(BIMAGE_OBJS):
-	$(MAKE) -C $(dir $@) $(notdir $@)
+$(BIMAGE_OBJS): include/ret_counts.asm
+	$(entering) '$(dir $@)'
+	$(MAKE) -C '$(dir $@)' '$(notdir $@)'
+	$(entering) $(CURDIR)
+
+.PHONY: new_files
+new_files:
+	rm -f sourcefiles
+
+uuudoc/uuudoc.xml: $(SOURCEFILES)
+	$(generating) '$@'
+	uuudoc/extractuuudoc.pl `find -name '*.asm'` > "$@"
+
+sourcefiles: $(SOURCEFILES)
+	$(generating) '$@'
+	echo 'SOURCEFILES = \' > '$@'
+	for file in `find '$(UUUROOT)' -name '*.asm'`; do echo "$$file \\" >> '$@'; done
+	echo >> '$@'
+
+include/ret_counts.asm: uuudoc/ret_counts.xsl uuudoc/uuudoc.xml
+	$(generating) '$@'
+	$(XSLTPROC) $^ > '$@'
 

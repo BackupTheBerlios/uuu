@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.4 2003/10/31 22:29:18 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.5 2003/12/31 03:22:44 bitglue Exp $
 ;
 ; Unununium Operating Engine
 ; Distributed under the BSD License
@@ -75,6 +75,72 @@
   jmp [%2+%1*4]
 %endmacro
  
+
+
+;-----------------------------------------------------------------------.
+;						external procedures	;
+
+
+%macro ecall 1-*
+  %define CONT %%continue
+
+  %if %0 - 1 <> %{1}__ret_count
+    %error "incorrect number of return points"
+  %endif
+  call %1
+  %rep %0-1
+    %rotate 1
+    dd %1
+  %endrep
+  %%continue:
+%endmacro
+
+
+
+;-----------------------------------------------------------------------.
+;						debugging macros	;
+
+%macro dme 1.nolist	; prints a number to the upper-left corner of screen
+  pushfd
+  pushad
+  mov edx, %{1}
+  mov edi, 0xB8000
+  extern diable_word_out
+  call diable_dword_out
+  popad
+  popfd
+%endmacro
+
+%macro dmeh 1.nolist	; prints a number and waits for <enter>
+  pushfd
+  pushad
+  mov edx, %{1}
+  mov edi, 0xB80A0
+  extern diable_dword_out_wait
+  call diable_dword_out_wait
+  popad
+  popfd
+%endmacro
+
+%macro dmej 1.nolist	; prints a number to the upper-left and locks
+  pushfd
+  pushad
+  mov edx, %{1}
+  mov edi, 0xB80A0
+  extern diable_dword_out
+  call diable_dword_out
+  popad
+  popfd
+  cli
+  jmp short $
+%endmacro
+
+%macro dbg 1+.nolist    ; a single line %ifdef _DEBUG_ thing
+%ifdef _DEBUG_
+  %1
+%endif
+%endmacro
+
 
 
 %endif ;__MACROS_INC__

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.1 2003/12/26 21:32:55 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.2 2003/12/31 03:22:44 bitglue Exp $
 ;
 ; minimalistic memory allocater, for tempoary and troubleshooting uses.
 
@@ -6,17 +6,20 @@
 extern memory_bottom
 extern memory_top
 
-
-section .text
-
 global mem_alloc
 
-mem_alloc:
 
+
+;---------------===============\             /===============---------------
+				section .text
+;---------------===============/             \===============---------------
+
+;-----------------------------------------------------------------------.
+						mem_alloc:		;
 ;! <proc>
 ;!   <p type="uinteger32" reg="eax" brief="bytes to allocate"/>
 ;!
-;!   <ret brief="allocation successful>
+;!   <ret brief="allocation successful">
 ;!     <r type="pointer" reg="eax" brief="pointer to allocated block"/>
 ;!   </ret>
 ;!   <ret fatal="1" brief="insufficent memory"/>
@@ -30,12 +33,33 @@ mem_alloc:
   pop ebx
   cmp eax, memory_bottom
   jb .nomem
-jmp $
-  jmp [ebx]
+  return
 
 .nomem:
-  jmp [ebx+4]
+  return 1
 
-section .data
+
+
+;-----------------------------------------------------------------------.
+						mem_free:		;
+;! <proc>
+;!   <p type="pointer" reg="eax" brief="block to free"/>
+;!
+;!   <ret brief="deallocation successful"/>
+;!   <ret fatal="1" brief="no such block exists">
+;!     In the case of a debugging memory manager, this may be used to indicate
+;!     that an attempt to free a block of memory that doesn't exist, or
+;!     previously was not allocated with mem_alloc, was made. However, this is
+;!     for debugging only, and this behaviour should not be used under normal
+;!     circumstances.
+;!   </ret>
+;! </proc>
+
+  return
+
+
+;---------------===============\             /===============---------------
+				section .data
+;---------------===============/             \===============---------------
 
 memory_frame:	dd memory_top
