@@ -171,7 +171,8 @@ offset  size    description
     116       1 <link linkend="s-log-block-size">s_log_block_size</>
     117       1 <link linkend="s-inode-format">s_inode_format</>
     118       2 <link linkend="s-extensions">s_extensions</>
-   </programlisting></figure>
+---------------------------
+total size: 120 bytes</programlisting></figure>
    <sect2 id="s-bad-block-inode"><title>Bad Block Inode</title>
     <programlisting>
 label: s_bad_block_inode         offset: 72 (0x48)
@@ -193,8 +194,7 @@ name : Bitmaps Block             size  : unsigned 64bit</programlisting>
    <sect2 id="s-block-count"><title>Block Count</title>
     <programlisting>
 label: s_block_count             offset: 24 (0x18)
-name : Block Count               size  : unsigned 64bit
-    </programlisting>
+name : Block Count               size  : unsigned 64bit</programlisting>
     <para>
      Number of blocks contained in the file system.  This value combined with the <structfield>Log Block Size</>
      can be used to compute the file system total storage capacity.
@@ -203,8 +203,7 @@ name : Block Count               size  : unsigned 64bit
    <sect2 id="s-boot-loader-inode"><title>Boot Loader Inode</title>
     <programlisting>
 label: s_boot_loader_inode       offset: 00 (0x00)
-name : Boot Loader Inode         size  : unsigned 64bit
-    </programlisting>
+name : Boot Loader Inode         size  : unsigned 64bit</programlisting>
     <para>
      Inode ID for the operating system boot loader.  A value of 0 indicate no boot loader has been set.
     </para>
@@ -212,8 +211,7 @@ name : Boot Loader Inode         size  : unsigned 64bit
    <sect2 id="s-creator-os"><title>Creator OS</title>
     <programlisting>
 label: s_creator_os              offset: 114 (0x72)
-name : Creator OS                size  : unsigned 8bit
-    </programlisting>
+name : Creator OS                size  : unsigned 8bit</programlisting>
     <para>
      ID of the operating system used to create the file system.  Defined values are:
     </para><table frame=none pgwide=1 id="udbfs-os"><title>UDBFS_OS values</title>
@@ -249,8 +247,7 @@ name : Extensions                size  : unsigned 8bit + unsigned 8bit</programl
    <sect2 id="s-free-block-count"><title>Free Block Count</title>
     <programlisting>
 label: s_free_block_count        offset: 40 (0x28)
-name : Free Block Count          size  : unsigned 64bit
-    </programlisting>
+name : Free Block Count          size  : unsigned 64bit</programlisting>
     <para>
      Number of unallocated blocks.  This value should match the number of bits set to 1 in the
      <link linkend="block-allocation-bitmap">Block Allocation Bitmap</link> and should always be
@@ -260,8 +257,7 @@ name : Free Block Count          size  : unsigned 64bit
    <sect2 id="s-free-inode-count"><title>Free Inode Count</title>
     <programlisting>
 label: s_free_inode_count        offset: 48 (0x30)
-name : Free Inode Count          size  : unsigned 64bit
-    </programlisting>
+name : Free Inode Count          size  : unsigned 64bit</programlisting>
     <para>
      Number of unallocated inodes.  This value should match the number of bits set to 1 in the
      <link linkend="inode-allocation-bitmap">Inode Allocation Bitmap</link> and should always be
@@ -271,8 +267,7 @@ name : Free Inode Count          size  : unsigned 64bit
    <sect2 id="s-inode-count"><title>Inode Count</title>
     <programlisting>
 label: s_inode_count             offset: 32 (0x20)
-name : Inode Count               size  : unsigned 64bit
-    </programlisting>
+name : Inode Count               size  : unsigned 64bit</programlisting>
     <para>
      Number of inodes contained in the file system.  This value dictates how many separate "files" can
      be stored on the file system.
@@ -281,8 +276,7 @@ name : Inode Count               size  : unsigned 64bit
    <sect2 id="s-inode-format"><title>Inode Format</title>
     <programlisting>
 label: s_inode_format            offset: 117 (0x75)
-name : Inode Format              size  : unsigned 8bit
-    </programlisting>
+name : Inode Format              size  : unsigned 8bit</programlisting>
     <para>
      Inode format version marker.
     </para>
@@ -290,8 +284,7 @@ name : Inode Format              size  : unsigned 8bit
    <sect2 id="s-inode-first-block"><title>Inode First Block</title>
     <programlisting>
 label: s_inode_first_block       offset: 08 (0x08)
-name : Inode First Block         size  : unsigned 64bit
-    </programlisting>
+name : Inode First Block         size  : unsigned 64bit</programlisting>
     <para>
      Block ID of the first inode description.  See <link linkend="inode-table">Inode Table</link> for more
      information.
@@ -300,8 +293,7 @@ name : Inode First Block         size  : unsigned 64bit
    <sect2 id="s-journal-inode"><title>Journal Inode</title>
     <programlisting>
 label: s_journal_inode           offset: 64 (0x40)
-name : Journal Inode             size  : unsigned 64bit
-    </programlisting>
+name : Journal Inode             size  : unsigned 64bit</programlisting>
     <para>
      Inode ID of the <link linkend="journal-file">Journal File</link>.
     </para>
@@ -309,8 +301,7 @@ name : Journal Inode             size  : unsigned 64bit
    <sect2 id="s-last-check"><title>Last Check</title>
     <programlisting>
 label: s_last_check              offset: 88 (0x58)
-name : Last Check                size  : unsigned 64bit
-    </programlisting>
+name : Last Check                size  : unsigned 64bit</programlisting>
     <para>
      Timestamp of the last file system check.  The timestamp is stored in <link linkend="uuu-time">UUU-Time</link>
      format.
@@ -319,8 +310,7 @@ name : Last Check                size  : unsigned 64bit
    <sect2 id="s-last-mount"><title>Last Mount</title>
     <programlisting>
 label: s_last_mount              offset: 104 (0x68)
-name : Last Mount                size  : unsigned 64bit
-    </programlisting>
+name : Last Mount                size  : unsigned 64bit</programlisting>
     <para>
      Timestamp of the last file system read/write mount operation. The timestamp is stored in <link linkend="uuu-time">UUU-Time</link>
      format.
@@ -329,8 +319,7 @@ name : Last Mount                size  : unsigned 64bit
    <sect2 id="s-log-block-size"><title>Log Block Size</title>
     <programlisting>
 label: s_log_block_size          offset: 116 (0x74)
-name : Log Block Size            size  : unsigned 8bit
-    </programlisting>
+name : Log Block Size            size  : unsigned 8bit</programlisting>
     <para>
      Log base 2 of a block size in bytes.  This value is used to determine the block size used by the file system
      using: (2 ^ (7 + s_log_block_size))
@@ -339,8 +328,7 @@ name : Log Block Size            size  : unsigned 8bit
    <sect2 id="s-magic-number"><title>Magic Number</title>
     <programlisting>
 label: s_magic_number            offset: 80 (0x50)
-name : Magic Number              size  : unsigned 64bit
-    </programlisting>
+name : Magic Number              size  : unsigned 64bit</programlisting>
     <para>
      Magic number identifying the file system as UDBFS.  The current signature value is 0x293A5F5346424455 or "UDBFS_:)" in ASCII.
     </para>
@@ -348,8 +336,7 @@ name : Magic Number              size  : unsigned 64bit
    <sect2 id="s-max-interval"><title>Max Interval</title>
     <programlisting>
 label: s_max_interval            offset: 96 (0x60)
-name : Max Interval              size  : unsigned 64bit
-    </programlisting>
+name : Max Interval              size  : unsigned 64bit</programlisting>
     <para>
      Maximum time interval between file system checks.  The time interval is stored in <link linkend="uuu-time">UUU-Time</link> format.
     </para>
@@ -357,8 +344,7 @@ name : Max Interval              size  : unsigned 64bit
    <sect2 id="s-max-mount-count"><title>Max Mount Count</title>
     <programlisting>
 label: s_max_mount_count         offset: 113 (0x71)
-name : Max Mount Count           size  : unsigned 8bit
-    </programlisting>
+name : Max Mount Count           size  : unsigned 8bit</programlisting>
     <para>
      Maximum number of read/write mount operations before forcing a file system check.
     </para>
@@ -366,8 +352,7 @@ name : Max Mount Count           size  : unsigned 8bit
    <sect2 id="s-mount-count"><title>Mount Count</title>
     <programlisting>
 label: s_mount_count             offset: 112 (0x70)
-name : Mount Count               size  : unsigned 8bit
-    </programlisting>
+name : Mount Count               size  : unsigned 8bit</programlisting>
     <para>
      Number of read/write mount operations performed since the last file system check.
     </para>
@@ -375,8 +360,7 @@ name : Mount Count               size  : unsigned 8bit
    <sect2 id="s-superblock-version"><title>Superblock Version</title>
     <programlisting>
 label: s_superblock_version      offset: 115 (0x73)
-name : Superblock Version        size  : unsigned 8bit
-    </programlisting>
+name : Superblock Version        size  : unsigned 8bit</programlisting>
     <para>
      Superblock version marker.
     </para>
@@ -384,8 +368,7 @@ name : Superblock Version        size  : unsigned 8bit
    <sect2 id="s-unique-fs-signature"><title>Unique FS Signature</title>
     <programlisting>
 label: s_unique_fs_signature     offset: 16 (0x10)
-name : Unique FS Signature       size  : unsigned 64bit
-    </programlisting>
+name : Unique FS Signature       size  : unsigned 64bit</programlisting>
     <para>
      (Hopefully) Unique signature created at format time.
     </para>
@@ -433,7 +416,63 @@ name : Unique FS Signature       size  : unsigned 64bit
    </para>
 
    <sect2 id="inode"><title>Inode</title>
-    <para>todo</para>
+    <para>
+     An Inode is a structure describing a file, its size and location.  A file can be a table, a table index, an aggregate of
+     column data or a raw file.  The structure is as follows:
+    </para><figure><title>inode structure - version 01</title><programlisting>
+offset  size    description
+------- ------- -----------
+      0       8 <link linkend="i-size">i_size</link>
+      8      32 <link linkend="i-block">i_block</link>
+     40       8 <link linkend="i-ind-block">i_ind_block</link>
+     48       8 <link linkend="i-bind-block">i_bind_block</link>
+     56       8 <link linkend="i-tind-block">i_tind_block</link>
+---------------------------
+total size: 64 bytes</programlisting></figure>
+    <sect3 id="i-size"><title>Size</title>
+     <programlisting>
+label: i_size                    offset: 00 (0x00)
+name : Size                      size  : unsigned 64bit</programlisting>
+     <para>
+      Indicates the size in bytes of the described file.
+     </para>
+    </sect3>
+    <sect3 id="i-block"><title>Direct Blocks</title>
+     <programlisting>
+label: i_block                   offset: 08 (0x08)
+name : Size                      size  : 4 x unsigned 64bit</programlisting>
+     <para>
+      Array of 4 unsigned 64bit Block ID containing the first few blocks of storage of the file.  A Block ID of 0 means
+      no block has been assigned.
+     </para>
+    </sect3>
+    <sect3 id="i-ind-block"><title>Indirect Block</title>
+     <programlisting>
+label: i_ind_block               offset: 40 (0x28)
+name : Indirect Block            size  : unsigned 64bit</programlisting>
+     <para>
+      Block ID of an Indirect Block.  An Indirect Block is a block that contains an array of Block ID, each pointing to a block
+      containing a part of the file.
+     </para>
+    </sect3>
+    <sect3 id="i-bind-block"><title>Bi-Indirect Block</title>
+     <programlisting>
+label: i_bind_block              offset: 48 (0x30)
+name : Bi-Indirect Block         size  : unsigned 64bit</programlisting>
+     <para>
+      Block ID of a Bi-Indirect Block.  A Bi-Indirect Block is a block that contains an array of Block ID, each pointing to an
+      Indirect Block.  Each of those Indirect Blocks then contain in turn an array of Block ID pointing to blocks of data.
+     </para>
+    </sect3>
+    <sect3 id="i-tind-block"><title>Tri-Indirect Block</title>
+     <programlisting>
+label: i_tind_block              offset: 56 (0x38)
+name : Tri-Indirect Block        size  : unsigned 64bit</programlisting>
+     <para>
+      Block ID of a Tri-Indirect Block.  A Tri-Indirect Block is a block that contains an array of Block ID, each pointing to a
+      Bi-Indirect Block.
+     </para>
+    </sect3>
    </sect2>
   </sect1>
 
@@ -447,7 +486,9 @@ name : Unique FS Signature       size  : unsigned 64bit
    </para>
   </sect1>
   <sect1 id="journal-file"><title>Journal File</title>
-   <para>todo</para>
+   <para>
+    The Journal File format has yet to be specified.  All we know is that we eventually want to have both structure and data journalled.
+   </para>
   </sect1>
   <sect1 id="uuu-time"><title>UUU-Time</title>
    <para>todo</para>
