@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.8 2003/11/07 20:55:38 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.9 2003/11/08 14:51:15 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -29,10 +29,6 @@ bits 16
 ; some more definitions for MultiBoot support
 %assign MBOOT_SIGNATURE	0x1BADB002
 %assign MBOOT_LOADED	0x2BADB002
-
-%ifnidn BOOT_CONSOLE,textual
-  %define BOOT_CONSOLE graphical
-%endif
 
 ; multiboot constants
 
@@ -139,10 +135,8 @@ _entry:				; setup data and stack segments
 				;
 				; set video mode to 320x200
 				;--------------------------
-  mov ax, 0x13			; 13h = 320x200x4bpp
-%ifidn BOOT_CONSOLE,graphical
-  int BIOSVIDEO			; request servicing
-%endif ; %ifidn BOOT_CONSOLE,graphical
+;  mov ax, 0x13			; 13h = 320x200x4bpp
+;  int BIOSVIDEO			; request servicing
 				;
 				; get disk geometry
 				;------------------
@@ -314,30 +308,28 @@ loading_object:			;--------------------------------------
   ; es = segment to load the sectors, must be kept intact
   ; ds = 0000
   ; cs = 0000
-%ifidn BOOT_CONSOLE,graphical
-    mov ax, 200			; 320 x 200
-    mul bp			; compute progress bar percentage
-    div di			;
-    push es			; backup load segment address
-    push word VRAM_SEGMENT	;
-    pop es			; set es = gfx video segment
-    mov di, 320*200		; warp to bottom right corner
-    xchg ax, dx			; dx = progress / 200
-    mov al, 0x09			; al = color
-  .drawing_bar:			;
-    dec di			; get place for 1 pixel
-    dec di			; get place for a 2nd pixel
-    stosb				; draw both pixels with color of AL
-    stosb				;
-    sub di, 320			; move up one line
-    jz short .done_drawing	; if we reached the top we're done.
-    dec dx			; progress bar color swap check
-    jnz short .drawing_bar	; haven't reached that point yet
-    dec ax			; al = color 09->08
-    jmp short .drawing_bar	; continue drawing up to the top
-  .done_drawing:			;
-    pop es			; restore the load segment address
-%endif ; %ifidn BOOT_CONSOLE,graphical
+;    mov ax, 200			; 320 x 200
+;    mul bp			; compute progress bar percentage
+;    div di			;
+;    push es			; backup load segment address
+;    push word VRAM_SEGMENT	;
+;    pop es			; set es = gfx video segment
+;    mov di, 320*200		; warp to bottom right corner
+;    xchg ax, dx			; dx = progress / 200
+;    mov al, 0x09			; al = color
+;  .drawing_bar:			;
+;    dec di			; get place for 1 pixel
+;    dec di			; get place for a 2nd pixel
+;    stosb				; draw both pixels with color of AL
+;    stosb				;
+;    sub di, 320			; move up one line
+;    jz short .done_drawing	; if we reached the top we're done.
+;    dec dx			; progress bar color swap check
+;    jnz short .drawing_bar	; haven't reached that point yet
+;    dec ax			; al = color 09->08
+;    jmp short .drawing_bar	; continue drawing up to the top
+;  .done_drawing:			;
+;    pop es			; restore the load segment address
   popa				; restore registers (si,bx,cx,bp,di)
   cmp bp, di			; loaded all sectors?
   jnz loading_object		; if not, continue loading them

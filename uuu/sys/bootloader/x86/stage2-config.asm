@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.3 2003/11/01 00:46:37 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2-config.asm,v 1.4 2003/11/08 14:51:15 bitglue Exp $
 
 %ifndef __STAGE2_CONFIG__
 %define __STAGE2_CONFIG__
@@ -37,39 +37,11 @@
 ; with the current font and make things considerably slower.
 %assign SCREEN_HEIGHT	240
 
-%ifnidn BOOT_CONSOLE,textual
-  %define BOOT_CONSOLE graphical
-%endif
+%assign FONT_HEIGHT	16
+%assign CHAR_PER_COL	25
+%assign CHAR_PER_ROW	80
 
-
-%ifidn BOOT_CONSOLE,graphical
-  %assign FONT_HEIGHT	8
-  %assign FONT_WIDTH	5
-  %assign FONT_START	' ' ; first letter in the font
-  %assign FONT_END	'~' ; last letter in the font
-  %assign LETTER_PADDING	1   ; blank pixels between letters
-  %assign LINE_PADDING	0   ; blank pixels between lines
-
-  %assign CELL_WIDTH	(FONT_WIDTH + LETTER_PADDING)
-  %assign CELL_HEIGHT	(FONT_HEIGHT + LINE_PADDING)
-  %assign CHAR_PER_COL	(SCREEN_HEIGHT / CELL_HEIGHT)
-  %assign CHAR_PER_ROW	(SCREEN_WIDTH / CELL_WIDTH)
-
-  %assign CURSOR_HEIGHT	2
-  %assign CURSOR_HEADROOM	(FONT_HEIGHT-CURSOR_HEIGHT)
-  %assign CURSOR_COLOR	0xff
-
-  %assign PLANE_SIZE	(SCREEN_HEIGHT * SCREEN_WIDTH / 4)	; bytes per plane
-%elifidn BOOT_CONSOLE,textual
-  %assign CHAR_PER_COL	25
-  %assign CHAR_PER_ROW	80
-%endif
-
-%ifidn BOOT_CONSOLE,graphical
-  %assign VIDEO_RAM	0xa0000
-%elifidn BOOT_CONSOLE,textual
-  %assign VIDEO_RAM	0xb8000
-%endif
+%assign VIDEO_RAM	0xb8000
 
 
 ;-----------------------------------------------------------------------.

@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.7 2003/11/07 20:55:38 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/GNUmakefile,v 1.8 2003/11/08 14:51:15 bitglue Exp $
 
 UUUROOT=../../..
 
@@ -27,8 +27,6 @@ stage2: stage2.ld $(STAGE2_OBJS)
 	ld -static -s -o '$@' -T stage2.ld $(STAGE2_OBJS) $(ZLIB_LDFLAGS)
 
 include $(UUUROOT)/Make.config
-
-ASFLAGS += -dBOOT_CONSOLE=$(BOOT_CONSOLE)
 
 -include stage1.d $(STAGE2_OBJS:.o=.d)
 

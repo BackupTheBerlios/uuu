@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.5 2003/11/07 20:55:38 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.6 2003/11/08 14:51:15 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; command parsing and builtin commands for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -14,11 +14,7 @@
 
 ; thod dumps THOD_GROUPS * THOD_GROUP_SIZE bytes at a time, with an extra space
 ; every THOD_GROUP_SIZE bytes
-%if SCREEN_WIDTH = 360
-  %assign THOD_GROUPS	4
-%else
-  %assign THOD_GROUPS	3
-%endif
+%assign THOD_GROUPS	4
 %assign THOD_GROUP_SIZE	4
 
 
@@ -318,12 +314,10 @@ builtin_thod.error:
   jmp .dump_group
 
 .next_line:
-%if SCREEN_WIDTH != 360
   ; we don't do this when width is 360, because at that width, our output wraps
   ; the display. If we print the newline, we get a blank line between each row.
   mov eax, 0xa
   call print_char
-%endif
 
   dec dword[esp]
   jnz .dump_row
@@ -336,13 +330,6 @@ builtin_thod.error:
   cmp eax, byte 'q'
   popad
   jz .done
-
-%if SCREEN_WIDTH = 360
-  ; however, since we don't print the newline above, we still need to print it
-  ; here.
-  mov eax, 0xa
-  call print_char
-%endif
 
   mov dword[esp], CHAR_PER_COL
   jmp .next_line
@@ -607,25 +594,15 @@ __SECT__
 ;-----------------------------------------------------------------------.
 						builtin_clear:		;
 
-%ifidn BOOT_CONSOLE,graphical
-  mov edi, display_buffer
-  mov ecx, PLANE_SIZE
-  xor eax, eax
-  rep stosd
-%endif
-
-%ifidn BOOT_CONSOLE,textual
   mov eax, 0x07200720
-  mov edi, VIDEO_RAM
-  mov ecx, CHAR_PER_COL * CHAR_PER_ROW / 2
+  mov edi, VIDEO_RAM			; clear the visible page,
+  mov ecx, CHAR_PER_COL * CHAR_PER_ROW	; and one beyond it too
   rep stosd
-%endif
 
-  xor eax, eax
+  mov eax, CHAR_PER_COL * CHAR_PER_ROW * 2
   mov dword [screen_pos], eax
 
   retn
-
 
 
 ;---------------===============\             /===============---------------

@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/keyboard.asm,v 1.3 2003/10/31 22:32:06 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/keyboard.asm,v 1.4 2003/11/08 14:51:15 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; keyboard driver for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -87,26 +87,6 @@ global get_key
   call redraw_display
   push edi
 .wait:
-
-%ifidn BOOT_CONSOLE,graphical
-  call wait_vtrace
-
-  xor eax, eax
-  mov dx, 0x3c6
-  dec eax
-  out dx, al
-  add edx, byte 2
-  mov al, CURSOR_COLOR
-  out dx, al
-  inc edx
-  xor eax, eax
-  out dx, al
-  out dx, al
-  mov al, [cursor_intensity]
-  out dx, al
-  inc al
-  mov [cursor_intensity], al
-%endif ; %ifidn BOOT_CONSOLE,graphical
 
   in al, _KEYB_STATUS_PORT_
   test al, _KEYB_OUTPUT_BUFFER_
