@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.2 2003/10/12 15:21:10 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/write_to_inode.c,v 1.3 2003/10/12 18:03:58 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -71,7 +71,7 @@ int		udbfs_write_to_inode(
 
     physical_offset = block->device_offset + inode->cursor - block->offset_start;
 
-    printf("writing %08X bytes from file offset %016llX to disk physical offset %016llX...\n", partial_write_size, inode->cursor, physical_offset);
+    printf("udbfslib: writing [%08X] bytes from file offset [%016llX] to disk physical offset [%016llX]\n", partial_write_size, inode->cursor, physical_offset); fflush(stdout);
  
 
     if( (lseek(inode->mount->block_device, physical_offset, SEEK_SET) != physical_offset ) ||
@@ -232,6 +232,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_bindblock(
         inode->mount->block_bitmap,
 	inode->mount->block_bitmap_size,
 	&inode->mount->free_block_count );
+      indblock->device_offset = indblock->id * inode->mount->block_size;
       return( udbfslib_extend_indblock( indblock, inode, modifier_offset ) );
     } else {
 
@@ -316,6 +317,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_inode(
   if( inode->ind_block == NULL ) {
     inode->ind_block = udbfslib_allocate_memory_indblock( inode, &inode->ind_block );
     inode->ind_block->id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
+    inode->ind_block->device_offset = inode->ind_block->id * inode->mount->block_size;
 
   }
   block = udbfslib_extend_indblock( inode->ind_block, inode, inode->mount->dir_storage );
@@ -325,6 +327,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_inode(
   if( inode->bind_block == NULL ) {
     inode->bind_block = udbfslib_allocate_memory_bindblock( inode, &inode->bind_block );
     inode->bind_block->id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
+    inode->bind_block->device_offset = inode->bind_block->id * inode->mount->block_size;
 
   }
   block = udbfslib_extend_bindblock( inode->bind_block, inode, inode->mount->dir_storage + inode->mount->ind_storage );
@@ -334,6 +337,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_inode(
   if( inode->tind_block == NULL ) {
     inode->tind_block = udbfslib_allocate_memory_tindblock( inode, &inode->tind_block );
     inode->tind_block->id = udbfslib_allocate_bit( inode->mount->block_bitmap, inode->mount->block_bitmap_size, &inode->mount->free_block_count );
+    inode->tind_block->device_offset = inode->tind_block->id * inode->mount->block_size;
   }
   block = udbfslib_extend_tindblock( inode->tind_block, inode, inode->mount->dir_storage + inode->mount->ind_storage + inode->mount->bind_storage );
   if( block != NULL )
@@ -347,7 +351,7 @@ finalize:
   block->offset_end = block->offset_start + inode->mount->block_size;
   block->device_offset = block->id * inode->mount->block_size;
 
-  printf("udbfslib: block [%lli] allocated to inode [%i] carrying offset [%016llX-%016llX] at device offset [%016llX]\n", block->id, inode->id, block->offset_start, block->offset_end, block->device_offset);
+  printf("udbfslib: block [%016llX] allocated to inode [%016llX] carrying offset [%016llX-%016llX] at device offset [%016llX]\n", block->id, inode->id, block->offset_start, block->offset_end, block->device_offset); fflush(stdout);
   return(block);
 }
 
@@ -379,6 +383,7 @@ static UDBFSLIB_BLOCK *udbfslib_extend_tindblock(
         inode->mount->block_bitmap,
 	inode->mount->block_bitmap_size,
 	&inode->mount->free_block_count );
+      bindblock->device_offset = bindblock->id * inode->mount->block_size;
       return( udbfslib_extend_bindblock( bindblock, inode, modifier_offset ) );
     } else {
       
