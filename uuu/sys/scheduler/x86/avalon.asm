@@ -282,6 +282,39 @@ extern ring_queue.unlink
 
 
 
+; ticks2uuu
+;------------------------------------------------------------------------------
+; Convert a 64bit PIT ticks count to its equivalent duration in microseconds
+;
+; syntax: ticks2uuu
+; modifies: eax, ebx, ecx, edx
+;
+; where:
+;
+;  -input-
+;   ecx:eax		64bit system time
+;
+;  -output-
+;   edx:eax		64bit scheduler internal time (ticks count)
+;
+; Note: yes, eax:ebx is not common, but its simplify the 64bit multiply
+;------------------------------------------------------------------------------
+%macro uuu2ticks 0.nolist
+   shld ecx, eax, _PIT_ADJ_SHIFT_REQUIRED_
+   mov ebx, _PIT_ADJ_DIV_
+   shl eax, _PIT_ADJ_SHIFT_REQUIRED_
+   mul ebx
+   mov eax, ecx
+   mov ecx, edx
+   mul ebx
+   add eax, ecx
+   adc edx, byte 0
+%endmacro
+;------------------------------------------------------------------------------
+
+
+
+
 
 
 
@@ -1072,7 +1105,7 @@ gproc thread.schedule
 ;! <p reg="edx" type="pointer" brief="pointer to delay microseconds until deadline"/>
 ;! <ret fatal="0" brief="success"/>
 ;!</proc>
-;------------------------------------------------[/realtime thread schedule ]--
+;------------------------------------------------------------------------------
 						; validate thread pointer
 %ifdef SANITY_CHECKS				;------------------------------
  cmp [eax + _thread_t.magic], dword RT_THREAD_MAGIC
@@ -1206,7 +1239,92 @@ __SECT__					;
   xor eax, eax					;
   ret_other					;
 %endif
+;------------------------------------------------[/realtime thread schedule ]--
+
+
+
+
+
+
+gproc system_time.get_uuutime
+;-----------------------------------------------[ system time: get uuu time ]--
+;!<proc>
+;! <p reg="eax" type="pointer" brief="destination where to store the 64bit uuu-time"/>
+;! <ret fatal="0" brief="time returned successfully"/>
+;!</proc>
 ;------------------------------------------------------------------------------
+  push eax					;
+						; read current ticks count
+						;------------------------------
+  mov eax, [ticks_count]			;
+  mov ecx, [ticks_count+4]			;
+						; convert ticks to microseconds
+						;------------------------------
+  ticks2uuu					;
+						;
+						; add system time adjustment
+						;------------------------------
+  add eax, [system_time_adjustment]		;
+  adc edx, [system_time_adjustment + 4]		;
+						;
+						; place result in given pointer
+						;------------------------------
+  pop ecx					;
+  mov [ecx], eax				;
+  mov [ecx + 4], edx				;
+  return					;
+;-----------------------------------------------[/system time: get uuu time ]--
+
+
+
+
+
+
+gproc system_time.correct_tick_drift
+;-----------------------------------------[ system time: correct tick drift ]--
+;!<proc>
+;! <p reg="eax" type="pointer" brief="64bit signed tick drift correctional value"/>
+;! <ret fatal="0" brief="tick drift correction recorded"/>
+;!</proc>
+;------------------------------------------------------------------------------
+						; read 64bit drift correction
+						;------------------------------
+  mov ebx, [eax]				; low...
+  mov ecx, [eax + 4]				; high... done
+						;
+						; write it to internal variable
+						;------------------------------
+  mov [tick_drift], ebx				; low...
+  mov [tick_drift + 4], ecx			; high... done
+  return					;
+;-----------------------------------------[/system time: correct tick drift ]--
+
+
+
+
+
+
+gproc system_time.set_tick_drift_correction_rate
+;-----------------------------[ system time: set tick drift correction rate ]--
+;!<proc>
+;! <p reg="eax" type="uinteger32">
+;!  <para>
+;!  Unsigned fixed point 16.16 integer indicating the amount of ticks to adjust the
+;!  ticks count per PIT IRQ.
+;!  </para><para>
+;!  For example a value of 0x00010000 would correct 1 tick per PIT IRQ
+;!  </para>
+;! </p>
+;! <ret fatal="0" brief="drift correction rate adjusted"/>
+;!</proc>
+;------------------------------------------------------------------------------
+  mov [tick_drift_correction], eax
+  return
+;-----------------------------[/system time: set tick drift correction rate ]--
+
+
+
+
 
 
 
