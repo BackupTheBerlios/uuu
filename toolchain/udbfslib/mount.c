@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.5 2003/10/12 22:41:43 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.6 2003/10/12 23:23:45 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -97,6 +97,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     mount->block_bitmap_size	= (mount->block_count + 7)>>3;
     mount->inode_bitmap_offset	= mount->block_bitmap_offset + ((mount->block_count + 7)>>3);
     mount->inode_bitmap_size	= (mount->inode_count + 7)>>3;
+    mount->inode_first_block	= superblock->inode_first_block;
     mount->inode_table_offset	= superblock->inode_first_block * mount->block_size;
     mount->opened_inodes	= NULL;
     mount->root_table_inode	= superblock->root_table_inode;
@@ -110,6 +111,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     mount->creator_os		= superblock->creator_os;
     mount->superblock_version	= superblock->superblock_version;
     mount->inode_format		= superblock->inode_format;
+    mount->max_interval		= superblock->max_interval;
     
     //..:  Free temporary superblock structure
     free( superblock );
@@ -222,7 +224,7 @@ void		udbfs_unmount(
   superblock.inode_first_block = mount->inode_first_block;
   superblock.unique_fs_signature = mount->unique_fs_signature;
   superblock.block_count = mount->block_count;
-  superblock.inode_count = mount->block_count;
+  superblock.inode_count = mount->inode_count;
   superblock.free_block_count = mount->free_block_count;
   superblock.free_inode_count = mount->free_inode_count;
   superblock.bitmaps_block = mount->bitmaps_block;
@@ -238,6 +240,7 @@ void		udbfs_unmount(
   superblock.superblock_version = mount->superblock_version;
   superblock.block_size = mount->log_block_size;
   superblock.inode_format = mount->inode_format;
+  superblock.max_interval = mount->max_interval;
 
   if( (lseek( mount->block_device, 1024, SEEK_SET) != 1024 ) ||
       (write( mount->block_device, &superblock, sizeof(superblock)) != sizeof(superblock)) ) {
