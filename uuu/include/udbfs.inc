@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/udbfs.inc,v 1.2 2003/10/13 01:14:55 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/udbfs.inc,v 1.3 2003/10/13 20:08:55 bitglue Exp $
 
 %ifndef _UDBFS_INC_
 %define _UDBFS_INC_
@@ -31,20 +31,19 @@ struc udbfs_superblock
   .free_block_count:	resq 1	; 0x28
   .free_inode_count:	resq 1	; 0x30
   .bitmaps_block:	resq 1	; 0x38
-  .root_table_inode:	resq 1	; 0x40
-  .journal_inode:	resq 1	; 0x48
-  .bad_block_inode:	resq 1	; 0x50
-  .magic_number:	resq 1	; 0x58
-  .last_check:		resq 1	; 0x60
-  .max_interval:	resq 1	; 0x68
-  .last_mount:		resq 1	; 0x70
+  .journal_inode:	resq 1	; 0x40
+  .bad_block_inode:	resq 1	; 0x48
+  .magic_number:	resq 1	; 0x50
+  .last_check:		resq 1	; 0x58
+  .max_interval:	resq 1	; 0x60
+  .last_mount:		resq 1	; 0x68
 
-  .mount_count:		resb 1	; 0x78
-  .max_mount_count:	resb 1	; 0x79
-  .creator_os:		resb 1	; 0x7A
-  .superblock_version:	resb 1	; 0x7B
-  .block_size:		resb 1	; 0x7C
-  .inode_format:	resb 1	; 0x7D
+  .mount_count:		resb 1	; 0x70
+  .max_mount_count:	resb 1	; 0x71
+  .creator_os:		resb 1	; 0x72
+  .superblock_version:	resb 1	; 0x73
+  .block_size:		resb 1	; 0x74
+  .inode_format:	resb 1	; 0x75
 endstruc
 
 
