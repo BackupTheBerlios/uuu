@@ -249,6 +249,9 @@ extern ring_queue.unlink
 %define TIMER_END_TIME(x)	x + (_thread_t.end_timer + _thread_timer_t.execution_time)
 %define TIMER_END_RING(x)	x + (_thread_t.end_timer + _thread_timer_t.ring)
 
+%define TIMER_R_EXEC(x)		x + (_thread_timer_t.ring - _thread_timer_t.execution_time)
+%define TIMER_R_PROC(x)		x + (_thread_timer_t.ring - _thread_timer_t.procedure)
+
 
 ; uuu2ticks
 ;------------------------------------------------------------------------------
@@ -299,7 +302,7 @@ extern ring_queue.unlink
 ;
 ; Note: yes, eax:ebx is not common, but its simplify the 64bit multiply
 ;------------------------------------------------------------------------------
-%macro uuu2ticks 0.nolist
+%macro ticks2uuu 0.nolist
    shld ecx, eax, _PIT_ADJ_SHIFT_REQUIRED_
    mov ebx, _PIT_ADJ_DIV_
    shl eax, _PIT_ADJ_SHIFT_REQUIRED_
@@ -454,7 +457,9 @@ section .data
 ;
 ; This ring list uses the _thread_t members '.next_link' and
 ; '.previous_link'.
-timer_ring:	def_ring_queue
+;------------------------------------------------------------------------------
+timer_ring:		def_ring_queue
+;------------------------------------------------------------------------------
 
 
 
@@ -536,6 +541,7 @@ ticks_count:			resd 2
 ;------------------------------------------------------------------------------
 
 
+
 ; System Time Adjustment
 ;------------------------------------------------------------------------------
 ; Value controlling the difference between the system time, as per the
@@ -591,7 +597,24 @@ cummulated_drift_correction:	resd 1
 
 
 
+; Executing Thread
+;-----------------------------------------------------------------------------
+; Pointer to _thread_t of the currently executing thread
+;-----------------------------------------------------------------------------
+executing_thread:		resd 1
+;-----------------------------------------------------------------------------
 
+
+
+
+; Internal Stack
+;-----------------------------------------------------------------------------
+; Zone of memory reserved for the IRQ handler to use as stack while executing
+; timer procedures.  This avoid stack overflow on executing threads.
+;-----------------------------------------------------------------------------
+__internal_stack__:		resb 1024
+.top:
+;-----------------------------------------------------------------------------
 
 
 
@@ -1328,6 +1351,8 @@ gproc system_time.set_tick_drift_correction_rate
 
 
 
+
+
 ;
 ; The timers are all registered, no matter their priority, in a single queue
 ;
@@ -1361,4 +1386,172 @@ gproc system_time.set_tick_drift_correction_rate
 
 
 
+
+
+
+
+;                                    .---.
+;                                   /     \
+;                                   | - - |
+;                                  (| ' ' |)
+;                                   | (_) |   o
+;                                   `//=\\' o
+;                                   (((()))
+;                                    )))((
+;                                    (())))
+;                                     ))((
+;                                     (()
+;                                 jgs  ))
+;                                      (
+;
+;
+;                         P I T   i n t e r r u p t
+section .text
+
+
+
+
+__pit_interrupt_handler:
+;-----------------------------------------------------------[ PIT INTERRUPT ]--
+; Receive control directly from the CPU on reception of IRQ 0
+;
+; stack contains EIP, EFLAGS
+; interrupts are disabled
+;------------------------------------------------------------------------------
+						; save current thread registers
+						;------------------------------
+  pushad					;
+						;
+						; get pointer to current thread
+						;------------------------------
+  mov ebp, [executing_thread]			;
+						;
+						; validate acquired pointer
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp [ebp + _thread_t.magic], dword RT_THREAD_MAGIC
+ jnz near .sanity_check_failed_magic		;
+%endif						;
+						; make sure it is within bound
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp esp, ebp					; upper bound... thread ID
+ ja near .sanity_check_failed_bound		;
+ cmp esp, [ebp + _thread_t.bottom_of_stack]	; lower bound...
+ jb near .sanity_check_failed_bound		;
+%endif						;
+						; backup current top of stack
+						;------------------------------
+  mov [ebp + _thread_t.top_of_stack], esp	;
+						;
+						; compute new ticks count
+						;------------------------------
+  mov esi, [ticks_count]			;\
+  mov edi, [ticks_count + 4]			;- read current ticks count
+						;
+  mov ebx, [tick_drift]				;\
+  mov ecx, [tick_drift + 4]			;- verify drift tick drifting
+  mov eax, ebx					;
+  or eax, ecx					;
+  jnz short .correct_drift			;
+						;
+.drift_corrected:				;
+  add esi, [ticks_per_irq]			;\
+  adc edi, byte 0				;- add # of ticks per irq
+						;
+  mov [ticks_count], esi			;\
+  mov [ticks_count + 4], edi			;- store new ticks count
+						;
+						; check for expiring timers
+						;------------------------------
+  mov ebx, timer_ring				; load ring head/tail pointer
+.cycle_timer_ring:				;
+  mov eax, [ebx + _ring_queue_t.next]		; load next node of ring
+  cmp eax, ebx					; verify for complete cycle
+  jz short .timer_cycled			;
+						;
+%ifdef SANITY_CHECKS				; validate next node pointer
+ cmp [eax + _ring_queue_t.previous], ebx	;
+ jnz short .sanity_check_failed_timer		;
+%endif						;
+						;
+  cmp [TIMER_R_EXEC(eax) + 4], edi		; check set execution time
+  ja short .timer_cycled			;
+  jb short .execute_timer			;
+  cmp [TIMER_R_EXEC(eax)], esi			;
+  ja short .timer_cycled			;
+						;
+						; execute timer
+.execute_timer:					;------------------------------
+  mov ebp, eax					; unlink from timer ring..
+  ecall ring_queue.unlink, CONT, .sanity_check_failed_timer
+  mov eax, ebp					;
+  mov esp, __internal_stack__.top		; set internal stack
+  call [TIMER_R_PROC(ebp)]			; execute timer procedure
+  jmp short .cycle_timer_ring			; check for other timers
+						;
+						;
+.timer_cycled:					; load first ready thread
+						;------------------------------
+  mov eax, [ready_for_execution + _ring_queue_t.next]
+						;
+						; validate thread pointer
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp [eax + _thread_t.magic], dword RT_THREAD_MAGIC
+ jnz short .sanity_check_failed_magic		;
+%endif						;
+						; update executing thread ptr
+						;------------------------------
+  mov [executing_thread], eax			;
+						;
+						; activate thread
+						;------------------------------
+  mov esp, [eax + _thread_t.top_of_stack]	; stack...
+  popad						; registers...
+  iretd						; eflags/eip...done
+						;
+%ifdef SANITY_CHECKS				;
+%macro SANITYLOCK 1.nolist			;
+%%label:	mov eax, %{1}			;
+		jmp short %%label		;
+%endmacro					;
+						;
+.sanity_check_failed_magic: SANITYLOCK 1	;
+.sanity_check_failed_timer: SANITYLOCK 2	;
+.sanity_check_failed_bound: SANITYLOCK 3	;
+%endif						;
+						;
+.correct_drift:					; correct timer drift
+						;------------------------------
+  						; edi:esi - current ticks count
+						; ecx:ebx - tick drift
+  mov eax, [cummulated_drift_correction]	;
+  add eax, [tick_drift_correction]		;
+  mov edx, eax					;
+  and eax, 0x0000FFFF				;
+  shr edx, 16					;
+  mov [cummulated_drift_correction], eax	;
+  jz near .drift_corrected			;
+						;
+  test ecx, ecx					;
+  jns short .positive_correction		;
+  neg edx					;
+  cmp ecx, byte -1				;
+  jnz short .execute_correction			;
+  cmp edx, ebx					;
+  jg  short .execute_correction			;
+  jmp short .execute_correction_with_overflow	;
+.positive_correction:				;
+  jnz short .execute_correction			;
+  cmp edx, ebx					;
+  jl  short .execute_correction			;
+.execute_correction_with_overflow:		;
+  mov edx, ebx					;
+.execute_correction:				;
+  sub ebx, edx					;
+  sbb ecx, byte 0				;
+  add esi, edx					;
+  adc edi, byte 0				;
+  mov [tick_drift], ebx				;
+  mov [tick_drift + 4], ecx			;
+  jmp near .drift_corrected			;
+;-----------------------------------------------------------[/PIT INTERRUPT ]--
 
