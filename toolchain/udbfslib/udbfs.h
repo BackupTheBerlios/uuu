@@ -102,5 +102,156 @@ typedef struct udbfs_table	UDBFS_TABLE;
 typedef struct udbfs_column	UDBFS_COLUMN;
 
 
+// UDB Micro-Ops
+#define UDBMO_ALTER_TABLE			0x0A
+#define UDBMO_CHANGE_COLUMN_DATATYPE		0x0B
+#define UDBMO_COMMIT				0x16
+#define UDBMO_CREATE_FILE			0x11
+#define UDBMO_CREATE_TABLE			0x10
+#define UDBMO_DROP_COLUMN			0x04
+#define UDBMO_DROP_INODE			0x13
+#define UDBMO_DROP_NAME				0x14
+#define UDBMO_DROP_ROW				0x03
+#define UDBMO_END_OF_QUERY			0x09
+#define UDBMO_GRANT				0x0C
+#define UDBMO_GROUP				0x1A
+#define UDBMO_INSERT_ROW			0x00
+#define UDBMO_INSERT_COLUMN			0x02
+#define UDBMO_LIMIT				0x19
+#define UDBMO_MATCH				0x18
+#define UDBMO_MOUNT				0x0E
+#define UDBMO_NAME				0x12
+#define UDBMO_ORDER				0x1B
+#define UDBMO_RENAME_COLUMN			0x07
+#define UDBMO_REPLACE_ROW			0x01
+#define UDBMO_REVOKE				0x0D
+#define UDBMO_ROLLBACK				0x17
+#define UDBMO_SELECT				0x05
+#define UDBMO_SET_DEFAULT_COLUMN_ORDERING	0x06
+#define UDBMO_START_TRANSACTION			0x15
+#define UDBMO_UNMOUNT				0x0F
+#define UDBMO_UPDATE				0x08
+
+
+// UDB Packets
+
+  // Column descriptions
+  struct __udbp_column_desc {
+    uint32_t	column_id,
+		offset,
+		count,
+		size;
+    uint8_t	datatype;
+  } PACKED;
+  typedef struct __udbp_column_desc UDBP_COLUMN_DESC;
+
+  // UDBMO_ALTER_TABLE
+  struct __udbp_alter_table {
+    uint16_t	revision;
+    uint8_t	opcode;
+    uint64_t	table_id;
+  } PACKED;
+  typedef struct __udbp_alter_table UDBP_ALTER_TABLE;
+
+  // UDBMO_CHANGE_COLUMN_DATATYPE
+  struct __udbp_change_column_datatype {
+    uint16_t	revision;
+    uint8_t	opcode;
+    UDBP_COLUMN_DESC	column_desc;
+    uint32_t	compression,
+    		encryption,
+		acl;
+  } PACKED;
+  typedef struct __udbp_change_column_datatype UDBP_CHANGE_COLUMN_DATATYPE;
+
+  // UDBMO_COMMIT, UDBMO_END_OF_QUERY
+  struct __udbp_simple {
+    uint16_t	revision;
+    uint8_t	opcode;
+  } PACKED;
+  typedef struct __udbp_simple UDBP_COMMIT;
+  typedef struct __udbp_simple UDBP_END_OF_QUERY;
+
+  // UDBMO_CREATE_FILE and UDBMO_CREATE_TABLE
+  struct __udbp_create_file {
+    uint16_t	revision;
+    uint8_t	opcode;
+    uint64_t	preallocated;
+  } PACKED;
+  typedef struct __udbp_create_file UDBP_CREATE_FILE;
+  typedef struct __udbp_create_file UDBP_CREATE_TABLE;
+
+  // UDBMO_DROP_ROW
+  struct __udbp_drop_row {
+    uint16_t	revision;
+    uint8_t	opcode;
+    uint64_t	table_id;
+  } PACKED;
+  typedef struct __udbp_drop_row UDBP_DROP_ROW;
+
+  // UDBMO_DROP_COLUMN
+  struct __udbp_drop_column {
+    uint16_t	revision;
+    uint8_t	opcode;
+    uint32_t	column_id;
+  } PACKED;
+  typedef struct __udbp_drop_column UDBP_DROP_COLUMN;
+
+  // UDBMO_INSERT_ROW and UDBMO_REPLACE_ROW
+  struct __udbp_insert_row {
+    uint16_t	revision;
+    uint8_t	opcode;
+    uint8_t	data_source;
+    uint32_t	record_length;
+    uint64_t	table_id;
+    uint32_t	acl;
+    UDBP_COLUMN_DESC	column_desc[0];
+  } PACKED;
+  typedef struct __udbp_insert_row UDBP_INSERT_ROW;
+  typedef struct __udbp_insert_row UDBP_REPLACE_ROW;
+
+  // UDBMO_INSERT_COLUMN
+  struct __udbp_insert_column {
+    uint16_t	revision;
+    uint8_t	opcode;
+    uint8_t	datatype;
+    uint32_t	name[31],
+    		count,
+		size,
+		acl,
+		compression,
+		encryption,
+		sequence;
+    uint8_t	list_index,
+    		properties;
+  } PACKED;
+  typedef struct __udbp_insert_column UDBP_INSERT_COLUMN;
+
+  // UDBMO_GRANT : TODO
+  struct __udbp_grant {
+    uint16_t	revision;
+    uint8_t	opcode;
+  } PACKED;
+  typedef struct __udbp_grant UDBP_GRANT;
+
+  // UDBMO_GROUP : TODO
+  struct __udbp_group {
+    uint16_t	revision;
+    uint8_t	opcode;
+  } PACKED;
+  typedef struct __udbp_group UDBP_GROUP;
+
+  // UDBMO_LIMIT
+  struct __udbp_limit {
+    uint16_t	revision;
+    uint8_t	opcode;
+    uint64_t	lower_bound,
+    		upper_bound;
+  } PACKED;
+  typedef struct __udbp_limit UDBP_LIMIT;
+
+  // UDBMO_
+
+
 #endif
 
