@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.9 2003/11/08 14:51:15 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.10 2003/11/12 14:24:04 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -82,12 +82,12 @@ struc elf_phdr
 endstruc
 
 
-;%macro dbg 1
+%macro dbg 1
 ;pusha
 ;mov dx, %1
 ;call print_hex
 ;popa
-;%endmacro
+%endmacro
 
 
 ;------------------------------------------------------------------------------
@@ -212,26 +212,25 @@ _entry:				; setup data and stack segments
   shr bp, cl			; BP = block size in bytes - 1
   and di, bp			; zero the CL MSbs of DI
 
-  xor bx, bx
   call load_block
 
   lea si, [di + 0x7e00 ]	; DS:SI = ptr to bootloader inode
 				;
 				; calculate how many blocks are in the file
 				;-------------------------------------------
-  lodsw				; AX = file size in bytes
+  lodsd				; AX = file size in bytes
   ;add [..@file_size], ax	; some SMC magic for later
-  add ax, bp			; AX = file size in bytes rounded to multiple
+  movzx ebp, bp
+  add eax, ebp			; AX = file size in bytes rounded to multiple
 				;   of the block size (low bits don't matter)
   pop cx			; POP CL = log2( block size / udbfs_inode_size )
   add cl, 6			; CL = log2( block size )
-  shr ax, cl			; convert bytes -> blocks
+  shr eax, cl			; convert bytes -> blocks
   xchg di, ax			; DI = number of blocks to load
 
   				; verify that the size wasn't too big
 				;------------------------------------
-  mov cx, 3			;
-  push cx			; we will need a 3 after loading
+  mov cx, 2			;
   xor ax, ax			;
   rep lodsw			; DS:SI = ptr to first block of bootloader
 				;
@@ -242,18 +241,25 @@ _entry:				; setup data and stack segments
   xchg bp, ax			; set progress bar start BP = 0
   mov [..@file_location], es	; SMC magic
   				;
-  push word [si+0x28]		; save the binary indirection block
-  push word [si+0x2a]		;
+  mov dx, [si+0x28]
+  mov ax, [si+0x2a]
+  push es
+  mov bx, 0x7a0
+  mov es, bx
+  call load_block		; load the binary indirect block, should we need it
+  pop es
 
-  mov ax, [..@sect_size2]	; sectors per block
-  shl ax, 6			; block numbers per block
-  add ax, byte 4
-  push ax
+  mov bx, [..@sect_size2]	; sectors per block
+  shl bx, 6			; block numbers per block
+  add bx, byte 5
 
 				; load the stage2 loader block by block
 loading_object:			;--------------------------------------
+  dec bx
+  jz .load_bind
+
   cmp bp, byte 4		;
-  jnz .no_indirect_yet
+  jnz .load_block
 				; we have read 4 blocks, now move to the
 .load_indirect:
   lodsw				;   indirection block
@@ -267,26 +273,16 @@ loading_object:			;--------------------------------------
   shl si, 4			; SI = ptr to next block number
   pop es
 
-  jmp short .no_bindirect_yet
+  jmp short .load_block
 
-.no_indirect_yet:
-  pop ax
-  push ax
-  cmp bp, ax
-  jnz short .no_bindirect_yet
-
-  mov si, sp
-  mov ax, [si+2]
-  mov dx, [si+4]
-  push es
-  mov si, 0x7e0
-  mov es, si
-  call load_block
-  shl si, 4			; SI = ptr to next block number
-  pop es
+.load_bind:
+  mov bx, [..@sect_size2]	; sectors per block
+  shl bx, 6			; block numbers per block
+  mov si, 0x7a00
+  add word [$-2], byte 8
   jmp short .load_indirect
 
-.no_bindirect_yet:
+.load_block:
   lodsw				; load low 16-bit of block number
   xchg ax, dx			;
   lodsw				; load high 16-bit of block number
@@ -294,6 +290,7 @@ loading_object:			;--------------------------------------
   lodsd				; advance SI, eax should be 0, but don't check
   pusha				; backup registers (si,bx,cx,bp,di)
 				;
+dbg dx
   call load_block		; load 1 block
 
   ;---------------------------------------------------------------------------
@@ -303,33 +300,11 @@ loading_object:			;--------------------------------------
   ; di = total number of blocks to load
   ; si = pointer to next sector id to load
   ; ax, dx and cx are free to use
-  ; bx = offset to load the sectors, must be 0 when leaving
   ; cx = 0
   ; es = segment to load the sectors, must be kept intact
   ; ds = 0000
   ; cs = 0000
-;    mov ax, 200			; 320 x 200
-;    mul bp			; compute progress bar percentage
-;    div di			;
-;    push es			; backup load segment address
-;    push word VRAM_SEGMENT	;
-;    pop es			; set es = gfx video segment
-;    mov di, 320*200		; warp to bottom right corner
-;    xchg ax, dx			; dx = progress / 200
-;    mov al, 0x09			; al = color
-;  .drawing_bar:			;
-;    dec di			; get place for 1 pixel
-;    dec di			; get place for a 2nd pixel
-;    stosb				; draw both pixels with color of AL
-;    stosb				;
-;    sub di, 320			; move up one line
-;    jz short .done_drawing	; if we reached the top we're done.
-;    dec dx			; progress bar color swap check
-;    jnz short .drawing_bar	; haven't reached that point yet
-;    dec ax			; al = color 09->08
-;    jmp short .drawing_bar	; continue drawing up to the top
-;  .done_drawing:			;
-;    pop es			; restore the load segment address
+
   popa				; restore registers (si,bx,cx,bp,di)
   cmp bp, di			; loaded all sectors?
   jnz loading_object		; if not, continue loading them
@@ -337,7 +312,6 @@ loading_object:			;--------------------------------------
 ;----------------------------------------------------------------------------
 				;
 				;
-  add esp, byte 6		; remove the binary indirection block
   cli				; disable interrutps, sensitive stuff coming
 				;
 				; Enable A20
@@ -348,7 +322,7 @@ loading_object:			;--------------------------------------
   mov al, 0xD1                  ; equivalent for older systems
   out 0x64, al                  ; this time send it to the keyboard controller
   call wait_kbd_command         ; wait for 8042 to be ready
-  pop ax			; AX = 3, A20 enabled, reset line high
+  mov al, 3
   out 0x60, al                  ; send to keyboard controller
 				;
 				; turn off FDC motor
@@ -403,15 +377,14 @@ load_block:
 ; AX:DX = block # to load
 ; *** note *** the above parameter is reversed from what it would usually be
 ; ES = destination segment
-; BX = 0
 ;
 ; returns:
 ; ES = updated to point to end of loaded data
-; CX = 0
-; DX:AX = sector after the last one read
 ; everything else unmodified
 ;-----------------------------------------------------------------------------
 
+  pushad
+  xor bx, bx
   xchg ax, dx			; DX:AX = block number of inode table
   mov cl, 0
 ..@sect_size1 equ $-1
@@ -423,8 +396,9 @@ load_block:
 .read_sectors:
   call load_sector
   inc ax
-  adc dx, bx			; (BX is 0)
+  adc dx, bx			; (bx is 0)
   loop .read_sectors
+  popad
 
   retn
 
