@@ -384,11 +384,12 @@ struct _udbfs_file *create_file(
 
   struct _udbfs_file *file = (struct _udbfs_file *)malloc(sizeof(struct _udbfs_file));
 
-  file->inode_id = allocate_bit( inode_bitmap );
   file->blocks = NULL;
-  file->file_size = 0;
-  file->current_offset = 0;
   file->current_block = NULL;
+  file->inode_id = allocate_bit( inode_bitmap );
+  file->current_offset = 0;
+  file->file_size = 0;
+  file->block_count = 0;
 
   return( file );
 }
