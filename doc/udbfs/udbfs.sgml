@@ -514,13 +514,30 @@ offset  size    description
      51       1 reserved
 ---------------------------
 total size: 52 bytes</programlisting></figure>
-   <sect2 id="t-magic-number"><title>Magic Number</title>
+
+   <sect2 id="t-acl-index"><title>ACL Index</title>
     <programlisting>
-label: t_magic_number            offset: 00 (0x00)
-name : Magic Number              size  : unsigned 64bit</programlisting>
+label: t_acl_index               offset: 36 (0x24)
+name : ACL Index                 size  : unsigned 32bit</programlisting>
     <para>
-     Magic number identifying the raw file as a UDBFS Table.  The current signature value is
-     0x454C424154424455 or "UDBTABLE" in ASCII.
+     Access Control List index.  A value of 0 means any access is denied.
+    </para>
+   </sect2>
+   <sect2 id="t-column-count"><title>Column Count</title>
+    <programlisting>
+label: t_column_count            offset: 48 (0x30)
+name : Column Count              size  : unsigned 16bit</programlisting>
+    <para>
+     Number of column descriptions.
+    </para>
+   </sect2>
+   <sect2 id="t-first-free-row"><title>First Free Row</title>
+    <programlisting>
+label: t_first_free_row          offset: 24 (0x18)
+name : First Free Row            size  : unsigned 64bit</programlisting>
+    <para>
+     Physical index of the first empty row.  This value is used as the head of a chained list
+     of free rows within the table.  A value of 0 means there is no empty row.
     </para>
    </sect2>
    <sect2 id="t-last-id"><title>Last ID</title>
@@ -533,6 +550,15 @@ name : Last ID                   size  : unsigned 64bit</programlisting>
      and its new value is assigned as primary key.
     </para>
    </sect2>
+   <sect2 id="t-magic-number"><title>Magic Number</title>
+    <programlisting>
+label: t_magic_number            offset: 00 (0x00)
+name : Magic Number              size  : unsigned 64bit</programlisting>
+    <para>
+     Magic number identifying the raw file as a UDBFS Table.  The current signature value is
+     0x454C424154424455 or "UDBTABLE" in ASCII.
+    </para>
+   </sect2>
    <sect2 id="t-row-count"><title>Row Count</title>
     <programlisting>
 label: t_row_count               offset: 16 (0x10)
@@ -542,15 +568,7 @@ name : Row Count                 size  : unsigned 64bit</programlisting>
      decremented everytime a row is removed.
     </para>
    </sect2>
-   <sect2 id="t-first-free-row"><title>First Free Row</title>
-    <programlisting>
-label: t_first_free_row          offset: 24 (0x18)
-name : First Free Row            size  : unsigned 64bit</programlisting>
-    <para>
-     Physical index of the first empty row.  This value is used as the head of a chained list
-     of free rows within the table.  A value of 0 means there is no empty row.
-    </para>
-   </sect2>
+
    <sect2 id="t-row-size"><title>Row Size</title>
     <programlisting>
 label: t_row_size                offset: 32 (0x20)
@@ -560,14 +578,7 @@ name : Row Size                  size  : unsigned 32bit</programlisting>
      This additional space is to make sure the chained list of free rows have enough space to store a physical row index.
     </para>
    </sect2>
-   <sect2 id="t-acl-index"><title>ACL Index</title>
-    <programlisting>
-label: t_acl_index               offset: 36 (0x24)
-name : ACL Index                 size  : unsigned 32bit</programlisting>
-    <para>
-     Access Control List index.  A value of 0 means any access is denied.
-    </para>
-   </sect2>
+
    <sect2 id="t-owner"><title>Table Owner</title>
     <programlisting>
 label: t_owner                   offset: 40 (0x28)
@@ -576,14 +587,7 @@ name : Table Owner               size  : unsigned 64bit</programlisting>
      User ID of the owner of table (who has access to changing the ACL Index).
     </para>
    </sect2>
-   <sect2 id="t-column-count"><title>Column Count</title>
-    <programlisting>
-label: t_column_count            offset: 48 (0x30)
-name : Column Count              size  : unsigned 16bit</programlisting>
-    <para>
-     Number of column descriptions.
-    </para>
-   </sect2>
+
    <sect2 id="t-properties"><title>Table Properties</title>
     <programlisting>
 label: t_properties              offset: 50 (0x32)
@@ -599,44 +603,6 @@ bit description
   3 <link linkend="tp-auto-reindex">tp_auto_reindex</link>
   4 <link linkend="tp-auto-pack">tp_auto_pack</link>
 5-7 reserved</programlisting></figure>
-    <sect3 id="tp-per-row-acl"><title>Per Row ACL</title>
-     <programlisting>
-label: tp_per_row_acl            offset: 0.0
-name : Per Row ACL               size  : 1bit</programlisting>
-     <para>
-      Enable(1)/Disable(0) per row ACL check.  When enabled a column '.acl' is created
-      and acl ownership for individual rows is stored/checked against.
-     </para>
-    </sect3>
-    <sect3 id="tp-per-column-acl"><title>Per Column ACL</title>
-     <programlisting>
-label: tp_per_column_acl         offset: 0.1
-name : Per Column ACL            size  : 1bit</programlisting>
-     <para>
-      Enable(1)/Disable(0) per column ACL check.  When enabled access to a column information
-      will be checked against the stored ACL of the column.
-     </para>
-    </sect3>
-    <sect3 id="tp-journal-data"><title>Force Data Journaling</title>
-     <programlisting>
-label: tp_journal_data           offset: 0.2
-name : Force Data Journaling     size  : 1bit</programlisting>
-     <para>
-      Force(1)/Use Default(0) table data journaling.  When set to 0, data will be journaled
-      according to the default system setting.  When set to 1, table data will be journaled
-      no matter the default system setting.
-     </para>
-    </sect3>
-    <sect3 id="tp-auto-reindex"><title>Automatic ReIndexing</title>
-     <programlisting>
-label: tp_auto-reindex           offset: 0.3
-name : Automatic ReIndexing      size  : 1bit</programlisting>
-     <para>
-      Enable(1)/Disable(0) automatic re-indexing during system maintenance.  When set to 1,
-      all the row indexes will be compacted into a contiguous sequence during the next
-      system maintenance.  When set to 0, re-indexing will be done only on direct request.
-     </para>
-    </sect3>
     <sect3 id="tp-auto-pack"><title>Automatic Packing</title>
      <programlisting>
 label: tp_auto-pack              offset: 0.4
@@ -649,6 +615,218 @@ name : Automatic Packing         size  : 1bit</programlisting>
       only on direct request.
      </para>
     </sect3>
+    <sect3 id="tp-auto-reindex"><title>Automatic ReIndexing</title>
+     <programlisting>
+label: tp_auto-reindex           offset: 0.3
+name : Automatic ReIndexing      size  : 1bit</programlisting>
+     <para>
+      Enable(1)/Disable(0) automatic re-indexing during system maintenance.  When set to 1,
+      all the row indexes will be compacted into a contiguous sequence during the next
+      system maintenance.  When set to 0, re-indexing will be done only on direct request.
+     </para>
+    </sect3>
+    <sect3 id="tp-journal-data"><title>Force Data Journaling</title>
+     <programlisting>
+label: tp_journal_data           offset: 0.2
+name : Force Data Journaling     size  : 1bit</programlisting>
+     <para>
+      Force(1)/Use Default(0) table data journaling.  When set to 0, data will be journaled
+      according to the default system setting.  When set to 1, table data will be journaled
+      no matter the default system setting.
+     </para>
+    </sect3>
+    <sect3 id="tp-per-column-acl"><title>Per Column ACL</title>
+     <programlisting>
+label: tp_per_column_acl         offset: 0.1
+name : Per Column ACL            size  : 1bit</programlisting>
+     <para>
+      Enable(1)/Disable(0) per column ACL check.  When enabled access to a column information
+      will be checked against the stored ACL of the column.
+     </para>
+    </sect3>
+    <sect3 id="tp-per-row-acl"><title>Per Row ACL</title>
+     <programlisting>
+label: tp_per_row_acl            offset: 0.0
+name : Per Row ACL               size  : 1bit</programlisting>
+     <para>
+      Enable(1)/Disable(0) per row ACL check.  When enabled a column '.acl' is created
+      and acl ownership for individual rows is stored/checked against.
+     </para>
+    </sect3>
+   </sect2>
+  </sect1>
+
+  <sect1 id="column-description"><title>Column Description</title>
+   <para>
+    Immediately following the table header is a column description for every column defined.  Each column description
+    uses the following structure:
+   </para><figure><title>column description structure</title><programlisting>
+offset  size    description
+------- ------- -----------
+      0       4 <link linkend="c-name-length">c_name_length</link>
+      4     124 <link linkend="c-name">c_name</link>
+    128       4 <link linkend="c-count">c_count</link>
+    132       4 <link linkend="c-acl">c_acl</link>
+    136       4 <link linkend="c-compression">c_compression</link>
+    140       4 <link linkend="c-encryption">c_encryption</link>
+    144       8 <link linkend="c-related-file">c_related_file</link>
+    152       4 <link linkend="c-offset">c_offset</link>
+    156       1 <link linkend="c-list-index">c_list_index</link>
+    157       1 <link linkend="c-properties">c_properties</link>
+    158       1 <link linkend="c-type">c_type</link>
+    159       1 <link linkend="c-shift">c_shift</link>
+---------------------------
+total size: 160 bytes</programlisting></figure>
+   <sect2 id="c-acl"><title>ACL Index</title>
+    <programlisting>
+label: c_acl                     offset: 132 (0x84)
+name : ACL Index                 size  : unsigned 32bit</programlisting>
+    <para>
+     Column ACL Index.  A value of 0 means any access is denied.  This value is
+     checked only if <link linkend="tp-per-column-acl">tp_per_column_acl</link>
+     and <link linkend="cp-acl">cp_acl</link> are both enabled.
+    </para>
+   </sect2>
+   <sect2 id="c-compression"><title>Compression Index</title>
+    <programlisting>
+label: c_compression             offset: 136 (0x88)
+name : Compression Index         size  : unsigned 32bit</programlisting>
+    <para>
+     Compression algorithm used to compress the data of this column.  A value of 0
+     indicates the data is stored uncompressed.
+    </para>
+   </sect2>
+   <sect2 id="c-count"><title>Repeat Count</title>
+    <programlisting>
+label: c_count                   offset: 128 (0x80)
+name : Repeat Count              size  : unsigned 32bit</programlisting>
+    <para>
+     Number of times the sized datatype is repeated.  This value allows to create
+     an array of the specified datatype.
+    </para>
+   </sect2>
+   <sect2 id="c-encryption"><title>Encryption Index</title>
+    <programlisting>
+label: c_encryption              offset: 140 (0x8C)
+name : Encryption Index          size  : unsigned 32bit</programlisting>
+    <para>
+     Encryption algorithm used to secure the data stored in this column.  A value of
+     0 indicates the datat is stored unencrypted.
+    </para>
+   </sect2>
+   <sect2 id="c-list-index"><title>List Index</title>
+    <programlisting>
+label: c_list_index              offset: 156 (0x9C)
+name : List Index                size  : unsigned 8bit</programlisting>
+    <para>
+     Order in which to display the column when a default listing is requested.  A value of 0 indicates
+     the column should not be listed.
+    </para>
+   </sect2>
+   <sect2 id="c-name"><title>Name</title>
+    <programlisting>
+label: c_name                    offset: 04 (0x04)
+name : Name                      size  : 31 x unsigned 32bit</programlisting>
+    <para>
+     Column name in UCS-4.
+    </para>
+   </sect2>
+   <sect2 id="c-name-length"><title>Name Length</title>
+    <programlisting>
+label: c_name_length             offset: 00 (0x00)
+name : Name Length               size  : unsigned 32bit</programlisting>
+    <para>
+     Length of column name in characters.
+    </para>
+   </sect2>
+   <sect2 id="c-offset"><title>Offset</title>
+    <programlisting>
+label: c_offset                  offset: 152 (0x98)
+name : Offset                    size  : unsigned 32bit</programlisting>
+    <para>
+     Offset in bytes to the record within the row data.
+    </para>
+   </sect2>
+   <sect2 id="c-properties"><title>Properties</title>
+    <programlisting>
+label: c_properties              offset: 157 (0x9D)
+name : Properties                size  : unsigned 8bit</programlisting>
+    <para>
+     Bitfield controlling various options on the column:
+    </para><figure><title>column properties bitfield</title><programlisting>
+bit description
+--- -----------
+  0 <link linkend="cp-acl">cp_acl</link>
+  1 <link linkend="cp-compress">cp_compress</link>
+  2 <link linkend="cp-encrypt">cp_encrypt</link>
+  3 <link linkend="cp-list-desc">cp_list_desc</link>
+4-7 reserved</programlisting></figure>
+    <sect3 id="cp-acl"><title>ACL Enable</title>
+     <para>
+      Enable(1)/Disable(0) ACL check on this column.
+     </para>
+    </sect3>
+    <sect3 id="cp-compress"><title>Compression Enable</title>
+     <para>
+      Enable(1)/Disable(0) Compression on this column data.
+     </para>
+    </sect3>
+    <sect3 id="cp-encrypt"><title>Encryption Enable</title>
+     <para>
+      Enable(1)/Disable(0) Encryption on this column data.
+     </para>
+    </sect3>
+    <sect3 id="cp-list-desc"><title>List Descending</title>
+     <para>
+      Descending(1)/Ascending(0) Listing by default.
+     </para>
+    </sect3>
+   </sect2>
+   <sect2 id="c-related-file"><title>Related File</title>
+    <programlisting>
+label: c_related_file            offset: 144 (0x90)
+name : Related File              size  : unsigned 32bit</programlisting>
+    <para>
+     When the column type is <constant>CT_SEQUENCE</constant>, it
+     is used to indicate the Inode ID of the referenced table.
+    </para>
+   </sect2>
+   <sect2 id="c-shift"><title>Shift</title>
+    <programlisting>
+label: c_shift                   offset: 159 (0x9F)
+name : Shift                     size  : unsigned 32bit</programlisting>
+    <para>
+     Number of bits to rotate to access the record.  This value is used
+     only for column types <constant>CT_DATA1</constant>, <constant>CT_DATA2</constant> and
+     <constant>CT_DATA4</constant>.
+    </para>
+   </sect2>
+   <sect2 id="c-type"><title>Type</title>
+    <programlisting>
+label: c_type                    offset: 158 (0x9E)
+name : Type                      size  : unsigned 8bit</programlisting>
+    <para>
+     One of the following:
+    </para><table frame=none pgwide=1 id="ct"><title>CT_ values</title>
+     <tgroup cols=3 align=left>
+      <colspec colwidth="40*">
+      <colspec colwidth="20*">
+      <colspec colwidth="40*">
+      <tbody>
+       <row><entry>CT_DATA1</><entry>0</><entry>unsigned 1bit</></>
+       <row><entry>CT_DATA2</><entry>1</><entry>unsigned 2bit</></>
+       <row><entry>CT_DATA4</><entry>2</><entry>unsigned 4bit</></>
+       <row><entry>CT_DATA8</><entry>3</><entry>unsigned 8bit</></>
+       <row><entry>CT_DATA16</><entry>4</><entry>unsigned 16bit</></>
+       <row><entry>CT_DATA32</><entry>5</><entry>unsigned 32bit</></>
+       <row><entry>CT_DATA64</><entry>6</><entry>unsigned 64bit</></>
+       <row><entry>CT_DATA128</><entry>7</><entry>unsigned 128bit</></>
+       <row><entry>CT_UCS4</><entry>128</><entry>UCS-4 (Unicode)</></>
+       <row><entry>CT_SEQUENCE</><entry>129</><entry>subtable/sequence</></>
+       <row><entry>CT_FILE</><entry>130</><entry>file</></>
+      </tbody>
+     </tgroup>
+    </table>
    </sect2>
   </sect1>
  </chapter>
