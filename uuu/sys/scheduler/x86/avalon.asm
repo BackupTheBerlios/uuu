@@ -216,6 +216,73 @@
 %include "ret_counts.asm"
 
 
+extern ring_queue.link_ordered
+extern ring_queue.prepend
+extern ring_queue.unlink
+
+
+
+
+;                                    .---.
+;                                   /     \
+;                                   | - - |
+;                                  (| ' ' |)
+;                                   | (_) |   o
+;                                   `//=\\' o
+;                                   (((()))
+;                                    )))((
+;                                    (())))
+;                                     ))((
+;                                     (()
+;                                 jgs  ))
+;                                      (
+;
+;
+;                                 m a c r o s
+
+
+%define TIMER_START_PROC(x)	x + (_thread_t.start_timer + _thread_timer_t.procedure)
+%define TIMER_START_TIME(x)	x + (_thread_t.start_timer + _thread_timer_t.execution_time)
+%define TIMER_START_RING(x)	x + (_thread_t.start_timer + _thread_timer_t.ring)
+
+%define TIMER_END_PROC(x)	x + (_thread_t.end_timer + _thread_timer_t.procedure)
+%define TIMER_END_TIME(x)	x + (_thread_t.end_timer + _thread_timer_t.execution_time)
+%define TIMER_END_RING(x)	x + (_thread_t.end_timer + _thread_timer_t.ring)
+
+
+; uuu2ticks
+;------------------------------------------------------------------------------
+; Convert a 64bit microseconds value in its equivalent duration in PIT ticks.
+;
+; syntax: uuu2ticks
+; modifies: eax, ebx, ecx, edx
+;
+; where:
+;
+;  -input-
+;   ecx:eax		64bit system time
+;
+;  -output-
+;   edx:eax		64bit scheduler internal time (ticks count)
+;
+; Note: yes, eax:ebx is not common, but its simplify the 64bit multiply
+;------------------------------------------------------------------------------
+%macro uuu2ticks 0.nolist
+   shld ecx, eax, _PIT_ADJ_SHIFT_REQUIRED_
+   mov ebx, _PIT_ADJ_MULT_
+   shl eax, _PIT_ADJ_SHIFT_REQUIRED_
+   mul ebx
+   mov eax, ecx
+   mov ecx, edx
+   mul ebx
+   add eax, ecx
+   adc edx, byte 0
+%endmacro
+;------------------------------------------------------------------------------
+
+
+
+
 
 
 
@@ -354,20 +421,9 @@ section .data
 ;
 ; This ring list uses the _thread_t members '.next_link' and
 ; '.previous_link'.
-queue:
-.start_run_timers:	def_ring_queue
-;
-; End run timers
-;------------------------------------------------------------------------------
-; Ring list containing all scheduled, waiting, executing and sleeping threads
-; sorted by their execution end time.  This list is used to generate event to
-; thread event notifier callbacks to notice when a thread execution could not
-; be finished before its set deadline.
-;
-; This ring list uses the _thread_t members '.endrun_next_link' and
-; '.endrun_previous_link'.
-.end_run_timers:	def_ring_queue
-;------------------------------------------------------------------------------
+timer_ring:	def_ring_queue
+
+
 
 
 
@@ -378,7 +434,25 @@ thread_pools_ring:	def_ring_queue
 
 
 
+; Ticks per IRQ
+;------------------------------------------------------------------------------
+; Number of PIT ticks per IRQ currently programmed.  This value should be
+; changed only using the thread.change_system_resolution procedure.
+;
+; Note: while the currently supported underlying hardware support only a 16bit
+; value, this variable is made 32bit to allow for a different hardware timing
+; mechanism to be used.
+;------------------------------------------------------------------------------
+ticks_per_irq:		dd 0
+;------------------------------------------------------------------------------
 
+
+
+
+; Ready For Execution [threads]
+;------------------------------------------------------------------------------
+ready_for_execution:	def_ring_queue
+;------------------------------------------------------------------------------
 
 
 
@@ -417,6 +491,70 @@ pre_allocated_thread_pools:			;
 ;------------------------------------------------------------------------------
 
 
+; Ticks Count
+;------------------------------------------------------------------------------
+; Number of PIT ticks since the scheduler was initialized.
+;
+; For each timer interrupt, this value is incremented by the value of
+; the variable 'ticks_per_irq'.  See the 'PIT Adjustment Value' section
+; above for more information.
+;------------------------------------------------------------------------------
+ticks_count:			resd 2
+;------------------------------------------------------------------------------
+
+
+; System Time Adjustment
+;------------------------------------------------------------------------------
+; Value controlling the difference between the system time, as per the
+; system_time.get_uuutime, and the scheduler internal time.  This value 64bit
+; value is specified in microseconds.
+;------------------------------------------------------------------------------
+system_time_adjustment:		resd 2
+;------------------------------------------------------------------------------
+
+
+; Tick Drift
+;------------------------------------------------------------------------------
+; Number of ticks behind/forward to correct the internal time by.  This allows
+; for correction of hardware timer drifting.  The value set here will
+; progressively be integrated with the scheduler internal time.
+;
+; 
+;
+; Note: if any major time modification (more than a few seconds) has to be
+; done, it is recommended to change the 'system_time_adjustment' instead of
+; correcting tick drift.
+;------------------------------------------------------------------------------
+tick_drift:			resd 2
+;------------------------------------------------------------------------------
+
+
+
+; Tick Drift Correction
+;------------------------------------------------------------------------------
+; Amount of ticks to adjust the 'ticks_count' per PIT IRQ.
+;
+; Allows to control how fast the tick drift will be integrated to the
+; scheduler internal time.  See the system_time.correct_tick_drift procedure
+; documentation for more information on how to set this value.
+;
+; Fixed-point, unsigned.  16.16
+;------------------------------------------------------------------------------
+tick_drift_correction:		resd 1
+;------------------------------------------------------------------------------
+
+
+
+; Cummulated Drift Correction
+;------------------------------------------------------------------------------
+; Decimal part of the summed tick drift corrections. See the documentation of
+; system_time.correct_tick_drift for complete details.
+;
+; Fixed-point, unsigned:  16.16
+;------------------------------------------------------------------------------
+cummulated_drift_correction:	resd 1
+;------------------------------------------------------------------------------
+
 
 
 
@@ -452,9 +590,9 @@ section .text
 
 
 
+
 __set_timer:
 ;--------------------------------------------------------------[ set timer ]--
-;>
 ;; Reprogram the PIT and sets the number of full timer expirations for a given
 ;; microsecond delay.
 ;;
@@ -468,7 +606,6 @@ __set_timer:
 ;; eax = destroyed
 ;; edx = destroyed
 ;; pit_ticks = number of full expiration to let go
-;<
 ;-----------------------------------------------------------------------------
 %ifdef _RT_TIMER_TICKS_				;-timer is in PIT ticks
   mov edx, eax					; move tick count in edx
@@ -545,6 +682,14 @@ __set_timer:
 
 
 
+__thread_expired:
+__thread_ready:
+__re_evaluate_execution_priority:
+
+
+
+
+
 
 
 
@@ -575,7 +720,7 @@ section .text
 
 
 ;-------------------------------------------------[ realtime thread acquire ]--
-gproc thrd.acquire
+gproc thread.acquire
 ;!<proc>
 ;! <ret fatal="0" brief="allocation succesfull">
 ;!  <r reg="eax" brief="pointer to allocated thread"/>
@@ -647,10 +792,10 @@ gproc thrd.acquire
  add	ebx, (_STACK_SIZE_ * 32) + _rt_thread_pool_t_size - _thread_t_size
  cmp	eax, ebx				;
  ja	short .failed_sanity_check_thread_id	;
- mov	[eax + _thread_t.start_ring + _ring_queue_t.next], eax
- mov	[eax + _thread_t.start_ring + _ring_queue_t.previous], eax
- mov	[eax + _thread_t.end_ring + _ring_queue_t.next], eax
- mov	[eax + _thread_t.end_ring + _ring_queue_t.previous], eax
+ mov	[TIMER_START_RING(eax) + _ring_queue_t.next], eax
+ mov	[TIMER_START_RING(eax) + _ring_queue_t.previous], eax
+ mov	[TIMER_END_RING(eax) + _ring_queue_t.next], eax
+ mov	[TIMER_END_RING(eax) + _ring_queue_t.previous], eax
  mov	[eax + _thread_t.magic], dword RT_THREAD_MAGIC
 %endif						;
   mov	[eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
@@ -703,7 +848,7 @@ __SECT__
 
 
 ;-------------------------------------------------[ realtime thread release ]--
-gproc thrd.release
+gproc thread.release
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="pointer to thread to release"/>
 ;! <ret fatal="0" brief="deallocation succesfull"/>
@@ -741,7 +886,7 @@ __SECT__					;
 
 
 
-gproc thrd.initialize
+gproc thread.initialize
 ;----------------------------------------------[ realtime thread initialize ]--
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="pointer to thread to initialize"/>
@@ -764,13 +909,13 @@ gproc thrd.initialize
   jz short .thread_in_use			;
 						; also verify it is unlinked
 %ifdef SANITY_CHECKS				;------------------------------
- add eax, byte _thread_t.start_ring		;
+ add eax, byte (_thread_t.start_timer + _thread_timer_t.ring)
  cmp eax, [eax]					;
  jnz short .sanity_check_failed_linked		;
- add eax, byte (_thread_t.end_ring - _thread_t.start_ring)
+ add eax, byte (_thread_t.end_timer - _thread_t.start_timer)
  cmp eax, [eax]					;
  jnz short .sanity_check_failed_linked		;
- sub eax, byte _thread_t.end_ring		;
+ sub eax, byte (_thread_t.end_timer + _thread_timer_t.ring)
 %endif						;
 						; set event notification hndlr
 						;------------------------------
@@ -839,20 +984,150 @@ __SECT__					;
 
 
 
-gproc thrd.schedule
+gproc thread.schedule
 ;------------------------------------------------[ realtime thread schedule ]--
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="pointer to thread to schedule"/>
 ;! <p reg="ebx" type="uinteger32" brief="inverse priority to set"/>
-;! <p reg="ecx" type="pointer" brief="pointer to uuutime start time"/>
-;! <p reg="edx" type="pointer" brief="pointer to uuutime deadline"/>
-;! <ret fatal="0" brief="thread scheduled"/>
-;! <ret fatal="1" brief="deadline already expired"/>
-;! <ret fatal="2" brief="failed to scheduled - thread is being used"/>
-;! <ret fatal="3" brief="thread not properly initialized"/>
+;! <p reg="ecx" type="pointer" brief="pointer to delay in microseconds until start time"/>
+;! <p reg="edx" type="pointer" brief="pointer to delay microseconds until deadline"/>
+;! <ret fatal="0" brief="success"/>
 ;!</proc>
 ;------------------------------------------------[/realtime thread schedule ]--
-  ret_other
+						; validate thread pointer
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp [eax + _thread_t.magic], dword RT_THREAD_MAGIC
+ jnz near .sanity_check_failed_magic		;
+%endif						;
+						; make sure the thread is not
+						; currently scheduled
+						;------------------------------
+  cmp [eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
+  jnz near .thread_in_use			;
+						;
+						; verify that it is not linked
+						; in one of the ring queues
+%ifdef SANITY_CHECKS				;------------------------------
+ add eax, byte (_thread_t.start_timer + _thread_timer_t.ring)
+ cmp [eax + _ring_queue_t.next], eax		;
+ jnz near .sanity_check_failed_linked		;
+ add eax, byte (_thread_t.end_timer - _thread_t.start_timer)
+ cmp [eax + _ring_queue_t.next], eax		;
+ jnz near .sanity_check_failed_linked		;
+ sub eax, byte (_thread_t.end_timer + _thread_timer_t.ring)
+%endif						;
+						; set requested priority
+						;------------------------------
+  mov [eax + _thread_t.execution_priority], ebx	;
+						;
+						;
+						; compute expiration time
+						;------------------------------
+  push esi					;
+  mov esi, eax					;-thread pointer
+  push ecx					;-ptr to delay until start
+  mov eax, [edx]				;
+  mov ecx, [edx + 4]				;
+  uuu2ticks					;
+  add eax, dword [ticks_count]			;
+  adc edx, dword [ticks_count + 4]		;
+						; store expiration time
+						;------------------------------
+  mov [TIMER_END_TIME(esi)], eax		;
+  mov [TIMER_END_TIME(esi) + 4], edx		;
+						; register expiration timer
+						;------------------------------
+  lea eax, [TIMER_END_RING(esi)]		;
+  mov [TIMER_END_PROC(esi)], dword __thread_expired
+  mov ebx, timer_ring				;
+  ecall ring_queue.link_ordered, CONT, .failed_link
+						;
+						; compute delay until start
+						;------------------------------
+  pop ecx					;-ptr to delay until start
+  mov eax, [ecx]				;
+  mov ecx, [ecx + 4]				;
+  mov edx, eax					;
+  or  edx, ecx					;
+  jz  .ready_immediately			;
+  uuu2ticks					;
+  add eax, dword [ticks_count]			;
+  adc edx, dword [ticks_count + 4]		;
+						; store start time
+						;------------------------------
+  mov [TIMER_START_TIME(esi)], eax		;
+  mov [TIMER_START_TIME(esi) + 4], edx		;
+						; register ready timer
+						;------------------------------
+  lea eax, [TIMER_START_RING(esi)]		;
+  mov [TIMER_START_PROC(esi)], dword __thread_ready
+  mov ebx, timer_ring				;
+  ecall ring_queue.link_ordered, .clean_and_exit, .failed_link_unreg_end_timer
+						;
+						; set thread in ready queue
+.ready_immediately:				;------------------------------
+  mov ebx, [esi + _thread_t.execution_priority]	;
+  mov [TIMER_START_TIME(esi)], ebx		;
+  mov [TIMER_START_TIME(esi) + 4], edx		;- edx = 0
+  lea eax, [TIMER_START_RING(esi)]		;
+  mov ebx, ready_for_execution			;
+  ecall ring_queue.link_ordered, CONT, .failed_link_unreg_end_timer
+  ;----------------------------------------------------------------------------
+  ;
+  ; Additional Information:
+  ;------------------------
+  ; The '_thread_t.start_timer' structure is re-used to ring into the
+  ; ready_for_execution.  See the _thread_t structure for more details.
+  ;----------------------------------------------------------------------------
+						; re-evaluate exec priority
+						;------------------------------
+  call __re_evaluate_execution_priority		;
+						;
+						; clean and exit
+.clean_and_exit					;------------------------------
+  pop esi					; restore original esi
+  return					;
+						;
+						; error: thread already in use
+.thread_in_use:					;------------------------------
+  xor ebx, ebx					;
+  xor eax, eax					;
+  ret_other					;
+						; error: linking failed
+						; no timer registered yet
+.failed_link:					;------------------------------
+  pop ecx					;
+  pop esi					;
+  ret_other					;
+						; error: linking failed
+						; must unregister end timer
+.failed_link_unreg_end_timer:			;------------------------------
+  push eax					;\
+  push ebx					;- save error code
+  lea eax, [TIMER_END_RING(esi)]		;
+  ecall ring_queue.unlink, CONT, CONT		;
+  pop ebx					;- restore error code
+  pop eax					;/
+  pop esi					; restore original esi
+  ret_other					;
+
+						;
+%ifdef SANITY_CHECKS				;
+[section .data]					;
+.sanity_magic:					;
+  uuustring "thread.schedule magic failed on thread", 0x0A
+.sanity_linked:
+  uuustring "thread.schedule - marked as unscheduled but linked - sanity failed", 0x0A
+__SECT__					;
+.sanity_check_failed_linked:			;
+  mov ebx, .sanity_linked			;
+  jmp short .sanity_common			;
+.sanity_check_failed_magic:			;
+  mov ebx, .sanity_magic			;
+.sanity_common:					;
+  xor eax, eax					;
+  ret_other					;
+%endif
 
 
 
