@@ -23,12 +23,13 @@
 
 
 
-gproc ringqueue.prepend
+gproc ring_queue.prepend
 ;--------------------------------------------------------[ prepend to queue ]--
 ;!<proc brief="Prepend a thread to a ring queue">
 ;! <p reg="eax" type="pointer" brief="pointer to node to prepend"/>
 ;! <p reg="ebx" type="pointer" brief="pointer to ring queue"/>
 ;! <ret fatal="0" brief="prepending successful"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
 %ifdef SANITY_CHECKS				;-o
@@ -70,7 +71,7 @@ __SECT__					; return to code section
 
 
 
-gproc ringqueue.link_ordered
+gproc ring_queue.link_ordered
 ;---------------------------------------------------[ link to ordered queue ]--
 ;!<proc>
 ;! Link a thread into a ordered ring list.  The ordering value for both the
@@ -79,6 +80,7 @@ gproc ringqueue.link_ordered
 ;! <p reg="eax" type="pointer" brief="pointer to node to link"/>
 ;! <p reg="ebx" type="pointer" brief="pointer to ring queue"/>
 ;! <ret fatal="0" brief="linking succeeded"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
 %ifdef SANITY_CHECKS				;-o
@@ -144,18 +146,13 @@ __SECT__					; select back the code section
 
 
 
-gproc ringqueue.unlink
+gproc ring_queue.unlink
 ;-------------------------------------------------------[ unlink from queue ]--
-;>
-;; Unlink a thread from a ring list.
-;;
-;;
-;; parameters:
-;;   eax = pointer to thread ring links
-;;
-;; returns:
-;;   -nothing-
-;<
+;!<proc brief="Unlink a node from a ring queue">
+;! <p reg="eax" type="pointer" brief="pointer to node to remove"/>
+;! <ret fatal="0" brief="success"/>
+;! <ret brief="other"/>
+;!</proc>
 ;------------------------------------------------------------------------------
   mov ebx, [eax + _ring_queue_t.next]		; load member after thread
   mov ecx, [eax + _ring_queue_t.previous]	; load member previos to thread
