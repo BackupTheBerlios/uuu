@@ -1,6 +1,10 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.5 2003/10/12 21:34:05 instinc Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.6 2003/10/12 22:32:33 bitglue Exp $
 
-.PHONY: all clean test
+PREFIX = /usr/local
+LIBDIR = $(PREFIX)/lib
+INCDIR = $(PREFIX)/include
+
+.PHONY: all clean install
 
 OBJS=\
  add_column.o\
@@ -42,3 +46,7 @@ test: test.c libudbfs.a
 
 clean:
 	rm -f libudbfs.a test
+
+install: libudbfs.a
+	cp libudbfs.a "$(LIBDIR)"
+	cp udbfs.h udbfslib.h "$(INCDIR)"
