@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.2 2003/12/31 03:22:44 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/memory_manager/x86/noblame.asm,v 1.3 2003/12/31 04:57:34 bitglue Exp $
 ;
 ; minimalistic memory allocater, for tempoary and troubleshooting uses.
 
@@ -15,7 +15,7 @@ global mem_alloc
 ;---------------===============/             \===============---------------
 
 ;-----------------------------------------------------------------------.
-						mem_alloc:		;
+						mem.allocate:		;
 ;! <proc>
 ;!   <p type="uinteger32" reg="eax" brief="bytes to allocate"/>
 ;!
@@ -41,7 +41,7 @@ global mem_alloc
 
 
 ;-----------------------------------------------------------------------.
-						mem_free:		;
+						mem.free:		;
 ;! <proc>
 ;!   <p type="pointer" reg="eax" brief="block to free"/>
 ;!
