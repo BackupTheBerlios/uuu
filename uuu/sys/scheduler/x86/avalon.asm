@@ -674,14 +674,6 @@ __scheduler_init:
 						;
 						; Initialize 'Init' Thread
 						;------------------------------
-%ifdef SANITY_CHECKS				;
- lea ebx, [TIMER_START_RING(eax)]		;
- lea ecx, [TIMER_END_RING(eax)]			;
- mov [ebx + _ring_queue_t.next], ebx		;
- mov [ebx + _ring_queue_t.previous], ebx	;
- mov [ecx + _ring_queue_t.next], ecx		;
- mov [ecx + _ring_queue_t.previous], ecx	;
-%endif						;
   xor ebx, ebx					; set empty event handler
   ecall thread.initialize, CONT, CONT		;
 						;
