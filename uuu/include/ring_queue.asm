@@ -13,4 +13,20 @@ struc _ring_queue_t		; ----- ;
 endstruc			; ----- ;
 ;------------------------------------------------------------------------------
 
+
+%macro def_ring_queue 0.nolist
+%%start:
+  istruc _ring_queue_t
+at _ring_queue_t.next,		dd %%start
+at _ring_queue_t.previous,	dd %%start
+  iend
+%endmacro
+
+%macro def_ring_queue 2.nolist
+  istruc _ring_queue_t
+at _ring_queue_t.next,		dd %{1}
+at _ring_queue_t.previous,	dd %{2}
+  iend
+%endmacro
+
 %endif
