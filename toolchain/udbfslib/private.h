@@ -7,6 +7,7 @@ uint64_t		udbfslib_allocate_bit(
 UDBFSLIB_INODE	*udbfslib_allocate_memory_inode(
     UDBFSLIB_MOUNT		*mount );
 
+
 void		udbfslib_link(
     void			*root,
     void			*new_node );
@@ -14,16 +15,19 @@ void		udbfslib_link(
 int		udbfslib_load_ind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
+    uint64_t			offset_modifier,
     UDBFSLIB_INDBLOCK		**linkpoint );
 
 int		udbfslib_load_bind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
+    uint64_t			offset_modifier,
     UDBFSLIB_BINDBLOCK		**linkpoint );
 
 int		udbfslib_load_tind_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
+    uint64_t			offset_modifier,
     UDBFSLIB_TINDBLOCK		**linkpoint );
 
 UDBFSLIB_BLOCK	*udbfslib_select_active_inode_block(
@@ -48,4 +52,10 @@ void		udbfslib_unload_bind_block(
 int		udbfslib_load_block(
     UDBFSLIB_INODE		*inode,
     uint64_t			block_id,
+    uint64_t			file_offset,
     UDBFSLIB_BLOCK		**block_hook );
+
+UDBFSLIB_BLOCK *udbfslib_allocate_memory_block(
+    UDBFSLIB_INODE *inode,
+    UDBFSLIB_BLOCK **linkpoint );
+
