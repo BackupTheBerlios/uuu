@@ -18,12 +18,12 @@
 
 
 
+%include "ring_queue.asm"
+%include "ret_counts.asm"
 
 
 
-
-global ringqueue_prepend
-ringqueue_prepend:
+gproc ringqueue_prepend
 ;--------------------------------------------------------[ prepend to queue ]--
 ;!<proc brief="Prepend a thread to a ring queue">
 ;! <p reg="eax" type="pointer" brief="pointer to node to prepend"/>
@@ -31,7 +31,7 @@ ringqueue_prepend:
 ;! <ret fatal="0" brief="prepending successful"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  cmp [eax + _ring_queue_t.next], eax		; thread points back to itself?
  jnz short .failed_sanity			; no? failed
  cmp [eax + _ring_queue_t.previous], eax	; thread points back to itself?
@@ -40,7 +40,7 @@ ringqueue_prepend:
 						;
   mov ecx, [ebx + _ring_queue_t.next]		; Load first ring member
 						;
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  cmp [ecx + _ring_queue_t.previous], ebx	; Make sure member points back
  jnz short .failed_sanity			; ZF=0? guess it doesn't, fail
 %endif						;--o
@@ -51,20 +51,15 @@ ringqueue_prepend:
   mov [ecx + _ring_queue_t.previous], eax	; 1st member point to thread
   return					; return to caller
 						;
-%ifdef RT_SANITY_CHECKS				;-o
- %ifdef RT_SANITY_DEVBENCH
+%ifdef SANITY_CHECKS				;-o
 [section .data]					; declare some data
 .str:						;
- db .str_end - $ - 1				;
- db "sanity check failed in __prepend_to_queue", 0x0A
- .str_end:					;
+ uuustring "sanity check failed in __prepend_to_queue", 0x0A
 __SECT__					; return to code section
 .failed_sanity:					;
- mov eax, dword .str	; error message to display
- %else
-.failed_sanity:
- %endif
- return
+ mov ebx, dword .str				; error message to display
+ xor eax, eax					; TODO : set error code
+ ret_other					;
 %endif						;--o
 ;------------------------------------------------------------------------------
 
@@ -75,8 +70,7 @@ __SECT__					; return to code section
 
 
 
-global ringqueue_link_ordered
-ringqueue_link_ordered:
+gproc ringqueue_link_ordered
 ;---------------------------------------------------[ link to ordered queue ]--
 ;!<proc>
 ;! Link a thread into a ordered ring list.  The ordering value for both the
@@ -87,7 +81,7 @@ ringqueue_link_ordered:
 ;! <ret fatal="0" brief="linking succeeded"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  cmp [eax + _ring_queue_t.next], eax		; thread points back to itself?
  jnz short .failed_sanity			; no? failed
  cmp [eax + _ring_queue_t.previous], eax	; thread points back to itself?
@@ -107,7 +101,7 @@ ringqueue_link_ordered:
   mov edx, ebx					; set ref to previous member
 .check_complete_round:				;
 						;
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  cmp [ecx + _ring_queue_t.previous], edx	; next member points back?
  jnz short .failed_sanity			; if not, invalid next member
 %endif						;--o
@@ -133,31 +127,24 @@ ringqueue_link_ordered:
   pop edi					; restore original edi
   mov [edx + _ring_queue_t.next], eax		; set ring next to thread
   mov [ecx + _ring_queue_t.previous], eax	; set ring previous to thread
-  retn						; return to caller TODO
+  return					; return to caller
 						;
-%ifdef RT_SANITY_CHECKS				;-o
- %ifdef RT_SANITY_DEVBENCH
+%ifdef SANITY_CHECKS				;-o
 [section .data]					; declare some data
 .str:						;
- db .str_end - $ - 1				;
- db "failed sanity check in __link_to_ordered_queue", 0x0A
- .str_end:					;
+ uuustring "failed sanity check in __link_to_ordered_queue", 0x0A
 __SECT__					; select back the code section
 .failed_sanity:					;
- mov [sanity_check_failed.string], dword .str	; error message to display
- jmp sanity_check_failed			; display it
- %else
-.failed_sanity:
-  %error "return macro not yet included!"	; TODO
- %endif
+ mov ebx, dword .str				; error message to display
+ xor eax, eax					; TODO : set error code
+ ret_other					;
 %endif						;--o
 ;------------------------------------------------------------------------------
 
 
 
 
-global ringqueue_unlink
-ringqueue_unlink:
+gproc ringqueue_unlink
 ;-------------------------------------------------------[ unlink from queue ]--
 ;>
 ;; Unlink a thread from a ring list.
@@ -173,7 +160,7 @@ ringqueue_unlink:
   mov ebx, [eax + _ring_queue_t.next]		; load member after thread
   mov ecx, [eax + _ring_queue_t.previous]	; load member previos to thread
 						;
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  cmp [ebx + _ring_queue_t.previous], eax	; next member points to thread?
  jnz short .failed_sanity			; no? well, invalid pointer
  cmp [ecx + _ring_queue_t.next], eax		; prev member points to thread?
@@ -185,38 +172,30 @@ ringqueue_unlink:
   mov [ebx + _ring_queue_t.previous], ecx	; close previous ring member
   mov [ecx + _ring_queue_t.next], ebx		; close next ring member
 						;
-%ifdef RT_SANITY_CHECKS				;-o
+%ifdef SANITY_CHECKS				;-o
  mov [eax + _ring_queue_t.next], eax		; loop back thread next link
  mov [eax + _ring_queue_t.previous], eax	; loop back thread previous lnk
 %endif						;--o
 						;
   return					; return to the caller
 						;
-%ifdef RT_SANITY_CHECKS				;-o
- %ifdef RT_SANITY_DEVBENCH			;
+%ifdef SANITY_CHECKS				;-o
 [section .data]					; declare some data
 .str_failed:					;
- db .end_failed - $ - 1				;
- db "failed sanity check in __unlink_from_queue", 0x0A
- .end_failed:					;
+ uuustring "failed sanity check in __unlink_from_queue", 0x0A
 .str_unlinked:					;
- db .end_unlinked - $ - 1			;
- db "thread already unlinked in __unlink_from_queue", 0x0A
- .end_unlinked:					;
+ uuustring "thread already unlinked in __unlink_from_queue", 0x0A
 __SECT__					; select back the code section
 						;
 .failed_sanity:					;
- mov [sanity_check_failed.string], dword .str_failed	; error message to display
- jmp sanity_check_failed			; display it
+ mov ebx, dword .str_failed			; error message to display
+ jmp short .sanity_common			;
 						;
 .already_unlinked:				;
- mov [sanity_check_failed.string], dword .str_unlinked	; error message to display
- jmp sanity_check_failed			; display it
- %else						;
-.failed_sanity:					;
-.already_unlinked:				;
- %endif						;
- return 2					;
+ mov ebx, dword .str_unlinked			; error message to display
+.sanity_common:					;
+ xor eax, eax					; TODO : set error code
+ ret_other					;
 %endif						;--o
 ;------------------------------------------------------------------------------
 
