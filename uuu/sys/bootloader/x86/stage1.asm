@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.10 2003/11/12 14:24:04 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.11 2003/12/30 15:29:07 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -81,13 +81,6 @@ struc elf_phdr
   .p_align:	resd 1	; Segment alignment
 endstruc
 
-
-%macro dbg 1
-;pusha
-;mov dx, %1
-;call print_hex
-;popa
-%endmacro
 
 
 ;------------------------------------------------------------------------------
@@ -290,7 +283,6 @@ loading_object:			;--------------------------------------
   lodsd				; advance SI, eax should be 0, but don't check
   pusha				; backup registers (si,bx,cx,bp,di)
 				;
-dbg dx
   call load_block		; load 1 block
 
   ;---------------------------------------------------------------------------
