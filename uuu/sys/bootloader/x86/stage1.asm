@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.7 2003/10/31 22:32:06 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage1.asm,v 1.8 2003/11/07 20:55:38 bitglue Exp $
 ; original version called "u_burn" by Dave Poirier
 ; adapted to use UDBFS by Phil Frost
 ;
@@ -50,9 +50,8 @@ endstruc
 
 ; ELF constants
 
-%assign SHT_PROGBITS	1
-%assign SHT_NOBITS	8
-%assign ELF32_SIGNATURE	0x464C457F
+%define PT_LOAD		1		; Loadable program segment
+%define ELF32_SIGNATURE	0x464C457F
 
 struc elf_header
 .e_signature:	resd 1
@@ -68,24 +67,22 @@ struc elf_header
 .e_shoff:	resd 1
 .e_flags:	resd 1
 .e_ehsize:	resw 1
-.e_phentisze:	resw 1
+.e_phentsize:	resw 1
 .e_phnum:	resw 1
 .e_shentsize:	resw 1
 .e_shnum:	resw 1
 .e_shstrndx:	resw 1
 endstruc
 
-struc elf_section
-.sh_name:	resd 1
-.sh_type:	resd 1
-.sh_flags:	resd 1
-.sh_addr:	resd 1
-.sh_offset:	resd 1
-.sh_size:	resd 1
-.sh_link:	resd 1
-.sh_info:	resd 1
-.sh_addralign:	resd 1
-.sh_entsize:	resd 1
+struc elf_phdr
+  .p_type:	resd 1	; Segment type
+  .p_offset:	resd 1	; Segment file offset
+  .p_vaddr:	resd 1	; Segment virtual address
+  .p_paddr:	resd 1	; Segment physical address
+  .p_filesz:	resd 1	; Segment size in file
+  .p_memsz:	resd 1	; Segment size in memory
+  .p_flags:	resd 1	; Segment flags
+  .p_align:	resd 1	; Segment alignment
 endstruc
 
 
@@ -178,7 +175,7 @@ _entry:				; setup data and stack segments
   sub eax, udbfs_magic		; compare, and set EAX = 0 while we are at it
   jnz error			;
 
-  mov cl, -2			; CL = - log2( 512 )
+  mov cl, -2			; CL = - 7 - log2( 512 )
   add cl, [si + udbfs_superblock.block_size]
   mov [..@sect_size1], cl	; CL = log2( block size / 512 )
   inc ax			; AX = 1
@@ -251,11 +248,20 @@ _entry:				; setup data and stack segments
   xchg bp, ax			; set progress bar start BP = 0
   mov [..@file_location], es	; SMC magic
   				;
+  push word [si+0x28]		; save the binary indirection block
+  push word [si+0x2a]		;
+
+  mov ax, [..@sect_size2]	; sectors per block
+  shl ax, 6			; block numbers per block
+  add ax, byte 4
+  push ax
+
 				; load the stage2 loader block by block
 loading_object:			;--------------------------------------
   cmp bp, byte 4		;
-  jnz .not_yet			; sometimes thinking of label names is hard...
+  jnz .no_indirect_yet
 				; we have read 4 blocks, now move to the
+.load_indirect:
   lodsw				;   indirection block
   xchg ax, dx			;
   lodsw				; AX:DX = indirection block number
@@ -267,7 +273,26 @@ loading_object:			;--------------------------------------
   shl si, 4			; SI = ptr to next block number
   pop es
 
-.not_yet:
+  jmp short .no_bindirect_yet
+
+.no_indirect_yet:
+  pop ax
+  push ax
+  cmp bp, ax
+  jnz short .no_bindirect_yet
+
+  mov si, sp
+  mov ax, [si+2]
+  mov dx, [si+4]
+  push es
+  mov si, 0x7e0
+  mov es, si
+  call load_block
+  shl si, 4			; SI = ptr to next block number
+  pop es
+  jmp short .load_indirect
+
+.no_bindirect_yet:
   lodsw				; load low 16-bit of block number
   xchg ax, dx			;
   lodsw				; load high 16-bit of block number
@@ -320,6 +345,7 @@ loading_object:			;--------------------------------------
 ;----------------------------------------------------------------------------
 				;
 				;
+  add esp, byte 6		; remove the binary indirection block
   cli				; disable interrutps, sensitive stuff coming
 				;
 				; Enable A20
@@ -499,26 +525,41 @@ pmode:
 .elf:				;---------
   mov ebp, esi			; set ebp = pointer to header
   xor eax, eax			; prepare eax for zeroize operations
-  mov edx, [ebp + elf_header.e_shoff]
-  add edx, ebp			; compute offset to section header in memory
-.process_section:		;
-  mov esi, [edx + elf_section.sh_offset]; load section offset 'in file'
-  add esi, ebp			; compute section offset in memory
-  mov edi, [edx + elf_section.sh_addr]; load destination address
-  mov ecx, [edx + elf_section.sh_size]; number of dword to move
-  cmp [edx + elf_section.sh_type], byte SHT_PROGBITS; data provided?
-  jz short .move		; yes, move it over
-  cmp [edx + elf_section.sh_type], byte SHT_NOBITS; .bss?
-  jnz short .skip		; nope, unknown, skip it
-  rep stosb			; zeroize destination for said lenght
-  jmp short .skip		;
-.move:				;
-  rep movsb			; move provided data
-.skip:				;
-  add edx, byte elf_section_size; move forward to next section description
-  dec byte [ebp + elf_header.e_shnum]; another section to process?
-  jnz short .process_section	; if so, go do it
+
+  mov edx, [ebp + elf_header.e_phoff]
+  add edx, ebp			; EDX = ptr to program header
+
+.process_segment:		;
+  cmp [edx + elf_phdr.p_type], byte PT_LOAD	; do we care?
+  jnz short .next_segment
+
+  mov edi, [edx + elf_phdr.p_paddr]
+  mov ecx, [edx + elf_phdr.p_filesz]
+  test ecx, ecx
+  jz short .no_filesz
+
+  mov esi, [edx + elf_phdr.p_offset]
+  add esi, ebp
+
+  rep movsb
+
+.no_filesz:
+  mov ecx, [edx + elf_phdr.p_memsz]
+  sub ecx, [edx + elf_phdr.p_filesz]
+  test ecx, ecx
+  jz .next_segment
+
+  rep stosb
+
+.next_segment:
+  movzx ebx, word[ebp + elf_header.e_phentsize]
+  add edx, ebx
+  dec word [ebp + elf_header.e_phnum]
+  jnz .process_segment
+
   jmp [ebp + elf_header.e_entry]; if not, jump to entry point
+
+
 
 ; ,-------------------------------------------------------------------------.
 ; | here is some code to boot other sorts of files, disabled to save space. |

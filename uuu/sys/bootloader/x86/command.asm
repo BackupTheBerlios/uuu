@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.4 2003/10/31 22:32:06 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/command.asm,v 1.5 2003/11/07 20:55:38 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; command parsing and builtin commands for the stage2 bootloader
 ;---------------------------------------------------------------------------==|
@@ -41,6 +41,7 @@ extern print_hex_len
 extern pcx_refresh
 extern display_buffer
 extern screen_pos
+extern builtin_boot
 
 extern ata_read_sector
 extern floppy_motor_on
@@ -379,6 +380,8 @@ builtin_thod.error:
   dd (.end - $ - 4) / 4
   ucs4string "available commands:"
   dd 0xa
+  ucs4string "boot - boot the test bootimage"
+  dd 0xa
   ucs4string "echo - have the computer mock you"
   dd 0xa
   ucs4string "lba2chs - test LBA->CHS conversion for the floppy"
@@ -397,6 +400,11 @@ builtin_thod.error:
   ucs4string "you give them invalid inputs and they crash, it is a"
   dd 0xa
   ucs4string "feature, not a bug :)"
+  dd 0xa
+  dd 0xa
+  ucs4string "If you have problems with boot, look at ZLIB_LDFLAGS"
+  dd 0xa
+  ucs4string "in Make.config."
   dd 0xa
 .end:
 __SECT__
@@ -653,5 +661,8 @@ dd		builtin_lba2chs
 
 uuustring	"clear"
 dd		builtin_clear
+
+uuustring	"boot"
+dd		builtin_boot
 
 dd		0

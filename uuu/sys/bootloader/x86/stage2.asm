@@ -1,7 +1,7 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.6 2003/11/01 00:46:37 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/stage2.asm,v 1.7 2003/11/07 20:55:38 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
-; central file
+; misc. setup code
 ;
 ; most functionality is included in the other *.asm files included in this
 ; directory.
@@ -36,12 +36,18 @@ extern builtin_clear
 extern start_prompt
 extern print_string
 
+extern boot_source
+extern boot_dest
+extern boot_size
+extern stack_top
+
 
 
 ;---------------===============\              /===============---------------
 ;				global symbols
 ;---------------===============/              \===============---------------
 
+global _start
 global panic
 
 
@@ -49,28 +55,35 @@ global panic
 ;---------------===============\             /===============---------------
 				section .text
 ;---------------===============/             \===============---------------
-					;
-global _start				; Setup permanent GDT
-_start:					;--------------------
+
+_start:
+  mov esp, stack_top
+
   mov edi, 0x30 * 8 + 8			; set address of GDT
   mov esi, _gdt				; set ptr to data
   mov ecx, 4				; number of dwords
   rep movsd				; move 'em
   lgdt [_gdtr]				; reload gdt
-					;
+
+relocate_boot_code:
+  mov esi, boot_source
+  mov edi, boot_dest
+  mov ecx, boot_size
+  shr ecx, 2
+  rep movsd
+
+  call builtin_clear
 
 %ifidn BOOT_CONSOLE,graphical
   call set_pcx_palette
   call set_video_mode
 %endif
 
-  call builtin_clear
-
 
 get_to_business:			;---------------------------------
 
   mov bl, VGA_YELLOW
-  printstr "Unununium stage 2 bootloader version $Revision: 1.6 $",0x0a
+  printstr "Unununium stage 2 bootloader version $Revision: 1.7 $",0x0a
   mov bl, VGA_WHITE
   printstr "run ",0x27,"help",0x27," for a list of available commands.",0xa
   jmp start_prompt			;
@@ -78,7 +91,7 @@ get_to_business:			;---------------------------------
 
 
 ;-----------------------------------------------------------------------.
-								panic:	;
+						panic:			;
 			; this is never used... ;-)
   mov bl, VGA_RED	;
   printstr "PANIC: "	;
@@ -102,9 +115,9 @@ dd - MBOOT_HDR_MAGIC - MBOOT_HDR_FLAGS
 
 
 
-;---------------===============\             /===============---------------
-				section .data
-;---------------===============/             \===============---------------
+;---------------===============\            /===============---------------
+				section boot
+;---------------===============/            \===============---------------
 
 _gdtr:
   dd 0x00000000 + 0x30 * 8
