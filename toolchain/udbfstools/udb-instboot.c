@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/udb-instboot.c,v 1.1 2003/10/13 01:04:58 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfstools/udb-instboot.c,v 1.2 2003/10/13 21:27:20 bitglue Exp $
 
 /* udbfs-install-bootloader
  *
@@ -54,7 +54,6 @@ int main( int argc, char *argv[] )
     if( device->boot_loader_inode != 0 ) {
 	// bootloader inode already exists
 	target = udbfs_open_inode( device, device->boot_loader_inode );
-	fprintf( stderr, "preexisting bootloader inode %u\n", target->id );
 	if( target == NULL ) {
 	    fprintf( stderr, "unable to open preexisting bootloader\n" );
 	    return_value = -1;
@@ -63,7 +62,6 @@ int main( int argc, char *argv[] )
     } else {
 	// no bootloader exists
 	target = udbfs_create_inode( device );
-	fprintf( stderr, "creating new bootloader inode %u\n", target->id );
 	if( target == NULL ) {
 	    fprintf( stderr, "unable to create inode for bootloader\n" );
 	    return_value = -1;

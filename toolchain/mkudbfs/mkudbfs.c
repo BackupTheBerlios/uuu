@@ -121,8 +121,8 @@ int main(
       break;
     case 3:
       filename = argv[2];
-      sscanf(argv[1],"%llu", &fs_size);
-      printf("fs size [ %llu ]\n", fs_size );
+      sscanf(argv[1],"%" UINT64_FORMAT "u", &fs_size);
+      printf("fs size [ %" UINT64_FORMAT "u ]\n", fs_size );
       break;
     default:
       fprintf(stderr, "Usage: mkudbfs [fs_size] file_to_format\n");
@@ -196,7 +196,7 @@ int mkfs(
   struct _udbfs_file *tmp_file;
   struct _udbfs_table *root_table;
 
-  printf("generating %lli kb file system\n", fs_size);
+  printf("generating %" UINT64_FORMAT "i kb file system\n", fs_size);
   
   superblock = malloc(sizeof(struct __udbfs_superblock));
   if( superblock == NULL ) {
@@ -212,7 +212,7 @@ int mkfs(
     superblock->block_size--;
     superblock->block_count = (int)(fs_size / BLOCK_SIZE);
   } 
-  printf(":. fs split into %lli blocks of %i bytes\n", superblock->block_count, BLOCK_SIZE);
+  printf(":. fs split into %" UINT64_FORMAT "i blocks of %i bytes\n", superblock->block_count, BLOCK_SIZE);
 
   superblock->inode_first_block = 1;
   if( superblock->block_size < 11 ) {

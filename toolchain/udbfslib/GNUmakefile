@@ -1,11 +1,6 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.8 2003/10/13 20:43:23 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.9 2003/10/13 21:27:20 bitglue Exp $
 
-# set this to on to include <dmalloc.h> in all files for memory debugging
-DMALLOC = off
-
-PREFIX = /usr/local
-LIBDIR = $(PREFIX)/lib
-INCDIR = $(PREFIX)/include
+include ../Make.conf
 
 .PHONY: all clean install
 
@@ -37,20 +32,6 @@ OBJS=\
  unload_block.o\
  write_to_inode.o
 
-# printf modifier fragment used to print uint64_t. On 32 bit archs, uint64_t is
-# a 'long long int', so this should be '"ll"'. On 64 bit archs it is usually
-# 'long int', so this should be '"l"'. Note that the value must be in double
-# quotes as it must parse as a C string constant.
-UINT64_FORMAT = "ll"
-
-
-ifeq ($(DMALLOC),on)
-CFLAGS += -DDMALLOC
-endif
-
-ifneq ($(UINT64_FORMAT),"ll")
-CFLAGS += -DUINT64_FORMAT='$(UINT64_FORMAT)'
-endif
 
 
 libudbfs.a: libudbfs.a($(OBJS)) private.h
