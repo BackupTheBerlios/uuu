@@ -11,7 +11,6 @@ struc _irq_client_t
 .magic		resd 1
 endstruc
 
-%define def_irq_client_queue def_ring_queue
 
 
 %macro irq_client 1.nolist
