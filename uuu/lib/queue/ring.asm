@@ -29,7 +29,7 @@ gproc ring_queue.prepend
 ;! <p reg="eax" type="pointer" brief="pointer to node to prepend"/>
 ;! <p reg="ebx" type="pointer" brief="pointer to ring queue"/>
 ;! <ret fatal="0" brief="prepending successful">
-;!  <p reg="eax" type="pointer" brief="prepended node"
+;!  <p reg="eax" type="pointer" brief="prepended node"/>
 ;! </ret>
 ;! <ret brief="other"/>
 ;!</proc>
