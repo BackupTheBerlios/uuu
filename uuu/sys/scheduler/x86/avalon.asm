@@ -847,41 +847,117 @@ __SECT__
 
 
 
+
+
+
+
+
 ;-------------------------------------------------[ realtime thread release ]--
 gproc thread.release
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="pointer to thread to release"/>
 ;! <ret fatal="0" brief="deallocation succesfull"/>
-;! <ret fatal="1" brief="allocation failed - thread is being used"/>
+;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
-%ifdef SANITY_CHECKS				;
+						; validate the thread pointer
+%ifdef SANITY_CHECKS				;------------------------------
  cmp	[eax + _thread_t.magic], dword RT_THREAD_MAGIC
  jnz	short .failed_sanity_check_magic	;
 %endif						;
-						;
+						; verify that the thread is
+						; not currently used
+						;------------------------------
   cmp	[eax + _thread_t.execution_status], byte RT_SCHED_STATUS_UNSCHEDULED
   jnz	short .thread_is_in_use			;
 						;
-.thread_is_in_use:				;
+						; also verify it is unlinked
+%ifdef SANITY_CHECKS				;------------------------------
+ add eax, byte (_thread_t.start_timer + _thread_timer_t.ring)
+ cmp eax, [eax]					;
+ jnz short .failed_sanity_check_linked		;
+ add eax, byte (_thread_t.end_timer - _thread_t.start_timer)
+ cmp eax, [eax]					;
+ jnz short .failed_sanity_check_linked		;
+ sub eax, byte (_thread_t.end_timer + _thread_timer_t.ring)
+%endif						;
+						; reset thread flags to default
+						;------------------------------
+  mov [eax + _thread_t.flags], byte 0		;
+						;
+						; find thread pool parentship
+						;------------------------------
+  mov ebx, [eax + _thread_t.thread_pool]	;
+						;
+						; validate thread pool pointer
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp [ebx + _rt_thread_pool_t.magic], dword RT_THREAD_POOL_MAGIC
+ jnz short .failed_sanity_check_pool_magic	;
+%endif						;
+						; compute thread id
+						;------------------------------
+  lea ecx, [eax + _thread_t_size]		;
+  sub ecx, ebx					;
+%ifdef SANITY_CHECKS				;
+ jb short .failed_sanity_check_pointer_inconsistency
+%endif						;
+  shr ecx, _LOG_STACK_SIZE_			;
+%ifdef SANITY_CHECKS				;
+ cmp ecx, byte 31				;
+ ja short .failed_sanity_check_pointer_inconsistency
+%endif						;
+						; mark thread as available
+						;------------------------------
+  mov eax, 1					;
+  shl eax, cl					;
+%ifdef SANITY_CHECKS				;
+ test [ebx + _rt_thread_pool_t.bitmap], dword eax	;
+ jnz short .failed_sanity_check_bitmap		;
+%endif						;
+ or dword [ebx + _rt_thread_pool_t.bitmap], eax	;
+ return						;
+						;
+						; error: thread under usage
+.thread_is_in_use:				;------------------------------
+  xor eax, eax					;
+  xor ebx, ebx					;
+  ret_other					; TODO: set error code
 						;
 						;
 %ifdef SANITY_CHECKS				;
- %ifdef RT_SANITY_VERBOSE			;
 [section .data]					;
 .sanity_magic:					;
-  uuustring "rthrd_release: magic failed on provided thread", 0x0A
+  uuustring "thread.release: magic failed on provided thread", 0x0A
+.sanity_linked:
+  uuustring "thread.release: thread unusued but still linked - sanity failed", 0x0A
+.sanity_pool_magic:
+  uuustring "thread.release: thread pool magic failed", 0x0A
+.sanity_pointer_inconsistency:
+  uuustring "thread.release: thread vs pool pointer inconsistency - sanity failed", 0x0A
+.sanity_bitmap:
+  uuustring "thread.release: pool bitmap has thread marked as free already", 0x0A
 __SECT__					;
 .failed_sanity_check_magic:			;
  mov ebx, dword .sanity_magic			;
- %else						;
-.failed_sanity_check_magic:			;
- xor ebx, ebx					;
- %endif						;
+ jmp short .sanity_common			;
+.failed_sanity_check_linked:			;
+ mov ebx, dword .sanity_linked			;
+ jmp short .sanity_common			;
+.failed_sanity_check_pool_magic			;
+ mov ebx, dword .sanity_pool_magic		;
+ jmp short .sanity_common			;
+.failed_sanity_check_pointer_inconsistency:	;
+ mov ebx, dword .sanity_pointer_inconsistency	;
+ jmp short .sanity_common			;
+.failed_sanity_check_bitmap:			;
+ mov ebx, dword .sanity_bitmap			;
+.sanity_common:					;
  xor eax, eax					; TODO : set error code
  ret_other					;
 %endif						;
 ;-------------------------------------------------[/realtime thread release ]--
+
+
 
 
 
@@ -980,6 +1056,9 @@ __SECT__					;
   ret_other					;
 %endif						;
 ;----------------------------------------------[/realtime thread initialize ]--
+
+
+
 
 
 
@@ -1110,7 +1189,6 @@ gproc thread.schedule
   pop eax					;/
   pop esi					; restore original esi
   ret_other					;
-
 						;
 %ifdef SANITY_CHECKS				;
 [section .data]					;
@@ -1128,7 +1206,7 @@ __SECT__					;
   xor eax, eax					;
   ret_other					;
 %endif
-
+;------------------------------------------------------------------------------
 
 
 
