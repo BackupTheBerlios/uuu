@@ -21,12 +21,8 @@ UDBFSLIB_BLOCK *udbfslib_allocate_memory_block(
 
   UDBFSLIB_BLOCK *block;
 
-  if( inode == NULL ) {
-    fprintf(stderr,"udbfslib: cannot allocate memory block to NULL inode\n");
-    return( NULL );
-  }
-  if( linkpoint == NULL ) {
-    fprintf(stderr,"udbfslib: must provide a link point when allocating a block memory structure\n");
+  if( (inode == NULL) || (linkpoint == NULL)) {
+    fprintf(stderr,"udbfslib: cannot allocate memory block with NULL inode/linkpoint\n");
     return( NULL );
   }
 
@@ -38,18 +34,14 @@ UDBFSLIB_BLOCK *udbfslib_allocate_memory_block(
     return( NULL );
   }
 
-  block->next = NULL;
-  block->previous = NULL;
   block->id= 0;
   block->offset_start = 0;
   block->offset_end = 0;
   block->device_offset = 0;
   block->inode = inode;
 
-  udbfslib_link(
-      linkpoint,
-      block );
-  
+  *linkpoint = block;
+
   return( block );
 }
 
