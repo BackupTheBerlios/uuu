@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.7 2003/12/31 18:34:44 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.8 2003/12/31 19:55:00 instinc Exp $
 ;
 ; Unununium Operating Engine
 ; Distributed under the BSD License
@@ -46,6 +46,15 @@
 %endmacro
 
 
+;-----------------------------------------------------------------------.
+;                                         global procedure declaration  ;
+
+%macro gproc 0
+%define CURPROCEDURE_%1
+global %1
+%1:
+%endmacro
+
 
 ;-----------------------------------------------------------------------.
 ;							return		;
@@ -74,7 +83,24 @@
   pop %2
   jmp [%2+%1*4]
 %endmacro
- 
+
+
+; to return to the 'other' entry, one can simply use this macro without
+; any parameter.
+
+%macro ret_other 0
+ return edx, CURPROCEDURE %+ __ret_count
+%endmacro
+
+
+; to return to the 'other' entry using any register. Note that general Uuu
+; calling conventions say that EBP, ESI, and EDI must be unchanged across
+; function calls.
+;
+
+%macro ret_other 1
+  return %{1}, CURPROCEDURE %+ __ret_count
+%endmacro
 
 
 ;-----------------------------------------------------------------------.
