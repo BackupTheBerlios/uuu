@@ -21,7 +21,7 @@
 #include "mkudbfs.h"
 #include "../conf.h"
 
-#define BLOCK_SIZE	(1<<superblock->block_size)
+#define BLOCK_SIZE	(1<<(7+superblock->block_size))
 
 int				add_column(
     struct _udbfs_table *table,
@@ -205,9 +205,9 @@ int mkfs(
     return(-1);
   }
 
-  superblock->block_size = 13;
+  superblock->block_size = 6;
   superblock->block_count = 0;
-  while( superblock->block_size >= 9 &&
+  while( superblock->block_size >= 2 &&
       superblock->block_count < 2000 ) {
     
     superblock->block_size--;
@@ -216,15 +216,15 @@ int mkfs(
   printf(":. fs split into %" UINT64_FORMAT "i blocks of %i bytes\n", superblock->block_count, BLOCK_SIZE);
 
   superblock->inode_first_block = 1;
-  if( superblock->block_size < 11 ) {
-    superblock->inode_first_block = 1<<(11-superblock->block_size);
+  if( superblock->block_size < 4 ) {
+    superblock->inode_first_block = 1<<(4-superblock->block_size);
   }
 
-  i = 1<<(superblock->block_size-3);
+  i = 1<<(superblock->block_size+4);
   inode_dir_limit = 4;
   inode_ind_limit = i;
   inode_bind_limit = i*i;
-  inode_tind_limit = i*i*i;
+  inode_tind_limit = inode_bind_limit*i;
 
   printf(":. block redirections [%i,%i,%i,%i]\n", inode_dir_limit, inode_ind_limit, inode_bind_limit, inode_tind_limit);
 
@@ -254,14 +254,12 @@ int mkfs(
     allocate_bit( block_bitmap );
   }
   // Mark up all blocks used by the inode table as used
-  i = (superblock->inode_count * sizeof(struct __udbfs_inode))
-      >> superblock->block_size;
+  i = ((superblock->inode_count * sizeof(struct __udbfs_inode)) + BLOCK_SIZE - 1) / BLOCK_SIZE;
   while(i--) {
     allocate_bit( block_bitmap );
   }
   // Reserve space for the block and inode bitmaps
-  i = (inode_map_size + block_map_size + BLOCK_SIZE - 1)
-      >> superblock->block_size;
+  i = (inode_map_size + block_map_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
   printf(":. reserving %i block(s) for block and inode bitmaps\n", i);
   superblock->bitmaps_block = allocate_bit( block_bitmap );
   while( --i ) {
@@ -441,7 +439,7 @@ uint64_t generate_bind(
 //-----------------------------------------------------------------------------
 
   struct _udbfs_block index_block;
-  int ind_count = 1<<(superblock->block_size-3);
+  int ind_count = 1<<(superblock->block_size+4);
   uint64_t index[ind_count];
   int i;
 
@@ -470,7 +468,7 @@ uint64_t generate_tind(
     struct _udbfs_file *file ) {
 //-----------------------------------------------------------------------------
   struct _udbfs_block index_block;
-  int bind_count = 1<<(superblock->block_size-3);
+  int bind_count = 1<<(superblock->block_size+4);
   uint64_t index[bind_count];
   int i;
 
