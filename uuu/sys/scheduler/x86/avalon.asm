@@ -213,7 +213,7 @@
 
 %include "ring_queue.asm"
 %include "thread.asm"
-
+%include "ret_counts.asm"
 
 
 
@@ -551,8 +551,7 @@ section .text
 
 
 ;-------------------------------------------------[ realtime thread acquire ]--
-global thrd_acquire
-thrd_acquire:
+gproc thrd.acquire
 ;!<proc>
 ;! <ret fatal="0" brief="allocation succesfull">
 ;!  <r reg="eax" brief="pointer to allocated thread"/>
@@ -643,54 +642,46 @@ thrd_acquire:
  %ifdef RT_SANITY_VERBOSE
 [section .data]
 .sanity_eax:
-  db .sanity_eax_end - $ - 1
-  db "rthrd_acquire: eax was modified - does not point to thread_pools_ring anymore", 0x0A
-  .sanity_eax_end:
+  uuustring "rthrd_acquire: eax was modified - does not point to thread_pools_ring anymore", 0x0A
 .sanity_ring:
-  db .sanity_ring_end - $ - 1
-  db "rthrd_acquire: thread pool ring sanity failed", 0x0A
-  .sanity_ring_end:
+  uuustring "rthrd_acquire: thread pool ring sanity failed", 0x0A
 .sanity_magic:
-  db .sanity_magic_end - $ - 1
-  db "rthrd_acquire: thread pool magic failure", 0x0A
-  .sanity_magic_end
+  uuustring "rthrd_acquire: thread pool magic failure", 0x0A
 .sanity_id:
-  db .sanity_id_end - $ - 1
-  db "rthrd_acquire: thread id out of thread pool bounds", 0x0A
-  .sanity_id_end:
+  uuustring "rthrd_acquire: thread id out of thread pool bounds", 0x0A
 __SECT__
 .failed_sanity_check_eax:			;
- mov eax, .sanity_eax				;
- jmp .failed_sanity_common			;
+ mov ebx, .sanity_eax				;
+ jmp short .failed_sanity_common		;
 						;
 .failed_sanity_check_ring:			;
- mov eax, dword .sanity_ring			;
- jmp .failed_sanity_common			;
+ mov ebx, dword .sanity_ring			;
+ jmp short .failed_sanity_common		;
 						;
 .failed_sanity_check_magic:			;
- mov eax, dword .sanity_magic			;
- jmp .failed_sanity_common			;
+ mov ebx, dword .sanity_magic			;
+ jmp short .failed_sanity_common		;
 						;
 .failed_sanity_check_thread_id:			;
- mov eax, dword .sanity_id			;
+ mov ebx, dword .sanity_id			;
 .failed_sanity_common:				;
-						;
  %else						;
 						;
 .failed_sanity_check_eax:			;
 .failed_sanity_check_ring:			;
 .failed_sanity_check_magic:			;
 .failed_sanity_check_thread_id:			;
+ xor ebx, ebx					;
  %endif						;
- return 2					;
+ xor eax, eax					; TODO : set error code
+ ret_other					;
 %endif						;
 ;-------------------------------------------------[/realtime thread acquire ]--
 
 
 
 ;-------------------------------------------------[ realtime thread release ]--
-global thrd_release
-thrd_release:
+gproc thrd.release
 ;!<proc>
 ;! <p reg="eax" type="pointer" brief="pointer to thread to release"/>
 ;! <ret fatal="0" brief="deallocation succesfull"/>
@@ -713,16 +704,16 @@ thrd_release:
  %ifdef RT_SANITY_VERBOSE			;
 [section .data]					;
 .sanity_magic:					;
-  db .sanity_magic_end - $ - 1			;
-  db "rthrd_release: magic failed on provided thread", 0x0A
-  .sanity_magic_end:				;
+  uuustring "rthrd_release: magic failed on provided thread", 0x0A
 __SECT__					;
 .failed_sanity_check_magic:			;
- mov eax, dword .sanity_magic			;
+ mov ebx, dword .sanity_magic			;
  %else						;
 .failed_sanity_check_magic:			;
+ xor ebx, ebx					;
  %endif						;
- return 2					;
+ xor eax, eax					; TODO : set error code
+ ret_other					;
 %endif						;
 ;-------------------------------------------------[/realtime thread release ]--
 
