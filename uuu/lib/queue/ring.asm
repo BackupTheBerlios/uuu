@@ -28,32 +28,41 @@ gproc ring_queue.prepend
 ;!<proc brief="Prepend a thread to a ring queue">
 ;! <p reg="eax" type="pointer" brief="pointer to node to prepend"/>
 ;! <p reg="ebx" type="pointer" brief="pointer to ring queue"/>
-;! <ret fatal="0" brief="prepending successful"/>
+;! <ret fatal="0" brief="prepending successful">
+;!  <p reg="eax" type="pointer" brief="prepended node"
+;! </ret>
 ;! <ret brief="other"/>
 ;!</proc>
 ;------------------------------------------------------------------------------
-%ifdef SANITY_CHECKS				;-o
- cmp [eax + _ring_queue_t.next], eax		; thread points back to itself?
- jnz short .failed_sanity			; no? failed
- cmp [eax + _ring_queue_t.previous], eax	; thread points back to itself?
- jnz short .failed_sanity			; no? failed
-%endif						;--o
-						;
+						; validate ring node
+%ifdef SANITY_CHECKS				;------------------------------
+ cmp [eax + _ring_queue_t.next], eax		; .next node loopback
+ jnz short .failed_sanity			; 
+ cmp [eax + _ring_queue_t.previous], eax	; .previous node loopback
+ jnz short .failed_sanity			;
+%endif						;
+						; find insertion point
+						;------------------------------
   mov ecx, [ebx + _ring_queue_t.next]		; Load first ring member
 						;
-%ifdef SANITY_CHECKS				;-o
+						; validate insertion point node
+%ifdef SANITY_CHECKS				;------------------------------
  cmp [ecx + _ring_queue_t.previous], ebx	; Make sure member points back
  jnz short .failed_sanity			; ZF=0? guess it doesn't, fail
-%endif						;--o
+%endif						;
 						;
+						; link node at insertion point
+						;------------------------------
   mov [eax + _ring_queue_t.next], ecx		; set thrd next to 1st member
   mov [eax + _ring_queue_t.previous], ebx	; set thrd previous to head
   mov [ebx + _ring_queue_t.next], eax		; head point to thread
   mov [ecx + _ring_queue_t.previous], eax	; 1st member point to thread
   return					; return to caller
 						;
-%ifdef SANITY_CHECKS				;-o
-[section .data]					; declare some data
+						; error handling section
+						;------------------------------
+%ifdef SANITY_CHECKS				;
+[section .data]					;
 .str:						;
  uuustring "sanity check failed in __prepend_to_queue", 0x0A
 __SECT__					; return to code section
@@ -61,7 +70,7 @@ __SECT__					; return to code section
  mov ebx, dword .str				; error message to display
  xor eax, eax					; TODO : set error code
  ret_other					;
-%endif						;--o
+%endif						;
 ;------------------------------------------------------------------------------
 
 
