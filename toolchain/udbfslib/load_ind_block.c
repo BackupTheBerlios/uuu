@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.2 2003/10/12 15:25:52 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/load_ind_block.c,v 1.3 2003/10/12 18:08:57 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -31,14 +31,19 @@ int		udbfslib_load_ind_block(
     uint64_t			offset_modifier,
     UDBFSLIB_INDBLOCK		**linkpoint ) {
 
-  UDBFSLIB_INDBLOCK *ind_block;
-  UDBFSLIB_BLOCK *tmp_block;
-  int i, ind_links = inode->mount->block_size>>3;
+  UDBFSLIB_INDBLOCK *ind_block = NULL;
+  UDBFSLIB_BLOCK *tmp_block = NULL;
+
+  int i, ind_links;  
 
   if( (inode == NULL) || (linkpoint == NULL) ) {
     fprintf(stderr,"udbfslib: cannot load indiret block with a NULL inode or NULL linkpoint\n");
     return( -1 );
   }
+
+  printf("udbfslib: request to load IND block [%016llX] for inode [%016llX] offset [%016llX]\n", block_id, inode->id, offset_modifier); fflush(stdout);
+
+  ind_links = inode->mount->block_size>>3;
 
   ind_block = (UDBFSLIB_INDBLOCK *)malloc(
       sizeof(UDBFSLIB_INDBLOCK) +
@@ -86,6 +91,6 @@ int		udbfslib_load_ind_block(
     offset_modifier += inode->mount->block_size;
   }
 
-  fprintf(stderr,"udbfslib: ind block [%016llX] OK!\n", ind_block->id);
+  printf("udbfslib: ind block [%016llX] OK!\n", ind_block->id); fflush(stdout);
   return(0);
 }
