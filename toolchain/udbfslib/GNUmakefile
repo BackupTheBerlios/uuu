@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.2 2003/10/11 13:17:27 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/GNUmakefile,v 1.3 2003/10/12 15:17:13 instinc Exp $
 
 .PHONY: all clean test
 
@@ -7,6 +7,7 @@ OBJS=\
  allocate_bit.o\
  allocate_block_id.o\
  allocate_inode_id.o\
+ allocate_memory_block.o\
  allocate_memory_inode.o\
  close_inode.o\
  create_inode.o\
@@ -31,9 +32,12 @@ OBJS=\
  
 
 
-libudbfs.a: libudbfs.a($(OBJS))
+libudbfs.a: libudbfs.a($(OBJS)) private.h
 
-test: test.c
+test2: test2.c libudbfs.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o test2 test2.c -L. -ludbfs
+
+test: test.c libudbfs.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o test test.c -L. -ludbfs
 
 clean:
