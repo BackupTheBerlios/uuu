@@ -21,7 +21,8 @@
 	    padding: 4em;
 	    line-height: 1.4em;
 	  }
-	  div.proc {
+	  div.proc,
+	  ul.toc {
 	    background: #eee;
 	    padding: 0.5em;
 	    margin: 0 0 2em;
@@ -46,6 +47,12 @@
 	</style>
       </head>
       <body>
+	<ul class="toc">
+	  <xsl:apply-templates select="proc" mode="toc">
+	    <xsl:sort select="@name"/>
+	  </xsl:apply-templates>
+	</ul>
+
 	<xsl:apply-templates select="proc">
 	  <xsl:sort select="@name"/>
 	</xsl:apply-templates>
@@ -53,9 +60,29 @@
     </html>
   </xsl:template>
 
+  <xsl:template match="proc" mode="toc">
+    <li>
+      <a>
+	<xsl:attribute name="href">
+	  <xsl:value-of select="concat('#',@name)"/>
+	</xsl:attribute>
+	<xsl:value-of select="@name"/>
+      </a>
+      <xsl:if test="@brief">
+	-- <xsl:value-of select="@brief"/>
+      </xsl:if>
+    </li>
+  </xsl:template>
+
   <xsl:template match="proc">
     <div class="proc">
-      <h1>Procedure <xsl:value-of select="@name"/></h1>
+      <h1>Procedure
+      <a>
+	<xsl:attribute name="name">
+	  <xsl:value-of select="@name"/>
+	</xsl:attribute>
+	<xsl:value-of select="@name"/>
+      </a></h1>
       <xsl:if test="@brief">
 	<p><xsl:value-of select="@brief"/></p>
       </xsl:if>
