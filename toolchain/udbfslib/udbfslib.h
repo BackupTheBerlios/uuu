@@ -21,11 +21,9 @@ struct udbfslib_mount {
   uint8_t			*block_bitmap,
 				*inode_bitmap;
 
-  uint32_t			inode_count,
-				boot_loader_inode;
-
   uint64_t			block_size,
 				block_count,
+				inode_count,
 				free_block_count,
 				free_inode_count,
 				block_bitmap_offset,
@@ -36,7 +34,8 @@ struct udbfslib_mount {
 				dir_storage,
 				ind_storage,
 				bind_storage,
-				tind_storage;
+				tind_storage,
+				boot_loader_inode;
 
   struct udbfslib_inode		*opened_inodes;
 };
@@ -47,8 +46,8 @@ struct udbfslib_mount {
 struct udbfslib_inode {
   struct udbfslib_inode		*next,
 				*previous;
-  uint32_t			id;
-  uint64_t			cursor,
+  uint64_t			id,
+				cursor,
 				size,
 				physical_offset;
   struct udbfslib_block		*block[4];
@@ -83,8 +82,6 @@ struct udbfslib_tindblock {
 
 
 struct udbfslib_block {
-  struct udbfslib_block		*next,
-				*previous;
   uint64_t			id,
 				offset_start,
 				offset_end,
@@ -156,7 +153,7 @@ void		udbfs_unmount(
     UDBFSLIB_MOUNT	*mount );
 
 
-uint32_t	udbfs_allocate_inode_id(
+uint64_t	udbfs_allocate_inode_id(
     UDBFSLIB_MOUNT	*mount );
 
 
@@ -170,7 +167,7 @@ UDBFSLIB_TABLE	*udbfs_create_table(
 
 UDBFSLIB_TABLE	*udbfs_open_table(
     UDBFSLIB_MOUNT	*mount,
-    uint32_t		inode_id);
+    uint64_t		inode_id);
 
 
 int		udbfs_add_column(
@@ -194,7 +191,7 @@ UDBFSLIB_INODE	*udbfs_create_inode(
 
 UDBFSLIB_INODE	*udbfs_open_inode(
     UDBFSLIB_MOUNT	*mount,
-    uint32_t		inode_id);
+    uint64_t		inode_id);
 
 
 int		udbfs_close_inode(
@@ -203,7 +200,7 @@ int		udbfs_close_inode(
 
 int		udbfs_free_inode(
     UDBFSLIB_MOUNT	*mount,
-    uint32_t		inode_id);
+    uint64_t		inode_id);
 
 int		udbfs_write_to_inode(
     UDBFSLIB_INODE	*inode,
@@ -220,6 +217,6 @@ int		udbfs_eoi(
 
 int		udbfs_set_boot_loader_inode(
     UDBFSLIB_MOUNT	*mount,
-    uint32_t		inode_id );
+    uint64_t		inode_id );
 
 #endif
