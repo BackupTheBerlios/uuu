@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.4 2003/10/12 21:29:00 instinc Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/udbfslib/mount.c,v 1.5 2003/10/12 22:41:43 instinc Exp $
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -90,6 +90,7 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     mount->free_inode_count	= superblock->free_inode_count;
     mount->boot_loader_inode	= superblock->boot_loader_inode;
     mount->block_size		= 1<<superblock->block_size;
+    mount->log_block_size	= superblock->block_size;
     mount->block_count		= superblock->block_count;
     mount->free_block_count	= superblock->free_block_count;
     mount->block_bitmap_offset	= superblock->bitmaps_block * mount->block_size;
@@ -98,6 +99,17 @@ UDBFSLIB_MOUNT	*udbfs_mount(
     mount->inode_bitmap_size	= (mount->inode_count + 7)>>3;
     mount->inode_table_offset	= superblock->inode_first_block * mount->block_size;
     mount->opened_inodes	= NULL;
+    mount->root_table_inode	= superblock->root_table_inode;
+    mount->journal_inode	= superblock->journal_inode;
+    mount->bad_block_inode	= superblock->bad_block_inode;
+    mount->magic_number		= superblock->magic_number;
+    mount->last_check		= superblock->last_check;
+    mount->last_mount		= superblock->last_mount;
+    mount->mount_count		= superblock->mount_count;
+    mount->max_mount_count	= superblock->max_mount_count;
+    mount->creator_os		= superblock->creator_os;
+    mount->superblock_version	= superblock->superblock_version;
+    mount->inode_format		= superblock->inode_format;
     
     //..:  Free temporary superblock structure
     free( superblock );
@@ -151,6 +163,8 @@ failed_mount:
 void		udbfs_unmount(
     UDBFSLIB_MOUNT	*mount ) {
 
+  UDBFS_SUPERBLOCK superblock;
+
   //.:  NULL pointer catch
   if( mount == NULL ) {
 
@@ -201,6 +215,33 @@ void		udbfs_unmount(
     //..: Free it
     free( mount->inode_bitmap );
     mount->inode_bitmap = NULL;
+  }
+
+  // save the superblock
+  superblock.boot_loader_inode = mount->boot_loader_inode;
+  superblock.inode_first_block = mount->inode_first_block;
+  superblock.unique_fs_signature = mount->unique_fs_signature;
+  superblock.block_count = mount->block_count;
+  superblock.inode_count = mount->block_count;
+  superblock.free_block_count = mount->free_block_count;
+  superblock.free_inode_count = mount->free_inode_count;
+  superblock.bitmaps_block = mount->bitmaps_block;
+  superblock.root_table_inode = mount->root_table_inode;
+  superblock.journal_inode = mount->journal_inode;
+  superblock.bad_block_inode = mount->bad_block_inode;
+  superblock.magic_number = mount->magic_number;
+  superblock.last_check =  mount->last_check;
+  superblock.last_mount =  mount->last_mount;
+  superblock.mount_count = mount->mount_count;
+  superblock.max_mount_count = mount->max_mount_count;
+  superblock.creator_os = mount->creator_os;
+  superblock.superblock_version = mount->superblock_version;
+  superblock.block_size = mount->log_block_size;
+  superblock.inode_format = mount->inode_format;
+
+  if( (lseek( mount->block_device, 1024, SEEK_SET) != 1024 ) ||
+      (write( mount->block_device, &superblock, sizeof(superblock)) != sizeof(superblock)) ) {
+    perror("udbfslib: unable to save superblock");
   }
 
   // close the block device file descriptor
