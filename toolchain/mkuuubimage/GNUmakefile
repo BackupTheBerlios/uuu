@@ -1,4 +1,4 @@
-# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/GNUmakefile,v 1.1 2003/11/03 14:49:39 bitglue Exp $
+# $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/GNUmakefile,v 1.2 2003/11/08 19:01:00 bitglue Exp $
 
 include ../Make.conf
 
@@ -16,5 +16,6 @@ clean:
 install: mkuuubimage
 	$(installing) 'mkuuubimage' in '$(BINDIR)'
 	cp mkuuubimage '$(BINDIR)'
+	strip '$(BINDIR)/mkuuubimage'
 
 -include mkuuubimage.d

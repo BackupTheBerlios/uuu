@@ -1,4 +1,4 @@
-// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/mkuuubimage.c,v 1.3 2003/11/03 16:15:40 bitglue Exp $
+// $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/toolchain/mkuuubimage/mkuuubimage.c,v 1.4 2003/11/08 19:01:00 bitglue Exp $
 
 
 /* This program takes as input a single ELF file and produces a boot image for
@@ -238,7 +238,7 @@ int main( int argc, char *argv[] )
 	    break;
 
 	  case 'v':
-	    fprintf( stderr, "mkuuubimage $Revision: 1.3 $ $Date: 2003/11/03 16:15:40 $\ncompiled " __DATE__ " " __TIME__ "\n" );
+	    fprintf( stderr, "mkuuubimage $Revision: 1.4 $ $Date: 2003/11/08 19:01:00 $\ncompiled " __DATE__ " " __TIME__ "\n" );
 	    return 0;
 
 
@@ -401,8 +401,12 @@ int main( int argc, char *argv[] )
 
 	do
 	{
+	  if( debug_level >= 3 )
+	    fprintf( stderr, "\tpreparing to deflate, 0x%x avail_in, 0x%x avail_out, 0x%x input remains\n", stream.avail_in, stream.avail_out, section_order[i]->sh_size );
 	  if( stream.avail_out == 0 )
 	  {
+	    if( debug_level >= 3 )
+	      fprintf( stderr, "\t\toutput buffer full; flushing\n" );
 	    write_output( output_buffer, OUTPUT_BUFFER_SIZE );
 	    stream.next_out = output_buffer;
 	    stream.avail_out = OUTPUT_BUFFER_SIZE;
@@ -412,13 +416,17 @@ int main( int argc, char *argv[] )
 	    // we will use the size in the header to track how much we have fed zlib
 	    if( section_order[i]->sh_size > INPUT_BUFFER_SIZE )
 	    {
+	      if( debug_level >= 3 )
+		fprintf( stderr, "\t\tdoing partial fill of input buffer\n" );
 	      if( ! fread( input_buffer, INPUT_BUFFER_SIZE, 1, input_file ) ) read_error();
 	      stream.next_in = input_buffer;
 	      stream.avail_in = INPUT_BUFFER_SIZE;
 	      section_order[i]->sh_size -= INPUT_BUFFER_SIZE;
 	    }
-	    else
+	    else if( flush != Z_FINISH )
 	    {
+	      if( debug_level >= 3 )
+		fprintf( stderr, "\t\tlast fill of input buffer\n" );
 	      if( ! fread( input_buffer, section_order[i]->sh_size, 1, input_file ) ) read_error();
 	      stream.next_in = input_buffer;
 	      stream.avail_in = section_order[i]->sh_size;
@@ -426,7 +434,11 @@ int main( int argc, char *argv[] )
 	    }
 	  }
 
+	  if( debug_level >= 3 )
+	    fprintf( stderr, "\t\tdeflating, 0x%x avail_in, 0x%x avail_out, 0x%x input remains, flush = %i\n", stream.avail_in, stream.avail_out, section_order[i]->sh_size, flush );
 	  j = deflate( &stream, flush );
+	  if( debug_level >= 3 )
+	    fprintf( stderr, "\tdeflate() returns %i\n", j );
 
 	  switch( j ) {
 	    case Z_STREAM_ERROR:
@@ -434,6 +446,12 @@ int main( int argc, char *argv[] )
 	      bug();
 	    case Z_BUF_ERROR:
 	      fprintf( stderr, "buffer error while compressing.\n" );
+	      bug();
+	    default:
+	      if( j < 0 ) {
+		fprintf( stderr, "unknown error while compressing.\n" );
+		bug();
+	      }
 	  }
 	}
 	while( j != Z_STREAM_END );
