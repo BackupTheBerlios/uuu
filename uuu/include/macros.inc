@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.5 2003/12/31 03:22:44 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/include/macros.inc,v 1.6 2003/12/31 04:35:26 bitglue Exp $
 ;
 ; Unununium Operating Engine
 ; Distributed under the BSD License
@@ -50,19 +50,19 @@
 ;-----------------------------------------------------------------------.
 ;							return		;
 
-; by default, return to the first entry using ebx
+; by default, return to the first entry using edx
 
 %macro return 0
-  pop ebx
-  jmp [ebx]
+  pop edx
+  jmp [edx]
 %endmacro
 
 
-; to return to any entry, but still use ebx
+; to return to any entry, but still use edx
 
 %macro return 1
-  pop ebx
-  jmp [ebx+%1*4]
+  pop edx
+  jmp [edx+%1*4]
 %endmacro
 
 
