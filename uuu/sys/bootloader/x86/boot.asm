@@ -1,4 +1,4 @@
-; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.5 2003/12/23 02:25:03 bitglue Exp $
+; $Header: /home/xubuntu/berlios_backup/github/tmp-cvs/uuu/Repository/uuu/sys/bootloader/x86/boot.asm,v 1.6 2003/12/24 04:51:18 bitglue Exp $
 ;---------------------------------------------------------------------------==|
 ; stage2 bootloader for Unununium
 ; boot routines
@@ -38,6 +38,7 @@ extern set_display_start
 ;---------------===============/              \===============---------------
 
 global calloc
+global malloc
 global free
 global memcpy
 global boot
@@ -51,6 +52,18 @@ global boot
 ;-----------------------------------------------------------------------.
 						free:			;
   ; do nothing; we don't care :)
+  retn
+
+
+
+;-----------------------------------------------------------------------.
+						malloc:			;
+  mov eax, [esp+4]
+  add eax, byte 3
+  and al, -4
+  neg eax
+  add eax, [memory_frame]
+  mov [memory_frame], eax
   retn
 
 
@@ -73,7 +86,7 @@ global boot
   printstr "; "
   popad
 
-  add eax, 3
+  add eax, byte 3
   and eax, -4
   mov ecx, eax
   shr ecx, 2
